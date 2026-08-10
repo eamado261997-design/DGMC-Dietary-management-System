@@ -16,8 +16,7 @@ export default function Login() {
   const [shakeKey, setShakeKey] = useState(0);
   const errorRef = useRef<HTMLDivElement>(null);
 
-  const [helpdeskPhone, setHelpdeskPhone] = useState("");
-  const [helpdeskExt, setHelpdeskExt] = useState("");
+  const [itSupportContact, setItSupportContact] = useState("Medical arts Bldg. 5th floor/ICT dept. / 2568");
   const [dynamicCompanyName, setDynamicCompanyName] = useState("Divine Grace Medical Center");
 
   // PWA Install Prompt State
@@ -77,29 +76,10 @@ export default function Login() {
       })
       .then((data) => {
         if (Array.isArray(data)) {
-          const phoneObj = data.find((item: any) => item.setting_key === "helpdesk_phone");
-          const extObj = data.find((item: any) => item.setting_key === "helpdesk_ext");
-          if (phoneObj && phoneObj.setting_value) {
-            setHelpdeskPhone(phoneObj.setting_value);
+          const itSupport = data.find((item: any) => item.setting_key === "it_support_phone");
+          if (itSupport && itSupport.setting_value) {
+            setItSupportContact(itSupport.setting_value);
           }
-          if (extObj && extObj.setting_value) {
-            setHelpdeskExt(extObj.setting_value);
-          }
-          
-          // Backup fallback: parse from it_support_phone if separate keys aren't returned
-          if (!phoneObj || !extObj) {
-            const itSupport = data.find((item: any) => item.setting_key === "it_support_phone");
-            if (itSupport && itSupport.setting_value) {
-              const match = itSupport.setting_value.match(/Ext\.\s*(\d+)\s*\/\s*(.+)/i);
-              if (match) {
-                if (!phoneObj) setHelpdeskPhone(match[2]);
-                if (!extObj) setHelpdeskExt(match[1]);
-              } else if (!phoneObj) {
-                setHelpdeskPhone(itSupport.setting_value);
-              }
-            }
-          }
-
           const companyObj = data.find((item: any) => item.setting_key === "company_name");
           if (companyObj && companyObj.setting_value) {
             setDynamicCompanyName(companyObj.setting_value);
@@ -394,7 +374,7 @@ export default function Login() {
               <HelpCircle className="w-4.5 h-4.5 text-slate-400 shrink-0 mt-0.5" />
               <div className="text-[11px] text-slate-500 leading-relaxed">
                 <span className="font-extrabold text-slate-800 block uppercase tracking-wider text-[9px] mb-0.5">IT Access Support</span>
-                Forgot credentials? Contact the <span className="font-bold text-[#003299]">IT Helpdesk ({helpdeskPhone ? `Ext. ${helpdeskExt} / ${helpdeskPhone}` : "Ext. 1088 / (046) 481-4000"})</span> or your supervisor on duty.
+                Forgot credentials? Contact <span className="font-bold text-[#003299]">{itSupportContact}</span> or your supervisor on duty.
               </div>
             </div>
 

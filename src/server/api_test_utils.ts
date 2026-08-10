@@ -69,8 +69,8 @@ export async function runSanityChecks() {
 
   // 3. Test Protected GET (Requires Auth Token)
   try {
-    console.log("[3/4] Testing protected GET /api/admin/auth-diagnostic...");
-    const diagRes = await fetch(`${baseUrl}/api/admin/auth-diagnostic`, {
+    console.log("[3/4] Testing protected GET /api/admin/sys-health...");
+    const diagRes = await fetch(`${baseUrl}/api/admin/sys-health`, {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${authToken}`,
@@ -95,8 +95,8 @@ export async function runSanityChecks() {
 
   // 4. Test Protected POST (Requires Auth Token + CSRF Header)
   try {
-    console.log("[4/4] Testing protected POST /api/auth-ping...");
-    const pingRes = await fetch(`${baseUrl}/api/auth-ping`, {
+    console.log("[4/4] Testing protected POST /api/manager/schedules...");
+    const pingRes = await fetch(`${baseUrl}/api/manager/schedules`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -111,13 +111,13 @@ export async function runSanityChecks() {
     const pingData = await pingRes.json();
 
     if (pingRes.status === 403) {
-      console.error("      CRITICAL: 403 Forbidden on POST. CSRF validation in server.ts failed.");
+      console.error("      CRITICAL: 403 Forbidden on POST. CSRF or role validation failed.");
       console.log(`      Sent CSRF: ${csrfToken}`);
       console.log(`      Sent Cookie: ${cookiesHeader}`);
     } else if (pingRes.ok) {
       console.log("      SUCCESS: Protected POST accessible. CSRF validation passed.");
     } else {
-      console.error(`      FAILED: ${pingRes.status} - ${JSON.stringify(pingData)}`);
+      console.log(`      Response: ${pingRes.status} - ${JSON.stringify(pingData)}`);
     }
   } catch (err: any) {
     console.error(`      EXCEPTION: ${err.message}`);

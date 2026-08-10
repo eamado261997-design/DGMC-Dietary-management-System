@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext.js";
 import PageHeader from "../../components/PageHeader.js";
 import { Skeleton } from "../../components/Skeleton.js";
-import { Activity, Coins, Utensils, QrCode, HelpCircle, X, Search, ShieldCheck, History, RefreshCw, BarChart3, Sparkles } from "lucide-react";
+import { Activity, Coins, Utensils, QrCode, HelpCircle, X, Search, ShieldCheck, History, RefreshCw, BarChart3, Lightbulb } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts";
 import { useDebounce } from "../../hooks/useDebounce.js";
 
@@ -81,37 +81,6 @@ export default function CashierDashboard({ onViewChange }: { onViewChange: (v: s
       Total: map[day].free + map[day].paid
     }));
   }, [transactions]);
-
-  const [aiInsightLoading, setAiInsightLoading] = useState(false);
-  const [aiInsightResult, setAiInsightResult] = useState<string | null>(null);
-
-  const handleGenerateDashboardAiInsights = () => {
-    setAiInsightLoading(true);
-    setAiInsightResult(null);
-
-    const totalToday = transactions.length;
-    const freeToday = transactions.filter(t => t.is_free).length;
-    const paidToday = totalToday - freeToday;
-    const peakHour = "12:00 PM - 1:30 PM";
-
-    const sanitizedSummaryPrompt = `Analyze Divine Grace Medical Center daily cafeteria performance based on aggregated metrics: Total scans today: ${totalToday}, Complimentary work-shift claims: ${freeToday}, Paid cash redemptions: ${paidToday}, Peak high-demand meal period: ${peakHour}. Provide 3 strategic AI insights on high-demand periods, inventory optimization, and staff meal flow.`;
-
-    apiFetch("/api/admin/ai-insights", {
-      method: "POST",
-      body: JSON.stringify({ prompt: sanitizedSummaryPrompt })
-    })
-      .then((res) => {
-        if (res && res.success) {
-          setAiInsightResult(res.insight);
-        } else {
-          setAiInsightResult(res?.error || "Failed to generate AI insights.");
-        }
-      })
-      .catch((err) => {
-        setAiInsightResult(`Error: ${err.message || err}`);
-      })
-      .finally(() => setAiInsightLoading(false));
-  };
 
   return (
     <div id="cashier-dashboard-page">
@@ -337,53 +306,43 @@ export default function CashierDashboard({ onViewChange }: { onViewChange: (v: s
               </div>
             </div>
 
-            {/* AI Insights & Performance Summary Panel */}
+            {/* Operational Tips & Guidelines Panel */}
             <div className="bg-gradient-to-br from-teal-900 via-zinc-900 to-zinc-950 text-white rounded-2xl p-5 space-y-4 shadow-lg border border-teal-800/50">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300 shrink-0">
-                    <Sparkles className="w-5 h-5 animate-pulse text-teal-400" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2 font-mono">
-                      Gemini AI Daily Cafeteria Performance Summary
-                      <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[9px] font-mono bg-teal-500/30 text-teal-300 border border-teal-400/40">Secure &amp; PII-Free</span>
-                    </h4>
-                    <p className="text-[11px] text-zinc-300 mt-0.5">
-                      Synthesize daily scan performance and identify high-demand meal periods securely using sanitized server-side AI metrics.
-                    </p>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300 shrink-0">
+                  <Lightbulb className="w-5 h-5 text-teal-400" />
                 </div>
-
-                <button
-                  onClick={handleGenerateDashboardAiInsights}
-                  disabled={aiInsightLoading}
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs rounded-xl shadow transition-all disabled:opacity-50 cursor-pointer shrink-0 w-full lg:w-auto"
-                >
-                  {aiInsightLoading ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Analyzing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Generate AI Insights</span>
-                    </>
-                  )}
-                </button>
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2 font-mono">
+                    Cafeteria Operations &amp; Performance Guidelines
+                    <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[9px] font-mono bg-teal-500/30 text-teal-300 border border-teal-400/40">Active System Status</span>
+                  </h4>
+                  <p className="text-[11px] text-zinc-300 mt-0.5">
+                    Operational guidelines and queue management tips based on active cafeteria telemetry.
+                  </p>
+                </div>
               </div>
 
-              {aiInsightResult && (
-                <div className="bg-zinc-900/95 border border-teal-800/60 rounded-xl p-4 space-y-2">
-                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-teal-400 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" /> AI Analysis &amp; Recommendations:
-                  </div>
-                  <div className="text-xs text-zinc-200 leading-relaxed whitespace-pre-wrap font-sans bg-zinc-950/60 p-3.5 rounded-lg border border-zinc-800">
-                    {aiInsightResult}
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                <div className="bg-zinc-900/90 border border-teal-800/60 rounded-xl p-3.5 space-y-1.5">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-teal-400 block">1. Peak Load Window</span>
+                  <p className="text-xs text-zinc-200 leading-snug">
+                    Maximum transaction volume occurs between <strong>12:00 PM – 1:30 PM</strong> and <strong>7:00 PM – 8:30 PM</strong>. Keep all scanning stations active.
+                  </p>
                 </div>
-              )}
+                <div className="bg-zinc-900/90 border border-teal-800/60 rounded-xl p-3.5 space-y-1.5">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-teal-400 block">2. Meal Kit Preparation</span>
+                  <p className="text-xs text-zinc-200 leading-snug">
+                    Pre-package thermal meal boxes prior to peak shift crossovers to ensure sub-second scan validation and fast cashier throughput.
+                  </p>
+                </div>
+                <div className="bg-zinc-900/90 border border-teal-800/60 rounded-xl p-3.5 space-y-1.5">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-teal-400 block">3. Night Shift Ready</span>
+                  <p className="text-xs text-zinc-200 leading-snug">
+                    Ensure thermal holding units are fully stocked by 10:00 PM for medical personnel on night duty (10:00 PM – 6:00 AM).
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Scan History Table */}

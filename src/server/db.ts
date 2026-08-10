@@ -356,7 +356,7 @@ function seedDatabase(): DatabaseSchema {
     { id: 13, setting_key: "currency_symbol", setting_value: "₱", updated_at: nowStr },
     { id: 14, setting_key: "free_meal_limit_daily", setting_value: "1", updated_at: nowStr },
     { id: 15, setting_key: "audit_log_retention_days", setting_value: "30", updated_at: nowStr },
-    { id: 16, setting_key: "it_support_phone", setting_value: "Ext. 1088 / (046) 481-4000", updated_at: nowStr }
+    { id: 16, setting_key: "it_support_phone", setting_value: "Medical arts Bldg. 5th floor/ICT dept. / 2568", updated_at: nowStr }
   ];
 
   return {

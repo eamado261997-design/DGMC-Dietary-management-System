@@ -114,7 +114,7 @@ export default function DatabaseStatusIndicator() {
       <button
         onClick={() => setShowTooltip(!showTooltip)}
         onMouseEnter={handleMouseEnter}
-        className={`flex items-center gap-1 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-full border text-[10px] font-bold font-mono tracking-wide transition-all duration-200 select-none cursor-pointer ${mysqlColorClass} hover:scale-105 active:scale-95`}
+        className={`flex items-center gap-0.5 px-1 py-0.5 sm:px-2.5 sm:py-1 rounded-full border text-[10px] font-bold font-mono tracking-wide transition-all duration-200 select-none cursor-pointer ${mysqlColorClass} hover:scale-105 active:scale-95`}
       >
         <span className="relative flex h-1.5 w-1.5">
           {isMysqlConfigured && isMysqlActive && (
@@ -133,7 +133,7 @@ export default function DatabaseStatusIndicator() {
       <button
         onClick={() => setShowTooltip(!showTooltip)}
         onMouseEnter={handleMouseEnter}
-        className={`flex items-center gap-1 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-full border text-[10px] font-bold font-mono tracking-wide transition-all duration-200 select-none cursor-pointer ${sqliteColorClass} hover:scale-105 active:scale-95`}
+        className={`flex items-center gap-0.5 px-1 py-0.5 sm:px-2.5 sm:py-1 rounded-full border text-[10px] font-bold font-mono tracking-wide transition-all duration-200 select-none cursor-pointer ${sqliteColorClass} hover:scale-105 active:scale-95`}
       >
         <span className="relative flex h-1.5 w-1.5">
           {isSqliteActive && (

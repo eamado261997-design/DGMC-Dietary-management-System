@@ -130,7 +130,7 @@ export default function SystemSettings() {
   const [companyTagline, setCompanyTagline] = useState("");
   const [currencySymbol, setCurrencySymbol] = useState("₱");
   const [mealPrice, setMealPrice] = useState("150.00");
-  const [itSupportPhone, setItSupportPhone] = useState("Ext. 1088 / (046) 481-4000");
+  const [itSupportPhone, setItSupportPhone] = useState("Medical arts Bldg. 5th floor/ICT dept. / 2568");
   const [logoBase64, setLogoBase64] = useState("");
 
   // Shift Settings State variables
@@ -526,7 +526,7 @@ export default function SystemSettings() {
                         required
                         value={itSupportPhone}
                         onChange={(e) => setItSupportPhone(e.target.value)}
-                        placeholder="e.g. Ext. 1088 / (046) 481-4000"
+                        placeholder="e.g. Medical arts Bldg. 5th floor/ICT dept. / 2568"
                         className="w-full h-10 px-3.5 rounded-xl border border-zinc-250 bg-zinc-50 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-teal-600 focus:bg-white"
                       />
                       <span className="text-[10px] text-zinc-450 mt-1 block">Displayed on the hospital login page for personnel needing credential or login support.</span>

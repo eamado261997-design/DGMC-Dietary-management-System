@@ -218,7 +218,7 @@ export default function Layout({ children, activeView, onViewChange }: LayoutPro
           <DGMCLogo variant="icon" />
           <span className="hidden sm:inline text-[10px] font-mono uppercase bg-white/10 text-teal-250 border border-white/5 py-0.5 px-2 rounded-full font-bold truncate">Cafeteria Unit</span>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           <DatabaseStatusIndicator />
           <button
             onClick={() => setMobileOpen(!mobileOpen)}

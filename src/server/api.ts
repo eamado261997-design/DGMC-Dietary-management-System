@@ -19,10 +19,8 @@ import { detectWafEvasion, sanitizeInputString, safeVal, validateSchema, SchemaF
 import { cacheLayer } from "./cache.js";
 import { apiCache, ApiResponse, checkRateLimit, checkTokenBucket, addBenchmarkLog, benchmarkLogs, jsonResponse, parseCookies, dbLatencyTracker } from "./utils/apiUtils.js";
 import { DiagnosticsController } from "./controllers/diagnosticsController.js";
-import { AIController } from "./controllers/aiController.js";
 
 const diagnosticsController = new DiagnosticsController(() => benchmarkLogs);
-const aiController = new AIController();
 import { logger } from "./utils/logger.js";
 
 export async function handleApiRequest(
@@ -461,35 +459,6 @@ async function _handleApiRequest(
     return jsonResponse(200, result);
   }
 
-  if (path === "/api/admin/ai-insights" && method === "POST") {
-    if (!authUser) return jsonResponse(401, { error: "Authentication required" });
-    if (!requireRole(["admin", "manager"])) return jsonResponse(403, { error: "Admin or Manager privilege required" });
-    try {
-      const prompt = body?.prompt || "Analyze cafeteria performance and provide insights.";
-      const insight = await aiController.generateInsights(prompt);
-      return jsonResponse(200, { success: true, insight });
-    } catch (err: any) {
-      return jsonResponse(500, { success: false, error: err.message || "Failed to generate AI insights" });
-    }
-  }
-
-  if (path === "/api/admin/auth-diagnostic" && method === "GET") {
-    if (!authUser) return jsonResponse(401, { error: "Authentication required" });
-    if (!requireRole(["admin"])) return jsonResponse(403, { error: "Admin privilege required" });
-    return jsonResponse(200, {
-      status: "healthy",
-      timestamp: new Date().toISOString(),
-      authenticatedUser: {
-        id: authUser.id,
-        username: authUser.username,
-        role: authUser.role
-      },
-      jwtConfigured: true,
-      mysqlConnected: isMysqlConnected(),
-      environment: process.env.NODE_ENV || "development"
-    });
-  }
-
   if (path === "/api/public-stats" && method === "GET") {
     const cacheKey = "public_stats";
     const cachedStats = cacheLayer.get(cacheKey);
@@ -504,7 +473,7 @@ async function _handleApiRequest(
     let companyLogoUrl = "";
     let currencySymbol = "₱";
     let mealPrice = 150.00;
-    let itSupportPhone = "Ext. 1088 / (046) 481-4000";
+    let itSupportPhone = "Medical arts Bldg. 5th floor/ICT dept. / 2568";
 
     const todayStr = new Date().toISOString().split("T")[0];
 
@@ -550,22 +519,6 @@ async function _handleApiRequest(
     };
     cacheLayer.set(cacheKey, responsePayload, 15); // Cache for 15 seconds
     return jsonResponse(200, responsePayload);
-  }
-
-  if (path === "/api/auth-ping" && (method === "GET" || method === "POST")) {
-    if (!authUser) return jsonResponse(401, { error: "Authentication required" });
-    return jsonResponse(200, {
-      success: true,
-      message: "Auth ping successful",
-      method,
-      user: {
-        id: authUser.id,
-        username: authUser.username,
-        role: authUser.role
-      },
-      timestamp: new Date().toISOString(),
-      body: body || null
-    });
   }
 
   if (path === "/api/docs" && method === "GET") {
@@ -1867,7 +1820,7 @@ async function _handleApiRequest(
   if (path === "/api/settings" && method === "GET") {
     if (!authUser) {
       // Return public branding and support settings to unauthenticated requests (like Login page)
-      let itSupportPhone = "Ext. 1088 / (046) 481-4000";
+      let itSupportPhone = "Medical arts Bldg. 5th floor/ICT dept. / 2568";
       let companyName = "Divine Grace Medical Center";
       let companyTagline = "Compassionate Care, Exceptional Service";
       let companyLogoUrl = "";

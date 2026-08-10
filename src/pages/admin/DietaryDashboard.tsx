@@ -3316,7 +3316,7 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
         )}
 
         {/* Section 4: Itemized Raw Food & Ingredient Requisition List (7-Day Cycle) */}
-        {(printScope === "all" || printScope === "forecast") && (
+        {(printScope === "all" || printScope === "budget") && (
           <div className="mb-6 space-y-3 avoid-break">
             <div className="border-b border-zinc-400 pb-1 flex justify-between items-center">
               <h3 className="text-sm font-black text-zinc-900 uppercase tracking-wide">

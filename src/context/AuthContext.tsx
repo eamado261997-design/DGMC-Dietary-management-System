@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     companyLogoUrl: "",
     currencySymbol: "₱",
     mealPrice: 150.00,
-    itSupportPhone: "Ext. 1088 / (046) 481-4000"
+    itSupportPhone: "Medical arts Bldg. 5th floor/ICT dept. / 2568"
   });
 
   const refreshBranding = async () => {
@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           companyLogoUrl: data.companyLogoUrl || "",
           currencySymbol: data.currencySymbol || "₱",
           mealPrice: data.mealPrice !== undefined ? Number(data.mealPrice) : 150.00,
-          itSupportPhone: data.itSupportPhone || "Ext. 1088 / (046) 481-4000"
+          itSupportPhone: data.itSupportPhone || "Medical arts Bldg. 5th floor/ICT dept. / 2568"
         });
       }
     } catch (err) {

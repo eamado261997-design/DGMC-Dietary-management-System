@@ -4,7 +4,6 @@ import PageHeader from "../../components/PageHeader.js";
 import { Skeleton } from "../../components/Skeleton.js";
 import EmptyState from "../../components/EmptyState.js";
 import SystemDiagnostics from "../../components/admin/SystemDiagnostics.js";
-import AuthDebugger from "../../components/admin/AuthDebugger.js";
 import RBACPermissionMatrix from "../../components/admin/RBACPermissionMatrix.js";
 import LatencyPercentilePanel from "../../components/admin/LatencyPercentilePanel.js";
 import DiagnosticChart from "../../components/admin/DiagnosticChart.js";
@@ -1200,7 +1199,6 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
 
             {/* System Diagnostics & Cache Layering Widget */}
             <SystemDiagnostics />
-            <AuthDebugger />
             <RBACPermissionMatrix />
 
             {/* Quick Admin Navigation Blocks */}

@@ -140,7 +140,6 @@ export class DiagnosticsController {
         { path: "/api/admin/sys-health", method: "GET", enforcedRoles: ["admin"] },
         { path: "/api/admin/sys-perf", method: "GET", enforcedRoles: ["admin"] },
         { path: "/api/admin/security-matrix-verify", method: "GET", enforcedRoles: ["admin"] },
-        { path: "/api/admin/ai-insights", method: "POST", enforcedRoles: ["admin", "manager"] },
         { path: "/api/manager/roster", method: "GET", enforcedRoles: ["manager", "admin"] },
         { path: "/api/manager/schedules", method: "POST", enforcedRoles: ["manager", "admin"] },
         { path: "/api/cashier/scan", method: "POST", enforcedRoles: ["cashier", "admin"] },
