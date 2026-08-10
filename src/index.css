@@ -1,0 +1,403 @@
+@import "tailwindcss";
+
+@theme {
+  --color-teal-50: #e5ebfa;
+  --color-teal-100: #ccd7f5;
+  --color-teal-150: #b3c4f0;
+  --color-teal-200: #99b1eb;
+  --color-teal-250: #809ee6;
+  --color-teal-300: #668be0;
+  --color-teal-400: #3365d6;
+  --color-teal-500: #1a50d1;
+  --color-teal-550: #003fc4;
+  --color-teal-600: #0039b3;
+  --color-teal-700: #0036a8;
+  --color-teal-800: #003299;
+  --color-teal-850: #002d8a;
+  --color-teal-900: #002570;
+  --color-teal-950: #001b52;
+  --color-teal-980: #001133;
+}
+
+@media print {
+  /* Hide typical screen-only interface elements */
+  header,
+  aside,
+  button,
+  input,
+  select,
+  textarea,
+  iframe,
+  .no-print,
+  .print-hidden,
+  .print\:hidden,
+  .non-printable,
+  #session-dev-tools-container,
+  #session-timeout-modal-overlay,
+  .network-status-banner,
+  #network-status-banner,
+  .tab-headers,
+  .filters-module,
+  .alert-box,
+  #portal-preloader,
+  .portal-preloader,
+  #meals-cutoff-panel,
+  #meals-period-tabs,
+  /* Hide active tab indicator headers on Reports page */
+  [id="admin-reports-page"] > div:nth-of-type(2),
+  /* Hide search / filtering rows */
+  [id="admin-reports-page"] > div:nth-of-type(3),
+  [id="admin-reports-page"] > div:nth-of-type(4),
+  .flex.items-center.justify-between.mb-4,
+  /* Hide action columns or specific interactive buttons */
+  #page-header .flex.items-center.gap-4,
+  th:last-child:has(button),
+  td:last-child:has(button),
+  th.text-right,
+  td.text-right,
+  .text-right,
+  .alert-triangle,
+  [id="cashier-transactions-ledger"] > div:last-child {
+    display: none !important;
+  }
+
+  /* Force light/white mode and layout for perfect printable margins */
+  body, html {
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    height: auto !important;
+    font-size: 10pt !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Reset layout grids/sidebars so main content flows natively on full page width */
+  #layout-container {
+    display: block !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: auto !important;
+    box-shadow: none !important;
+  }
+
+  main {
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+
+  /* Flatten background shadows and colors for clean paper printing */
+  .bg-white, .bg-zinc-50, .bg-zinc-100 {
+    background: #ffffff !important;
+    border-color: #e5e7eb !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  .rounded-3xl, .rounded-2xl, .rounded-xl, .rounded-lg {
+    border-radius: 0 !important;
+  }
+
+  .border, .border-zinc-200, .border-zinc-150, .border-zinc-250 {
+    border: 1px solid #e5e7eb !important;
+  }
+
+  /* Reset overflow containers for tables to allow repeating the thead block across pages */
+  .overflow-hidden,
+  .overflow-x-auto,
+  .overflow-y-auto,
+  .overflow-auto,
+  [class*="overflow-"] {
+    overflow: visible !important;
+    display: block !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Format tabular ledger reports neatly */
+  table {
+    display: table !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 10px !important;
+    margin-bottom: 10px !important;
+    page-break-inside: auto !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto !important;
+    break-inside: avoid !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+    break-inside: avoid !important;
+  }
+
+  th {
+    background-color: #f3f4f6 !important;
+    color: #111827 !important;
+    font-weight: bold !important;
+    border-bottom: 2px solid #d1d5db !important;
+    text-transform: uppercase !important;
+    font-size: 8pt !important;
+    padding: 6px 10px !important;
+  }
+
+  td {
+    color: #1f2937 !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    font-size: 8.5pt !important;
+    padding: 6px 10px !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+  }
+
+  /* Zebra striping for raw rows */
+  tbody tr:nth-child(even) {
+    background-color: #f9fafb !important;
+  }
+
+  /* Ensure monospace numbers and IDs render clearly */
+  .font-mono {
+    font-family: monospace !important;
+    font-size: 8pt !important;
+  }
+
+  /* Print specific high-contrast color helpers */
+  .text-emerald-800, .text-emerald-700 {
+    color: #047857 !important;
+    font-weight: bold !important;
+  }
+
+  .text-rose-800, .text-rose-700 {
+    color: #b91c1c !important;
+    font-weight: bold !important;
+  }
+
+  .text-teal-800, .text-teal-850, .text-teal-900 {
+    color: #1e3a8a !important;
+    font-weight: bold !important;
+  }
+
+  /* Print Header Brand Styles */
+  .print-header-brand {
+    display: block !important;
+    text-align: center !important;
+    border-bottom: 2px solid #111827 !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .print-header-brand h1 {
+    font-size: 16pt !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
+    color: #111827 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+  }
+
+  .print-header-brand p {
+    font-size: 8.5pt !important;
+    margin: 2px 0 0 0 !important;
+    color: #4b5563 !important;
+    font-style: italic !important;
+  }
+
+  .print-header-brand .doc-title {
+    font-size: 11pt !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    margin-top: 8px !important;
+    color: #1e3a8a !important;
+    font-style: normal !important;
+  }
+
+  .print-meta-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+    margin-bottom: 15px !important;
+    font-size: 8.5pt !important;
+    border-bottom: 1px dashed #cccccc !important;
+    padding-bottom: 10px !important;
+  }
+
+  .print-meta-item span:first-child {
+    font-weight: bold !important;
+    color: #4b5563 !important;
+  }
+
+  /* Clean up chip/badge borders in print */
+  .bg-emerald-50, .bg-teal-50, .bg-rose-50, .bg-indigo-50 {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    font-weight: bold !important;
+  }
+}
+
+/* Screen Mode default: Hide official print headers and grids */
+.print-header-brand, .print-meta-grid {
+  display: none;
+}
+
+/* High Contrast Dark Mode overrides */
+html.high-contrast-dark {
+  color-scheme: dark;
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+html.high-contrast-dark body {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+html.high-contrast-dark #layout-container,
+html.high-contrast-dark main {
+  background-color: #000000 !important;
+}
+
+html.high-contrast-dark .bg-white,
+html.high-contrast-dark .bg-zinc-50,
+html.high-contrast-dark .bg-zinc-100,
+html.high-contrast-dark .bg-zinc-200 {
+  background-color: #121212 !important;
+  color: #ffffff !important;
+}
+
+html.high-contrast-dark .text-zinc-950,
+html.high-contrast-dark .text-zinc-900,
+html.high-contrast-dark .text-zinc-850,
+html.high-contrast-dark .text-zinc-800,
+html.high-contrast-dark .text-zinc-700,
+html.high-contrast-dark .text-zinc-650,
+html.high-contrast-dark .text-zinc-600 {
+  color: #ffffff !important;
+}
+
+html.high-contrast-dark .text-zinc-500,
+html.high-contrast-dark .text-zinc-450,
+html.high-contrast-dark .text-zinc-400 {
+  color: #e4e4e7 !important;
+}
+
+html.high-contrast-dark .border-zinc-200,
+html.high-contrast-dark .border-zinc-150,
+html.high-contrast-dark .border-zinc-250,
+html.high-contrast-dark .border {
+  border-color: #52525b !important; /* Highly visible border */
+}
+
+/* Forms high-contrast */
+html.high-contrast-dark input[type="text"],
+html.high-contrast-dark input[type="number"],
+html.high-contrast-dark input[type="password"],
+html.high-contrast-dark input[type="time"],
+html.high-contrast-dark select,
+html.high-contrast-dark textarea {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: #a1a1aa !important; /* High contrast input borders */
+}
+
+html.high-contrast-dark select option {
+  background-color: #121212 !important;
+  color: #ffffff !important;
+}
+
+/* Sidebar overrides */
+html.high-contrast-dark aside {
+  background-color: #000000 !important;
+  border-right: 2px solid #52525b !important;
+}
+
+html.high-contrast-dark aside .bg-teal-900\/40 {
+  background-color: #121212 !important;
+  border: 1px solid #71717a !important;
+}
+
+html.high-contrast-dark aside button {
+  color: #ffffff !important;
+}
+
+html.high-contrast-dark aside button:hover {
+  background-color: #27272a !important;
+}
+
+html.high-contrast-dark aside button.bg-teal-500 {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+html.high-contrast-dark aside button.bg-teal-500 svg {
+  color: #000000 !important;
+}
+
+/* Header mobile bar overrides */
+html.high-contrast-dark header {
+  background-color: #000000 !important;
+  border-bottom: 2px solid #52525b !important;
+}
+
+/* Panel/badge colors to be legible on pitch dark backgrounds */
+html.high-contrast-dark .bg-teal-50,
+html.high-contrast-dark .bg-teal-100 {
+  background-color: #18181b !important;
+  border-color: #71717a !important;
+  color: #ffffff !important;
+}
+
+html.high-contrast-dark .bg-emerald-50 {
+  background-color: #052e16 !important;
+  border-color: #22c55e !important;
+  color: #ffffff !important;
+}
+
+html.high-contrast-dark .bg-rose-50 {
+  background-color: #450a0a !important;
+  border-color: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+html.high-contrast-dark .text-teal-850,
+html.high-contrast-dark .text-teal-800,
+html.high-contrast-dark .text-teal-950,
+html.high-contrast-dark .text-teal-700,
+html.high-contrast-dark .text-teal-980 {
+  color: #38bdf8 !important; /* Vivid blue text for maximum accessibility */
+}
+
+html.high-contrast-dark .text-emerald-900,
+html.high-contrast-dark .text-emerald-800 {
+  color: #4ade80 !important;
+}
+
+html.high-contrast-dark .text-rose-900,
+html.high-contrast-dark .text-rose-800 {
+  color: #f87171 !important;
+}
+
+/* Charts accessibility */
+html.high-contrast-dark .recharts-text {
+  fill: #ffffff !important;
+}
+
+html.high-contrast-dark .recharts-cartesian-grid-horizontal line,
+html.high-contrast-dark .recharts-cartesian-grid-vertical line {
+  stroke: #52525b !important;
+}
+
+

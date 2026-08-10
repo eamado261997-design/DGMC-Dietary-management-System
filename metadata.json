@@ -1,0 +1,10 @@
+{
+  "name": "DGMC Dietary Management",
+  "description": "Cafeteria and dietary management system for Divine Grace Medical Center managing employee meals, schedules, QR scanner verification, and role-based access control.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "departments": [],
+  "people": [
+    {
+      "id": 1,
+      "username": "admin",
+      "password": "enc_det:27b3e68a942a2c295384f627:bbd3a7a681f72e5834204931b8bb9491b6f4add56182bec29c1a601d78759f1ccc8ee08623ed035de4eea5e680e2bf8cd974625d0d21b3374ad70de198b5515395c2161adb730015b9fbe3a62ea551b7fb61308340e8a081e116645a6b66da08e191a4e835712cbaa62b0b597295993c88380d00ce637a43f47ee0c6d595e25515b73c64c2c3452a884f34d5c5f8c84dc959792a3b64efcd170c40c739fdd11eda5c2a8c546008a53060c6bca1bd:dfd3a4b3dcec9d4d016b479e797fca10",
+      "role": "admin",
+      "first_name": "enc_det:68f3cca718fecb844a667e3e:8605750a2a70:28e406ba282ff49a890b75e9f383eeda",
+      "last_name": "enc_det:d3dcc4c0b42dd8e4c59a0022:0b75e721e0408a23636afa44be:d4e2fe3a44940cfe1af8c62bfbf5b9b5",
+      "email": "enc_det:a73109318222e2a5aa6acebf:4c73bff4838ceec9e8ce2680468c15675d:d09d4a549b2a7f3e120fe862dfb31ac6",
+      "is_active": true,
+      "last_login": "2026-07-29T10:58:32.144Z",
+      "created_at": "2026-06-30T21:40:00.000Z",
+      "updated_at": "2026-06-30T21:40:00.000Z",
+      "employee_status": "active"
+    },
+    {
+      "id": 99,
+      "username": "dietary_admin",
+      "password": "enc_det:57a8648af2015d8f3c6045ec:860b2520280afbba8567aba1da4519124231cd3b6d2d0d5336af24dcdcb5db052bb95f608130688e9fb548f0d1a33bad946fae9f573cf070861512700b4ca2c332c4b4e69f23467ec99c27ad6e7a5666e93ed68f77de14acd208f152842b50131e96b659af46b83f4afac411b0cda30066cd6d555b05c03a3a979976d7b2baa926762faaf0618ad1b2c75fd510d62d7d48090a7082b6f5df87b07cac3157d6b407136915b98daaee8f5ac099e183:3b7acde368077b6b5f6458219b444fff",
+      "role": "dietary_admin",
+      "first_name": "enc_det:5bff7477599904dbb79191fd:ca9d9ba42fd3b2:68f6563a7fdcf569091c37fdcb7278fc",
+      "last_name": "enc_det:d3dcc4c0b42dd8e4c59a0022:0b75e721e0408a23636afa44be:d4e2fe3a44940cfe1af8c62bfbf5b9b5",
+      "email": "enc_det:17f627d9ea11e721a04271d4:be2579955020c214b04f6111bbefd9b64bd37922342d:2e7cb534c8fb20b82cda9dec7b322531",
+      "is_active": true,
+      "last_login": null,
+      "created_at": "2026-08-10T03:14:35.416Z",
+      "updated_at": "2026-08-10T03:14:35.416Z",
+      "employee_status": "active"
+    }
+  ],
+  "employee_schedules": [],
+  "transactions": [],
+  "free_meal_log": [],
+  "system_settings": [
+    {
+      "id": 1,
+      "setting_key": "shift_day_start",
+      "setting_value": "11:00",
+      "updated_at": "2026-06-30T21:40:00.000Z"
+    },
+    {
+      "id": 2,
+      "setting_key": "shift_day_end",
+      "setting_value": "14:00",
+      "updated_at": "2026-06-30T21:40:00.000Z"
+    },
+    {
+      "id": 3,
+      "setting_key": "shift_night_start",
+      "setting_value": "23:00",
+      "updated_at": "2026-06-30T21:40:00.000Z"
+    },
+    {
+      "id": 4,
+      "setting_key": "shift_night_end",
+      "setting_value": "02:00",
+      "updated_at": "2026-06-30T21:40:00.000Z"
+    },
+    {
+      "id": 5,
+      "setting_key": "meal_price",
+      "setting_value": "150.00",
+      "updated_at": "2026-06-30T21:40:00.000Z"
+    }
+  ],
+  "audit_logs": [
+    {
+      "id": 1,
+      "action": "SECURITY_HASH_UPGRADE",
+      "entity_type": "people",
+      "entity_id": "1",
+      "old_value": "Legacy SHA-256",
+      "new_value": "Salted PBKDF2-SHA512",
+      "ip_address": "127.0.0.1",
+      "created_at": "2026-07-24T19:41:07.714Z"
+    },
+    {
+      "id": 2,
+      "user_id": 1,
+      "action": "LOGIN",
+      "entity_type": "people",
+      "entity_id": "1",
+      "old_value": null,
+      "new_value": "Successful web login",
+      "ip_address": "127.0.0.1",
+      "created_at": "2026-07-24T19:41:07.715Z"
+    },
+    {
+      "id": 3,
+      "user_id": 1,
+      "action": "LOGIN",
+      "entity_type": "people",
+      "entity_id": "1",
+      "old_value": null,
+      "new_value": "Successful web login",
+      "ip_address": "127.0.0.1",
+      "created_at": "2026-07-29T10:58:32.146Z"
+    }
+  ],
+  "login_attempts": []
+}
