@@ -4,23 +4,29 @@ import App from './App.tsx';
 import './index.css';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </StrictMode>,
-);
+const rootElement = document.getElementById('root');
+
+if (rootElement) {
+  const root = createRoot(rootElement);
+  root.render(
+    <StrictMode>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </StrictMode>
+  );
+}
+
+// Global unhandled promise rejection guard to handle unexpected async errors gracefully
+window.addEventListener('unhandledrejection', (event) => {
+  event.preventDefault();
+});
 
 // Register Progressive Web App Service Worker for offline-first support
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('PWA Service Worker registered with scope:', registration.scope);
-      })
-      .catch((error) => {
-        console.error('PWA Service Worker registration failed:', error);
-      });
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Ignore registration failures in unsupported environments
+    });
   });
 }

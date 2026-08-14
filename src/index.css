@@ -196,7 +196,21 @@
     text-align: center !important;
     border-bottom: 2px solid #111827 !important;
     padding-bottom: 12px !important;
-    margin-bottom: 20px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .printable-header-logo {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin-bottom: 8px !important;
+  }
+
+  .printable-header-logo img {
+    max-height: 55px !important;
+    width: auto !important;
+    display: block !important;
+    margin: 0 auto !important;
   }
 
   .print-header-brand h1 {
@@ -205,7 +219,7 @@
     margin: 0 !important;
     color: #111827 !important;
     text-transform: uppercase !important;
-    letter-spacing: 1px !important;
+    letter-spacing: 0.5px !important;
   }
 
   .print-header-brand p {
@@ -220,23 +234,59 @@
     font-weight: 700 !important;
     text-transform: uppercase !important;
     margin-top: 8px !important;
-    color: #1e3a8a !important;
+    color: #0036a8 !important;
     font-style: normal !important;
   }
 
   .print-meta-grid {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 12px !important;
+    gap: 10px 16px !important;
     margin-bottom: 15px !important;
     font-size: 8.5pt !important;
     border-bottom: 1px dashed #cccccc !important;
     padding-bottom: 10px !important;
   }
 
+  .print-meta-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
   .print-meta-item span:first-child {
     font-weight: bold !important;
     color: #4b5563 !important;
+  }
+
+  /* Specific targeting for EmployeeQR component print layout */
+  .print-card-wrapper {
+    display: block !important;
+    position: relative !important;
+    width: 100% !important;
+    max-width: 650px !important;
+    margin: 0 auto !important;
+    padding: 15px !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .print-card-wrapper .printable-header-wrapper {
+    display: block !important;
+    width: 100% !important;
+    margin-bottom: 20px !important;
+  }
+
+  .print-card-wrapper .printable-badge-card {
+    display: flex !important;
+    margin: 20px auto !important;
+    position: relative !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   /* Clean up chip/badge borders in print */
@@ -248,9 +298,18 @@
   }
 }
 
-/* Screen Mode default: Hide official print headers and grids */
+/* Screen Mode default: Hide official print headers and grids when not inside preview modal */
 .print-header-brand, .print-meta-grid {
   display: none;
+}
+
+/* Enable print header brand & meta grid inside printable-header-wrapper on screen/modal */
+.printable-header-wrapper .print-header-brand {
+  display: block;
+}
+
+.printable-header-wrapper .print-meta-grid {
+  display: grid;
 }
 
 /* High Contrast Dark Mode overrides */

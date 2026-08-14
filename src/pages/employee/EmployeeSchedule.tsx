@@ -33,8 +33,7 @@ export default function EmployeeSchedule() {
         localStorage.setItem("cached_employee_schedules_timestamp", nowStr);
         setCacheTimestamp(nowStr);
         setIsOfflineMode(false);
-      } catch (err) {
-        console.error("Failed to load personal rosters", err);
+      } catch (_err) {
         const cached = localStorage.getItem("cached_employee_schedules");
         if (cached) {
           const list = JSON.parse(cached);

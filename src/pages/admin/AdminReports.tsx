@@ -4,12 +4,12 @@ import PageHeader from "../../components/PageHeader.js";
 import { Department } from "../../types.js";
 import { Printer, FileDown, Calendar, Search, Filter, RefreshCw, BarChart, GraduationCap, DollarSign, HeartHandshake, ShieldAlert, Activity } from "lucide-react";
 import { Skeleton } from "../../components/Skeleton.js";
-import SqlInjectionPreventionDemo from "../../components/SqlInjectionPreventionDemo.js";
 import { useDebounce } from "../../hooks/useDebounce.js";
+import PrintableHeader from "../../components/PrintableHeader.js";
 
 export default function AdminReports() {
   const { apiFetch } = useAuth();
-  const [activeTab, setActiveTab] = useState<"meals" | "employees" | "financial" | "sql-defense" | "api-performance">("meals");
+  const [activeTab, setActiveTab] = useState<"meals" | "employees" | "financial" | "api-performance">("meals");
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,8 +33,8 @@ export default function AdminReports() {
     try {
       const depts = await apiFetch("/api/departments");
       setDepartments(depts);
-    } catch (e) {
-      console.error(e);
+    } catch (_e) {
+      // Suppress error in production
     }
   };
 
@@ -49,8 +49,8 @@ export default function AdminReports() {
 
       const list = await apiFetch(`/api/admin/reports/meals?${query.toString()}`);
       setMealLogs(list);
-    } catch (err) {
-      console.error(err);
+    } catch (_err) {
+      // Suppress error in production
     } finally {
       setLoading(false);
     }
@@ -61,8 +61,8 @@ export default function AdminReports() {
     try {
       const list = await apiFetch("/api/admin/reports/employees");
       setEmployeeSummaries(list);
-    } catch (err) {
-      console.error(err);
+    } catch (_err) {
+      // Suppress error in production
     } finally {
       setLoading(false);
     }
@@ -73,8 +73,8 @@ export default function AdminReports() {
     try {
       const list = await apiFetch("/api/admin/reports/financial");
       setFinancialSummaries(list);
-    } catch (err) {
-      console.error(err);
+    } catch (_err) {
+      // Suppress error in production
     } finally {
       setLoading(false);
     }
@@ -85,8 +85,8 @@ export default function AdminReports() {
     try {
       const data = await apiFetch("/api/admin/sys-perf");
       setPerfData(data);
-    } catch (err) {
-      console.error(err);
+    } catch (_err) {
+      // Suppress error in production
     } finally {
       setLoading(false);
     }
@@ -171,37 +171,117 @@ export default function AdminReports() {
     (emp.employee_no && emp.employee_no.toLowerCase().includes(debouncedEmpSearch.toLowerCase()))
   );
 
+  const getCafeteriaStats = () => {
+    if (activeTab === "meals") {
+      const total = mealLogs.length;
+      const completed = mealLogs.filter(log => log.status === "completed");
+      const free = completed.filter(log => log.is_free).length;
+      const paid = completed.filter(log => !log.is_free).length;
+      const revenue = completed.reduce((sum, log) => sum + Number(log.meal_amount || 0), 0);
+      return {
+        title: "Current Meal Transactions Summary",
+        metrics: [
+          { label: "Total Transactions", value: `${total} logs`, color: "text-zinc-900" },
+          { label: "Free Allocations", value: `${free} meals`, color: "text-emerald-700" },
+          { label: "Paid Purchases", value: `${paid} meals`, color: "text-teal-850" },
+          { label: "Total Revenue Generated", value: `₱${revenue.toFixed(2)}`, color: "text-zinc-950 font-black" }
+        ]
+      };
+    } else if (activeTab === "employees") {
+      const total = filteredEmpSummaries.length;
+      const activeEmps = filteredEmpSummaries.filter(e => e.is_active).length;
+      const freeClaimed = filteredEmpSummaries.reduce((sum, e) => sum + (e.freeMealsClaimed || 0), 0);
+      const paidPurchased = filteredEmpSummaries.reduce((sum, e) => sum + (e.paidMealsPurchased || 0), 0);
+      const totalSpent = filteredEmpSummaries.reduce((sum, e) => sum + Number(e.totalPaidAmount || 0), 0);
+      return {
+        title: "Employee Meal Redemption Summary",
+        metrics: [
+          { label: "Roster Size", value: `${total} staff`, color: "text-zinc-900" },
+          { label: "Active Employees", value: `${activeEmps} active`, color: "text-emerald-700" },
+          { label: "Free Claims", value: `${freeClaimed} meals`, color: "text-teal-850" },
+          { label: "Paid Purchases", value: `${paidPurchased} meals`, color: "text-zinc-700" },
+          { label: "Total Employee Spent", value: `₱${totalSpent.toFixed(2)}`, color: "text-zinc-950 font-black" }
+        ]
+      };
+    } else if (activeTab === "financial") {
+      const days = financialSummaries.length;
+      const free = financialSummaries.reduce((sum, f) => sum + (f.freeCount || 0), 0);
+      const paid = financialSummaries.reduce((sum, f) => sum + (f.paidCount || 0), 0);
+      const totalRevenue = financialSummaries.reduce((sum, f) => sum + Number(f.totalPaidAmount || 0), 0);
+      return {
+        title: "Cafeteria Earnings Aggregate Summary",
+        metrics: [
+          { label: "Operating Days", value: `${days} days`, color: "text-zinc-900" },
+          { label: "Total Free Distributed", value: `${free} meals`, color: "text-emerald-700" },
+          { label: "Total Paid Sold", value: `${paid} meals`, color: "text-teal-850" },
+          { label: "Cumulative Cafeteria Revenue", value: `₱${totalRevenue.toFixed(2)}`, color: "text-zinc-950 font-black" }
+        ]
+      };
+    } else if (activeTab === "api-performance") {
+      const totalRoutes = perfData?.routeAggregates?.length || 0;
+      const totalReqs = perfData?.totalRequests || 0;
+      const avgLatency = perfData?.avgLatencyMs || 0;
+      const p95 = perfData?.p95Ms || 0;
+      const p99 = perfData?.p99Ms || 0;
+      return {
+        title: "API Performance & Latency Summary",
+        metrics: [
+          { label: "Tracked Routes", value: `${totalRoutes} routes`, color: "text-zinc-900" },
+          { label: "Total Requests", value: `${totalReqs} calls`, color: "text-emerald-700" },
+          { label: "Avg Latency", value: `${avgLatency} ms`, color: "text-teal-850" },
+          { label: "P95 Latency", value: `${p95} ms`, color: "text-amber-700" },
+          { label: "P99 Latency", value: `${p99} ms`, color: "text-rose-700" }
+        ]
+      };
+    }
+    return null;
+  };
+
   return (
     <div id="admin-reports-page">
-      {/* Official Print-Only Branding Header */}
-      <div className="print-header-brand">
-        <h1>Divine Grace Medical Center</h1>
-        <p>Compassionate Care, Exceptional Service</p>
-        <p className="doc-title">
-          {activeTab === "meals" && "Meal Transactions Ledger Report"}
-          {activeTab === "employees" && "Redeemed Employee Summaries Report"}
-          {activeTab === "financial" && "Cafeteria Earnings Log Audit"}
-          {activeTab === "sql-defense" && "SQL Injection Defense Mode Verification"}
-          {activeTab === "api-performance" && "API Latency & P95/P99 Percentiles Report"}
-        </p>
-      </div>
+      <PrintableHeader 
+        title={
+          activeTab === "meals" ? "Meal Transactions Ledger Report" :
+          activeTab === "employees" ? "Redeemed Employee Summaries Report" :
+          activeTab === "financial" ? "Cafeteria Earnings Log Audit" :
+          "API Latency & P95/P99 Percentiles Report"
+        }
+        meta={[
+          { label: "Date Generated", value: new Date().toLocaleString() },
+          { label: "Scope Parameter", value: (
+            activeTab === "meals" ? `Transactions Logged (${startDate || "All"} to ${endDate || "All"})` :
+            activeTab === "employees" ? "Active/Disabled Employee Summaries" :
+            activeTab === "financial" ? "Cafeteria Earnings Aggregate" :
+            "Critical Routes Response Time Percentiles Telemetry"
+          )}
+        ]}
+      />
 
-      <div className="print-meta-grid">
-        <div className="print-meta-item">
-          <span>Date Generated: </span>
-          <span>{new Date().toLocaleString()}</span>
+      {/* Dedicated Executive Summary for Cafeteria Statistics */}
+      {getCafeteriaStats() && (
+        <div className="mb-6 bg-zinc-50 border border-zinc-250 rounded-2xl p-4 sm:p-5">
+          <div className="flex items-center justify-between border-b border-zinc-200 pb-2 mb-3">
+            <span className="text-xs font-bold text-zinc-800 uppercase tracking-wider font-mono">
+              {getCafeteriaStats()?.title}
+            </span>
+            <span className="text-[10px] text-zinc-400 font-mono no-print">
+              Live Query Diagnostics
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {getCafeteriaStats()?.metrics.map((metric, idx) => (
+              <div key={idx} className="bg-white px-4 py-3 rounded-xl border border-zinc-200 shadow-xs">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">
+                  {metric.label}
+                </span>
+                <span className={`text-sm sm:text-base font-mono font-bold ${metric.color}`}>
+                  {metric.value}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="print-meta-item">
-          <span>Scope Parameter: </span>
-          <span>
-            {activeTab === "meals" && `Transactions Logged (${startDate || "All"} to ${endDate || "All"})`}
-            {activeTab === "employees" && "Active/Disabled Employee Summaries"}
-            {activeTab === "financial" && "Cafeteria Earnings Aggregate"}
-            {activeTab === "sql-defense" && "System SQL Injection Prevention Telemetry"}
-            {activeTab === "api-performance" && "Critical Routes Response Time Percentiles Telemetry"}
-          </span>
-        </div>
-      </div>
+      )}
 
       <div className="no-print">
         <PageHeader
@@ -253,15 +333,6 @@ export default function AdminReports() {
           }`}
         >
           Cafeteria Earnings Log
-        </button>
-        <button
-          onClick={() => setActiveTab("sql-defense")}
-          className={`px-4 py-2 text-xs font-bold transition-all border-b-2 rounded-t-lg flex items-center gap-1.5 ${
-            activeTab === "sql-defense" ? "border-amber-700 text-amber-900 font-extrabold bg-amber-50/20" : "border-transparent text-zinc-400 hover:text-zinc-600"
-          }`}
-        >
-          <ShieldAlert className="w-3.5 h-3.5" />
-          SQL Defense Mode
         </button>
         <button
           onClick={() => setActiveTab("api-performance")}
@@ -387,9 +458,7 @@ export default function AdminReports() {
       )}
 
       {/* Report Data display Container */}
-      {activeTab === "sql-defense" ? (
-        <SqlInjectionPreventionDemo />
-      ) : loading ? (
+      {loading ? (
         <div className="bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-xs animate-pulse">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse table-auto">

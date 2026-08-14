@@ -34,6 +34,7 @@ export default function CashierScan() {
   const [result, setResult] = useState<ScannedEmployeeResult | null>(null);
   const [errorHeader, setErrorHeader] = useState<string | null>(null);
   const [recentTxs, setRecentTxs] = useState<any[]>([]);
+  const [feedbackModalData, setFeedbackModalData] = useState<any | null>(null);
 
   // Performance Diagnostics Seeds & States
   const [scans, setScans] = useState<ScanEvent[]>(() => [
@@ -171,8 +172,8 @@ export default function CashierScan() {
         playTone(220, now, 0.25, "sawtooth"); // Low buzzer-like thud
         playTone(223, now, 0.25, "sine"); // detuned dissonant wave
       }
-    } catch (error) {
-      console.warn("Audio playback blocked by browser/audio lock policy", error);
+    } catch (_error) {
+      // Audio playback blocked
     }
   };
 
@@ -184,7 +185,7 @@ export default function CashierScan() {
           setRecentTxs(data);
         }
       })
-      .catch((err) => console.error("Error fetching transactions for emulation", err));
+      .catch(() => {});
   }, []);
 
   // checkout form parameters
@@ -228,16 +229,26 @@ export default function CashierScan() {
       });
       const endTime = performance.now();
       const duration = Math.max(1, Math.round(endTime - startTime));
-      setResult(data);
-      setManualSearchId("");
-      if (data && data.eligible) {
-        setShowScanFlash(true);
-        setTimeout(() => setShowScanFlash(false), 800);
-        playSound("success");
-        addScanMetric(true, duration);
-      } else {
-        playSound("fail");
-        addScanMetric(false, duration);
+      if (data) {
+        setResult(data);
+        setManualSearchId("");
+        
+        setFeedbackModalData({
+          employeeName: data.employee?.name || "Unknown Employee",
+          mealType: data.isFree ? "Complimentary" : "Standard",
+          tag: data.isFree ? "free" : "paid",
+          mealAmount: data.transaction?.meal_amount || 0
+        });
+
+        if (data.eligible) {
+          setShowScanFlash(true);
+          setTimeout(() => setShowScanFlash(false), 800);
+          playSound("success");
+          addScanMetric(true, duration);
+        } else {
+          playSound("fail");
+          addScanMetric(false, duration);
+        }
       }
     } catch (err: any) {
       const endTime = performance.now();
@@ -732,7 +743,7 @@ export default function CashierScan() {
                   
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-teal-50 border border-teal-150 text-teal-800 flex items-center justify-center font-bold text-lg select-none">
-                      {result.employee.name[0]}
+                      {result?.employee?.name?.[0] || 'E'}
                     </div>
                     <div>
                       <h4 className="text-sm font-extrabold text-zinc-900 leading-none">{result.employee.name}</h4>
@@ -891,6 +902,89 @@ export default function CashierScan() {
       <div className="mt-10">
         <PerformanceMetrics scans={scans} hourlyData={hourlyData} />
       </div>
+
+      {/* Success QR Feedback Modal */}
+      <AnimatePresence>
+        {feedbackModalData && (
+          <div className="fixed inset-0 bg-zinc-950/60 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-2xl max-w-sm w-full relative overflow-hidden"
+            >
+              {/* Top status bar/icon */}
+              <div className="flex flex-col items-center text-center mb-5">
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 ${
+                  feedbackModalData.tag === "free"
+                    ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                    : "bg-amber-50 text-amber-600 border border-amber-100"
+                }`}>
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <span className="text-[10px] font-mono font-black tracking-widest text-zinc-400 uppercase">
+                  Meal Scan Recorded
+                </span>
+                <h3 className="text-base font-black text-zinc-900 mt-1">
+                  Transaction Authorized
+                </h3>
+              </div>
+
+              {/* Employee & Transaction info */}
+              <div className="space-y-3.5">
+                <div className="bg-zinc-50 border border-zinc-150 rounded-2xl p-4">
+                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block font-mono">
+                    Staff Member
+                  </span>
+                  <p className="text-sm font-extrabold text-zinc-900 mt-0.5">
+                    {feedbackModalData.employeeName}
+                  </p>
+                </div>
+
+                <div className="border border-zinc-150 rounded-2xl p-4 space-y-2.5">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-zinc-500 font-medium">Meal Class:</span>
+                    <span className="font-bold text-zinc-800">{feedbackModalData.mealType} Meal</span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-zinc-500 font-medium">System Tagging:</span>
+                    <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-mono font-extrabold uppercase border ${
+                      feedbackModalData.tag === "free"
+                        ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                        : "bg-amber-50 text-amber-800 border-amber-200"
+                    }`}>
+                      {feedbackModalData.tag === "free" ? "Complimentary (FREE)" : "Cash Sale (PAID)"}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs pt-2 border-t border-zinc-100">
+                    <span className="text-zinc-500 font-medium">Recorded Amount:</span>
+                    <span className="font-extrabold text-zinc-900 font-mono">
+                      {branding?.currencySymbol || "₱"}{Number(feedbackModalData.mealAmount).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Confirm/Ok action */}
+              <button
+                type="button"
+                onClick={() => {
+                  setFeedbackModalData(null);
+                  setResult(null); // Clear search panel for clean next scan
+                  setTimeout(() => {
+                    filterInputRef.current?.focus();
+                  }, 100);
+                }}
+                className="w-full mt-6 h-10 bg-zinc-900 hover:bg-zinc-850 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-2"
+              >
+                Done &amp; Ready
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

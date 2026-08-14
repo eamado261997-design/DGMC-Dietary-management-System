@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext.js";
-import { Users, HelpCircle, Activity, Eye, EyeOff, Loader2, User, Lock, Building2, CheckCircle2, ShieldAlert, Sparkles, HeartPulse, Download } from "lucide-react";
+import { Users, HelpCircle, Activity, Eye, EyeOff, Loader2, User, Lock, Building2, CheckCircle2, ShieldAlert, Sparkles, HeartPulse } from "lucide-react";
 import DGMCLogo from "../components/DGMCLogo.js";
 import { motion } from "motion/react";
 
@@ -19,36 +19,6 @@ export default function Login() {
   const [itSupportContact, setItSupportContact] = useState("Medical arts Bldg. 5th floor/ICT dept. / 2568");
   const [dynamicCompanyName, setDynamicCompanyName] = useState("Divine Grace Medical Center");
 
-  // PWA Install Prompt State
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [showInstallBtn, setShowInstallBtn] = useState(false);
-
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setShowInstallBtn(true);
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-
-    if (window.matchMedia("(display-mode: standalone)").matches) {
-      setShowInstallBtn(false);
-    }
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    };
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response to PWA install prompt: ${outcome}`);
-    setDeferredPrompt(null);
-    setShowInstallBtn(false);
-  };
 
   useEffect(() => {
     // Refresh branding from context as well as retrieving public telemetry
@@ -119,28 +89,6 @@ export default function Login() {
       {/* Background ambient lighting for modern medical portal feel */}
       <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-sky-500/5 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-teal-500/5 rounded-full blur-[140px] pointer-events-none" />
-
-      {/* Top Banner Ribbon */}
-      <div className="w-full max-w-5xl mx-auto flex items-center justify-between py-2 px-4 rounded-2xl bg-white/70 border border-slate-200/80 backdrop-blur-md text-xs text-slate-600 mb-4 z-10 shadow-sm">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="font-bold text-slate-800">DGMC Network Gateway</span>
-          <span className="text-slate-400 hidden sm:inline">• System Operational</span>
-        </div>
-        <div className="flex items-center gap-3 text-[11px] font-mono text-slate-500">
-          {showInstallBtn && (
-            <button
-              onClick={handleInstallClick}
-              className="flex items-center gap-1.5 px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 font-bold text-[10px] font-sans cursor-pointer uppercase tracking-wider"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Install App</span>
-            </button>
-          )}
-          <span className="hidden md:inline">256-Bit SSL Encrypted</span>
-          <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-blue-700 font-bold">v2.4.0-PROD</span>
-        </div>
-      </div>
 
       {/* Main Container */}
       <div className="w-full max-w-5xl mx-auto my-auto z-10">
@@ -259,7 +207,7 @@ export default function Login() {
                   <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-200 hover:border-slate-350 focus-within:border-blue-500 focus-within:bg-white focus-within:shadow-md focus-within:shadow-blue-500/5 transition-all">
                     <div className="flex items-center justify-between mb-1">
                       <label htmlFor="login-username" className="text-[10px] font-black text-[#003299] uppercase tracking-wider font-mono">
-                        Personnel Identity / Username
+                        Username
                       </label>
                       <span className="text-[9px] bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded-md border border-blue-100 font-mono">
                         Required
@@ -290,7 +238,7 @@ export default function Login() {
                   <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-200 hover:border-slate-350 focus-within:border-emerald-500 focus-within:bg-white focus-within:shadow-md focus-within:shadow-emerald-500/5 transition-all">
                     <div className="flex items-center justify-between mb-1">
                       <label htmlFor="login-password" className="text-[10px] font-black text-emerald-800 uppercase tracking-wider font-mono">
-                        Network Access Password
+                        Password
                       </label>
                       <span className="text-[9px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-md border border-emerald-100 font-mono">
                         Encrypted
@@ -337,15 +285,6 @@ export default function Login() {
                   </label>
                 </div>
 
-                {/* Dynamic cryptographic security badge indicator */}
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500 shadow-3xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="font-semibold text-slate-600">Secure AES SSL Session Established</span>
-                  </div>
-                  <span className="font-mono text-[10px] text-slate-400 uppercase font-black">256-bit</span>
-                </div>
-
                 <button
                   type="submit"
                   disabled={submitting}
@@ -363,7 +302,7 @@ export default function Login() {
                       <span>Authenticating Credentials...</span>
                     </>
                   ) : (
-                    <span>Sign In to Terminal</span>
+                    <span>Sign in</span>
                   )}
                 </button>
               </form>

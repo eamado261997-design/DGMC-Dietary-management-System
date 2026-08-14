@@ -234,8 +234,7 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setModals((prev) => prev.map((m) => (m.id === modal.id ? { ...m, isSubmitting: true } : m)));
       await modal.onConfirm();
       closeModal(modal.id);
-    } catch (err) {
-      console.error('[Modal] Error executing confirm action:', err);
+    } catch (_err) {
       setModals((prev) => prev.map((m) => (m.id === modal.id ? { ...m, isSubmitting: false } : m)));
     }
   };

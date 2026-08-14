@@ -83,6 +83,34 @@ interface DietaryDashboardProps {
   onViewChange: (view: string) => void;
 }
 
+const CustomTooltip = ({ active, payload, label, currency = false }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl shadow-xl min-w-[150px]">
+        {label && <p className="text-zinc-100 font-medium mb-2 text-sm">{label}</p>}
+        <div className="flex flex-col gap-2">
+          {payload.map((entry: any, index: number) => {
+            const val = currency ? `₱${parseFloat(entry.value || 0).toFixed(2)}` : entry.value;
+            return (
+              <div key={index} className="flex items-center justify-between gap-4 text-xs">
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="w-2.5 h-2.5 rounded-full" 
+                    style={{ backgroundColor: entry.color || entry.fill }}
+                  />
+                  <span className="text-zinc-400 capitalize">{entry.name || 'Value'}</span>
+                </div>
+                <span className="text-zinc-100 font-semibold">{val}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps) {
   const { apiFetch } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -842,7 +870,6 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
       });
 
     } catch (err: any) {
-      console.error("Failed to load dietary dashboard data:", err);
       setError(err?.message || "Failed to retrieve dietary metrics.");
     } finally {
       setLoading(false);
@@ -1067,8 +1094,7 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
       )}
 
       {loading && !stats ? (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Skeleton className="h-32 rounded-2xl" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Skeleton className="h-32 rounded-2xl" />
           <Skeleton className="h-32 rounded-2xl" />
           <Skeleton className="h-32 rounded-2xl" />
@@ -1076,7 +1102,7 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
       ) : (
         <>
           {/* Quick Primary KPI Metrics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <div 
               onClick={() => onViewChange("admin-reports")}
               className="p-6 bg-white border border-zinc-200 rounded-2xl shadow-xs hover:border-indigo-300 transition-all cursor-pointer group"
@@ -1141,27 +1167,6 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
               </p>
               <p className="text-[11px] text-zinc-500 mt-2 flex items-center gap-1 group-hover:text-amber-600 transition-colors">
                 <span>Calculated dietary provision</span>
-                <ArrowRight className="w-3 h-3" />
-              </p>
-            </div>
-
-            <div 
-              onClick={() => onViewChange("admin-audit-trail")}
-              className="p-6 bg-white border border-zinc-200 rounded-2xl shadow-xs hover:border-purple-300 transition-all cursor-pointer group"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-                  <ShieldAlert className="w-5 h-5" />
-                </div>
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
-                  Audit Logs
-                </span>
-              </div>
-              <p className="text-2xl font-black text-zinc-900 tracking-tight">
-                {auditLogs.length}+
-              </p>
-              <p className="text-[11px] text-zinc-500 mt-2 flex items-center gap-1 group-hover:text-purple-600 transition-colors">
-                <span>Security compliance events</span>
                 <ArrowRight className="w-3 h-3" />
               </p>
             </div>
@@ -1445,11 +1450,9 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
               )}
 
               {/* Chart Canvas Container */}
-              <div className="h-72 w-full pt-2">
+              <div className="h-72 w-full pt-2 overflow-x-auto overflow-y-hidden scrollbar-thin">
                 {mergedTrends && mergedTrends.length > 0 ? (
-                  <ResponsiveContainer 
-                    width="100%" 
-                    height="100%"
+                  <ResponsiveContainer width="100%" height="100%" minWidth={600}
                     key={`chart-container-${chartType}-${timeRange}-${customStartDate}-${customEndDate}-${compareStartDate}-${compareEndDate}-${enableComparison}`}
                   >
                     {/* Render Area Chart */}
@@ -1476,9 +1479,7 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                         <XAxis dataKey={enableComparison ? "dayIndex" : "displayDate"} tick={{ fontSize: 11, fill: '#71717a' }} />
                         <YAxis tick={{ fontSize: 11, fill: '#71717a' }} />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
-                        />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: "transparent" }} />
                         <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
                         
                         {enableComparison ? (
@@ -1558,9 +1559,7 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                         <XAxis dataKey={enableComparison ? "dayIndex" : "displayDate"} tick={{ fontSize: 11, fill: '#71717a' }} />
                         <YAxis tick={{ fontSize: 11, fill: '#71717a' }} />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
-                        />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: "transparent" }} />
                         <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
 
                         {enableComparison ? (
@@ -1627,9 +1626,7 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                         <XAxis dataKey={enableComparison ? "dayIndex" : "displayDate"} tick={{ fontSize: 11, fill: '#71717a' }} />
                         <YAxis tick={{ fontSize: 11, fill: '#71717a' }} />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
-                        />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: "transparent" }} />
                         <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
 
                         {enableComparison ? (
@@ -1737,9 +1734,7 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
                             />
                           ))}
                         </Pie>
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
-                        />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: "transparent" }} />
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
@@ -2052,16 +2047,14 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
                 </button>
               </div>
 
-              <div className="h-72 w-full pt-4">
+              <div className="h-72 w-full pt-4 overflow-x-auto overflow-y-hidden scrollbar-thin">
                 {deptMeals && deptMeals.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={600}>
                     <BarChart data={deptMeals} onClick={(e: any) => { if (e && e.activePayload && e.activePayload[0]) handleChartClick(e.activePayload[0].payload); }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                       <XAxis dataKey="department" tick={{ fontSize: 11, fill: '#71717a' }} />
                       <YAxis tick={{ fontSize: 11, fill: '#71717a' }} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
-                      />
+                      <Tooltip content={<CustomTooltip />} cursor={{ fill: "transparent" }} />
                       <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
                       <Bar dataKey="freeMeals" name="Free Allowance" fill="#6366f1" radius={[4, 4, 0, 0]} onClick={(entry: any) => handleChartClick(entry)} className="cursor-pointer" />
                       <Bar dataKey="paidMeals" name="Paid Meal" fill="#14b8a6" radius={[4, 4, 0, 0]} onClick={(entry: any) => handleChartClick(entry)} className="cursor-pointer" />
@@ -2088,16 +2081,14 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
                 </div>
               </div>
 
-              <div className="h-72 w-full pt-4">
+              <div className="h-72 w-full pt-4 overflow-x-auto overflow-y-hidden scrollbar-thin">
                 {shiftData && shiftData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={600}>
                     <BarChart data={shiftData} layout="vertical" onClick={(e: any) => { if (e && e.activePayload && e.activePayload[0]) handleChartClick(e.activePayload[0].payload); }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                       <XAxis type="number" tick={{ fontSize: 11, fill: '#71717a' }} />
                       <YAxis dataKey="shift" type="category" tick={{ fontSize: 11, fill: '#71717a' }} width={90} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
-                      />
+                      <Tooltip content={<CustomTooltip />} cursor={{ fill: "transparent" }} />
                       <Bar dataKey="count" name="Meals Claimed" fill="#6366f1" radius={[0, 4, 4, 0]} onClick={(entry: any) => handleChartClick(entry)} className="cursor-pointer">
                         {shiftData.map((entry, index) => (
                           <Cell key={`cell-shift-${index}`} fill={entry.fill} onClick={() => handleChartClick(entry)} className="cursor-pointer" />
@@ -2115,10 +2106,10 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
             </div>
           </div>
 
-          {/* Hourly Scan Density & Recent Security Audit Logs Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Hourly Scan Density Section */}
+          <div className="grid grid-cols-1 gap-6">
             {/* Hourly Cafeteria Scan Density */}
-            <div className="lg:col-span-2 bg-white border border-zinc-200 rounded-2xl p-6 shadow-xs space-y-4">
+            <div className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
@@ -2136,9 +2127,9 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
                 </button>
               </div>
 
-              <div className="h-72 w-full pt-4">
+              <div className="h-72 w-full pt-4 overflow-x-auto overflow-y-hidden scrollbar-thin">
                 {stats?.hourlyScans && stats.hourlyScans.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={600}>
                     <AreaChart data={stats.hourlyScans}>
                       <defs>
                         <linearGradient id="colorDietScans" x1="0" y1="0" x2="0" y2="1">
@@ -2149,9 +2140,7 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                       <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#71717a' }} />
                       <YAxis tick={{ fontSize: 11, fill: '#71717a' }} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
-                      />
+                      <Tooltip content={<CustomTooltip />} cursor={{ fill: "transparent" }} />
                       <Area type="monotone" dataKey="scans" name="Scan Volume" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#colorDietScans)" />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -2161,61 +2150,6 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
                     <span>No scan traffic recorded for current shift.</span>
                   </div>
                 )}
-              </div>
-            </div>
-
-            {/* Recent Security & Employee Audit Logs */}
-            <div className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
-                    <Terminal className="w-4 h-4 text-indigo-600" />
-                    <span>Recent Audit Trail</span>
-                  </h4>
-                  <button
-                    onClick={() => onViewChange("admin-audit-trail")}
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
-                  >
-                    View All
-                  </button>
-                </div>
-
-                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-                  {auditLogs.length > 0 ? (
-                    auditLogs.map((log: any) => (
-                      <div key={log.id} className="p-3 bg-zinc-50 rounded-xl border border-zinc-100 text-xs space-y-1">
-                        <div className="flex items-center justify-between font-mono text-[10px]">
-                          <span className="font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
-                            {log.action}
-                          </span>
-                          <span className="text-zinc-400">
-                            {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <p className="text-zinc-700 font-medium truncate" title={log.entity_type}>
-                          Entity: <span className="font-mono text-zinc-900">{log.entity_type}</span> {log.entity_id ? `(#${log.entity_id})` : ''}
-                        </p>
-                        <p className="text-[11px] text-zinc-500">
-                          By: <strong className="text-zinc-700">{log.username || 'System'}</strong>
-                        </p>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="py-12 text-center text-zinc-400 text-xs">
-                      No audit logs recorded yet.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-zinc-100">
-                <button
-                  onClick={() => onViewChange("admin-audit-trail")}
-                  className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <ShieldAlert className="w-4 h-4" />
-                  <span>Open Compliance Audit Portal</span>
-                </button>
               </div>
             </div>
           </div>
@@ -2355,7 +2289,7 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
             {/* Chart canvas */}
             <div className="h-80 w-full pt-2">
               {costAnalysis.dailyCostTrends && costAnalysis.dailyCostTrends.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={600}>
                   <ComposedChart data={costAnalysis.dailyCostTrends} onClick={(e: any) => { if (e && e.activePayload && e.activePayload[0]) handleChartClick(e.activePayload[0].payload); }}>
                     <defs>
                       <linearGradient id="colorFreeSubsidyCost" x1="0" y1="0" x2="0" y2="1">
@@ -2370,10 +2304,7 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="displayDate" tick={{ fontSize: 11, fill: '#71717a' }} />
                     <YAxis tick={{ fontSize: 11, fill: '#71717a' }} unit="₱" />
-                    <Tooltip 
-                      formatter={(value: any, name: any) => [`₱${parseFloat(value || 0).toFixed(2)}`, name]}
-                      contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
-                    />
+                    <Tooltip content={<CustomTooltip currency />} cursor={{ fill: "transparent" }} />
                     <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
                     <Area type="monotone" dataKey="freeSubsidyCost" name="Free Subsidy (₱)" fill="url(#colorFreeSubsidyCost)" stroke="#6366f1" strokeWidth={2.5} stackId="cost" />
                     <Area type="monotone" dataKey="paidRevenue" name="Paid Revenue (₱)" fill="url(#colorPaidRevenue)" stroke="#14b8a6" strokeWidth={2.5} stackId="cost" />
@@ -2404,17 +2335,14 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
                 </div>
               </div>
 
-              <div className="h-72 w-full pt-4">
+              <div className="h-72 w-full pt-4 overflow-x-auto overflow-y-hidden scrollbar-thin">
                 {costAnalysis.departmentCosts && costAnalysis.departmentCosts.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={600}>
                     <BarChart data={costAnalysis.departmentCosts} onClick={(e: any) => { if (e && e.activePayload && e.activePayload[0]) handleChartClick(e.activePayload[0].payload); }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                       <XAxis dataKey="department" tick={{ fontSize: 11, fill: '#71717a' }} />
                       <YAxis tick={{ fontSize: 11, fill: '#71717a' }} unit="₱" />
-                      <Tooltip 
-                        formatter={(value: any, name: any) => [`₱${parseFloat(value || 0).toFixed(2)}`, name]}
-                        contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
-                      />
+                      <Tooltip content={<CustomTooltip currency />} cursor={{ fill: "transparent" }} />
                       <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
                       <Bar dataKey="freeSubsidyCost" name="Free Subsidy Spend (₱)" fill="#6366f1" radius={[4, 4, 0, 0]} className="cursor-pointer" />
                       <Bar dataKey="paidRevenue" name="Paid Revenue (₱)" fill="#14b8a6" radius={[4, 4, 0, 0]} className="cursor-pointer" />

@@ -24,6 +24,7 @@ export const apiCache = cacheLayer;
 export interface ApiResponse {
   status: number;
   body: any;
+  headers?: Record<string, string>;
   cookies?: Record<string, { value: string; options?: any }>;
 }
 
@@ -103,8 +104,8 @@ export async function checkRateLimit(key: string, limit: number, windowMs: numbe
           
           return { allowed, remaining, resetTime };
         }
-      } catch (err) {
-        console.error("[RATE-LIMIT] Redis error, falling back to memory:", err);
+      } catch (_err) {
+        // Redis rate-limit fallback to memory
       }
     }
   }
@@ -136,12 +137,24 @@ export interface ApiBenchmarkLog {
   dbLatency?: number;
   status: number;
   ip: string;
+  isSeed?: boolean;
+  errorMessage?: string;
+  errorStack?: string;
 }
 
 export const dbLatencyTracker = new AsyncLocalStorage<{ totalDbLatency: number }>();
 export const benchmarkLogs: ApiBenchmarkLog[] = [];
 
-export function addBenchmarkLog(method: string, path: string, latency: number, status: number, ip: string, dbLatency?: number) {
+export function addBenchmarkLog(
+  method: string,
+  path: string,
+  latency: number,
+  status: number,
+  ip: string,
+  dbLatency?: number,
+  errorMessage?: string,
+  errorStack?: string
+) {
   const finalDbLatency = dbLatency !== undefined 
     ? dbLatency 
     : (dbLatencyTracker.getStore()?.totalDbLatency || 0);
@@ -153,7 +166,10 @@ export function addBenchmarkLog(method: string, path: string, latency: number, s
     latency,
     dbLatency: finalDbLatency,
     status,
-    ip
+    ip,
+    isSeed: false,
+    errorMessage,
+    errorStack
   };
   benchmarkLogs.push(log);
   if (benchmarkLogs.length > 1000) {
@@ -204,7 +220,9 @@ export const seedBenchmarks = () => {
       latency,
       dbLatency,
       status,
-      ip
+      ip,
+      isSeed: true,
+      errorMessage: status >= 500 ? "[Synthetic Telemetry Baseline] Simulated 500 server error" : undefined
     });
   }
   // Sort by timestamp ascending

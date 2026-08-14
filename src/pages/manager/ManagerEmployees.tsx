@@ -42,8 +42,7 @@ export default function ManagerEmployees() {
     try {
       const meals = await apiFetch(`/api/manager/employee-meals/${p.id}`);
       setStaffMeals(meals);
-    } catch (err: any) {
-      console.error(err);
+    } catch (_err: any) {
       setStaffMeals([]);
     } finally {
       setLoadingMeals(false);
@@ -110,7 +109,7 @@ export default function ManagerEmployees() {
                     <tr key={p.id} className="hover:bg-zinc-50/50 transition-colors">
                       <td className="px-6 py-4 flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-teal-50 border border-teal-100 text-teal-700 flex items-center justify-center font-bold">
-                          {p.first_name[0]}{p.last_name[0]}
+                          {p.first_name?.[0] || p.username?.[0] || 'P'}{p.last_name?.[0] || ''}
                         </div>
                         <div>
                           <span className="font-bold text-zinc-900 block">

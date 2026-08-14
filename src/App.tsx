@@ -77,7 +77,7 @@ function CoreHubApp() {
       if (view === "change-password" || view === "login") return true;
 
       if (user.role === "dietary_admin") {
-        return ["admin-dashboard", "admin-employees", "admin-users", "admin-departments", "admin-reports", "admin-audit-trail", "change-password"].includes(view);
+        return ["admin-dashboard", "admin-employees", "admin-users", "admin-departments", "admin-reports", "change-password"].includes(view);
       }
       if (user.role === "manager") {
         return ["manager-dashboard", "manager-employees", "manager-schedule"].includes(view);
@@ -211,16 +211,16 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("Global Error Boundary caught an error:", error, errorInfo);
+  componentDidCatch(_error: Error, _errorInfo: React.ErrorInfo) {
+    // Suppress console diagnostics in production
   }
 
   handleReset = () => {
     try {
       localStorage.clear();
       sessionStorage.clear();
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // Ignored
     }
     window.location.reload();
   };

@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.js";
 import PageHeader from "../components/PageHeader.js";
 import { ShieldCheck, Loader2, AlertCircle } from "lucide-react";
+import { MIN_PASSWORD_LENGTH } from "../constants/security.js";
 import { validatePasswordComplexity } from "../utils/password.js";
 
 export default function ChangePassword() {
@@ -9,17 +10,32 @@ export default function ChangePassword() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [minPasswordLength, setMinPasswordLength] = useState(MIN_PASSWORD_LENGTH);
   
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiFetch("/api/settings")
+      .then((settings) => {
+        if (Array.isArray(settings)) {
+          const item = settings.find((s: any) => s.setting_key === "min_password_length");
+          if (item && item.setting_value) {
+            const val = parseInt(item.setting_value, 10);
+            if (!isNaN(val) && val > 0) setMinPasswordLength(val);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [apiFetch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
 
-    const validationError = validatePasswordComplexity(newPassword);
+    const validationError = validatePasswordComplexity(newPassword, minPasswordLength);
     if (validationError) {
       setError(validationError);
       return;
@@ -94,13 +110,13 @@ export default function ChangePassword() {
               required
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Min 12 chars, numbers, symbols, mixed case"
+              placeholder={`Min ${minPasswordLength} chars, numbers, symbols, mixed case`}
               className="w-full h-10 px-3.5 text-sm bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-600 focus:bg-white text-zinc-900"
             />
             <div className="mt-2 p-3 bg-zinc-50 border border-zinc-200 rounded-xl space-y-1">
               <span className="text-[10px] font-bold text-zinc-500 uppercase font-mono tracking-wider block mb-1">Complexity Requirements</span>
               <ul className="text-[11px] text-zinc-600 space-y-1 list-disc list-inside">
-                <li className={newPassword.length >= 12 ? "text-emerald-600 font-bold" : "text-zinc-500"}>Minimum 12 characters</li>
+                <li className={newPassword.length >= minPasswordLength ? "text-emerald-600 font-bold" : "text-zinc-500"}>Minimum {minPasswordLength} characters</li>
                 <li className={/[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword) ? "text-emerald-600 font-bold" : "text-zinc-500"}>Mixed case (both lower & upper letters)</li>
                 <li className={/[0-9]/.test(newPassword) ? "text-emerald-600 font-bold" : "text-zinc-500"}>At least one number</li>
                 <li className={/[^a-zA-Z0-9]/.test(newPassword) ? "text-emerald-600 font-bold" : "text-zinc-500"}>At least one symbol or special character</li>

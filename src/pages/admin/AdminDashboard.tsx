@@ -4,6 +4,7 @@ import PageHeader from "../../components/PageHeader.js";
 import { Skeleton } from "../../components/Skeleton.js";
 import EmptyState from "../../components/EmptyState.js";
 import SystemDiagnostics from "../../components/admin/SystemDiagnostics.js";
+import OperationalSummaryCard from "../../components/OperationalSummaryCard.js";
 import RBACPermissionMatrix from "../../components/admin/RBACPermissionMatrix.js";
 import LatencyPercentilePanel from "../../components/admin/LatencyPercentilePanel.js";
 import DiagnosticChart from "../../components/admin/DiagnosticChart.js";
@@ -69,7 +70,7 @@ export interface CustomTooltipProps {
 
 // Custom Tooltip component for hourly scans (Cafeteria Hourly Density)
 const HourlyTooltip = ({ active, payload }: CustomTooltipProps) => {
-  if (active && payload && payload.length) {
+  if (active && payload && payload.length && payload[0]?.payload) {
     const data = payload[0].payload as unknown as HourlyDataPoint;
     const departmentsArray = Object.entries(data.departments || {}).sort((a, b) => b[1] - a[1]);
     
@@ -114,7 +115,7 @@ const HourlyTooltip = ({ active, payload }: CustomTooltipProps) => {
 
 // Custom Tooltip component for department meal redemption breakdown
 const DepartmentTooltip = ({ active, payload }: CustomTooltipProps) => {
-  if (active && payload && payload.length) {
+  if (active && payload && payload.length && payload[0]?.payload) {
     const data = payload[0].payload as unknown as DepartmentChartItem;
     const total = data.total || 0;
     const freePct = total > 0 ? Math.round((data.free / total) * 100) : 0;
@@ -216,7 +217,7 @@ const DailyTrendTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 
 // Custom Tooltip for Meal Sessions
 const SessionTooltip = ({ active, payload }: CustomTooltipProps) => {
-  if (active && payload && payload.length) {
+  if (active && payload && payload.length && payload[0]?.payload) {
     const data = payload[0].payload as unknown as SessionDataItem;
     return (
       <div className="bg-zinc-900 text-white rounded-2xl p-4 shadow-xl border border-zinc-800 text-xs font-sans min-w-[200px]">
@@ -255,7 +256,7 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
       .then((data: SystemPerfData) => {
         setBenchmarks(data);
       })
-      .catch((err) => console.error("Failed to fetch API benchmarks", err))
+      .catch(() => {})
       .finally(() => {
         if (showLoader) setBenchmarksLoading(false);
       });
@@ -271,7 +272,7 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
         setStats(statsData);
         setTransactions(mealsData || []);
       })
-      .catch((err) => console.error("Stats fetching failed", err))
+      .catch(() => {})
       .finally(() => setLoading(false));
 
     // Fetch benchmarks initially
@@ -1196,6 +1197,9 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
 
               </div>
             </div>
+
+            {/* Operational Summary Card */}
+            <OperationalSummaryCard />
 
             {/* System Diagnostics & Cache Layering Widget */}
             <SystemDiagnostics />

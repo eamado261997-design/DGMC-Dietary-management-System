@@ -7,9 +7,10 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Cart
 import { useDebounce } from "../../hooks/useDebounce.js";
 
 interface CashierStats {
-  mealsProcessedToday: number;
-  freeMealsToday: number;
-  cashEarningsToday: number;
+  freeCount: number;
+  paidCount: number;
+  totalRevenue: number;
+  totalMeals: number;
 }
 
 export default function CashierDashboard({ onViewChange }: { onViewChange: (v: string) => void }) {
@@ -32,7 +33,7 @@ export default function CashierDashboard({ onViewChange }: { onViewChange: (v: s
         setStats(stats);
         setTransactions(txs || []);
       })
-      .catch((err) => console.error("Cashier stats fetch fail", err))
+      .catch(() => {})
       .finally(() => setLoading(false));
   };
 
@@ -81,6 +82,10 @@ export default function CashierDashboard({ onViewChange }: { onViewChange: (v: s
       Total: map[day].free + map[day].paid
     }));
   }, [transactions]);
+
+  const totalToday = stats?.totalMeals || 0;
+  const freePct = totalToday > 0 ? Math.round(((stats?.freeCount || 0) / totalToday) * 100) : 0;
+  const paidPct = totalToday > 0 ? Math.round(((stats?.paidCount || 0) / totalToday) * 100) : 0;
 
   return (
     <div id="cashier-dashboard-page">
@@ -152,7 +157,7 @@ export default function CashierDashboard({ onViewChange }: { onViewChange: (v: s
               {loading ? (
                 <Skeleton className="h-6 w-12 mt-1" />
               ) : (
-                <span className="text-2xl font-black text-zinc-900 block leading-tight">{stats?.mealsProcessedToday}</span>
+                <span className="text-2xl font-black text-zinc-900 block leading-tight">{stats?.totalMeals || 0}</span>
               )}
               <span className="text-[10px] text-zinc-450 block mt-0.5">Physical throughput</span>
             </div>
@@ -167,7 +172,7 @@ export default function CashierDashboard({ onViewChange }: { onViewChange: (v: s
               {loading ? (
                 <Skeleton className="h-6 w-12 mt-1" />
               ) : (
-                <span className="text-2xl font-black text-zinc-900 block leading-tight">{stats?.freeMealsToday}</span>
+                <span className="text-2xl font-black text-zinc-900 block leading-tight">{stats?.freeCount || 0}</span>
               )}
               <span className="text-[10px] text-zinc-450 block mt-0.5">Work-shift matching accounts</span>
             </div>
@@ -178,11 +183,11 @@ export default function CashierDashboard({ onViewChange }: { onViewChange: (v: s
               <Coins className="w-5 h-5" />
             </div>
             <div className="flex-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block">Cash Recieved Ledger</span>
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block">Cash Received Ledger</span>
               {loading ? (
                 <Skeleton className="h-6 w-20 mt-1" />
               ) : (
-                <span className="text-2xl font-black text-zinc-900 block leading-tight">₱{stats?.cashEarningsToday?.toFixed(2)}</span>
+                <span className="text-2xl font-black text-zinc-900 block leading-tight">₱{(stats?.totalRevenue || 0).toFixed(2)}</span>
               )}
               <span className="text-[10px] text-zinc-450 block mt-0.5">Paid meal allocations</span>
             </div>
@@ -198,7 +203,7 @@ export default function CashierDashboard({ onViewChange }: { onViewChange: (v: s
                 <Skeleton className="h-6 w-24 mt-1" />
               ) : (
                 <>
-                  <span className="text-sm font-black text-zinc-900 block leading-tight">{stats?.mealsProcessedToday} Scans</span>
+                  <span className="text-sm font-black text-zinc-900 block leading-tight">{stats?.totalMeals || 0} Scans</span>
                   <span className="text-sm font-black text-rose-600 block leading-tight">{queue.length} Pending Sync</span>
                 </>
               )}
@@ -207,25 +212,105 @@ export default function CashierDashboard({ onViewChange }: { onViewChange: (v: s
 
         </div>
 
+        {/* Daily Summary & Terminal Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Daily Summary Card */}
+          <div className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
+                    <BarChart3 className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-sm font-black text-zinc-900">Daily Summary</h3>
+                </div>
+                <span className="text-[10px] bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-bold font-mono">
+                  Shift Today
+                </span>
+              </div>
+              
+              <p className="text-xs text-zinc-500 mb-4">
+                Real-time performance monitoring of complimentary employee vouchers versus standard paid transactions.
+              </p>
+
+              <div className="space-y-4">
+                {/* Free vs Paid counts */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-zinc-50 border border-zinc-100 rounded-xl p-3">
+                    <span className="text-[10px] text-zinc-400 font-bold block uppercase font-mono tracking-wider">Free (Vouchers)</span>
+                    <div className="flex items-baseline gap-1.5 mt-1">
+                      <span className="text-xl font-black text-emerald-700">{stats?.freeCount || 0}</span>
+                      <span className="text-[10px] text-zinc-500 font-bold font-mono">{freePct}%</span>
+                    </div>
+                  </div>
+                  <div className="bg-zinc-50 border border-zinc-100 rounded-xl p-3">
+                    <span className="text-[10px] text-zinc-450 font-bold block uppercase font-mono tracking-wider font-bold">Paid (Cash)</span>
+                    <div className="flex items-baseline gap-1.5 mt-1">
+                      <span className="text-xl font-black text-amber-600">{stats?.paidCount || 0}</span>
+                      <span className="text-[10px] text-zinc-500 font-bold font-mono">{paidPct}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Split indicator bar */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-[9px] text-zinc-400 font-bold font-mono uppercase tracking-wider">
+                    <span>Complimentary</span>
+                    <span>Paid Cash</span>
+                  </div>
+                  <div className="w-full h-3 rounded-full bg-zinc-100 overflow-hidden flex">
+                    {totalToday > 0 ? (
+                      <>
+                        <div 
+                          style={{ width: `${freePct}%` }} 
+                          className="bg-emerald-600 h-full transition-all duration-500" 
+                          title={`Free Vouchers: ${freePct}%`}
+                        />
+                        <div 
+                          style={{ width: `${paidPct}%` }} 
+                          className="bg-amber-500 h-full transition-all duration-500" 
+                          title={`Paid Cash: ${paidPct}%`}
+                        />
+                      </>
+                    ) : (
+                      <div className="w-full h-full bg-zinc-200" title="No transactions yet" />
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-zinc-100 mt-5 flex items-center justify-between text-[11px]">
+              <span className="text-zinc-500 font-medium">Shift Total Served:</span>
+              <span className="font-extrabold text-zinc-900">{totalToday} meal vouchers</span>
+            </div>
+          </div>
+
           {/* Quick Terminal Links */}
-          <div className="bg-gradient-to-br from-teal-900 to-teal-980 rounded-3xl p-6 md:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="lg:col-span-2 bg-gradient-to-br from-teal-900 via-teal-950 to-zinc-900 rounded-2xl p-6 md:p-8 text-white flex flex-col justify-between gap-6">
             <div>
               <span className="text-[10px] bg-white/10 border border-white/20 text-teal-300 font-bold uppercase py-0.5 px-3 rounded-full font-mono">
                 Active Point of Sale
               </span>
-              <h3 className="text-lg font-extrabold tracking-tight text-white mt-3 leading-none">Process scan codes or log customer cash transactions</h3>
+              <h3 className="text-lg font-extrabold tracking-tight text-white mt-4 leading-none">Process scan codes or log customer cash transactions</h3>
               <p className="text-xs text-teal-200/80 mt-2 max-w-xl">
                 Ready to checkout hospital staff members. Quickly activate the QR Scanner console to use physical USB Barcode scanning or look up employees.
               </p>
             </div>
-            <button
-              onClick={() => onViewChange("cashier-scan")}
-              className="h-10 bg-white hover:bg-teal-50 text-teal-950 font-bold px-4 rounded-xl text-xs uppercase flex items-center gap-2 transition-all shrink-0 shadow-lg shadow-teal-950/20"
-            >
-              <QrCode className="w-4 h-4 text-teal-900" />
-              Launch Scan Terminal
-            </button>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/10">
+              <p className="text-[11px] text-teal-200/70">
+                Daily transaction ledger is active. Securely synced with backend verification servers.
+              </p>
+              <button
+                onClick={() => onViewChange("cashier-scan")}
+                className="w-full sm:w-auto h-10 bg-white hover:bg-teal-50 text-teal-950 font-bold px-5 rounded-xl text-xs uppercase flex items-center justify-center gap-2 transition-all shrink-0 shadow-lg"
+              >
+                <QrCode className="w-4 h-4 text-teal-900" />
+                Launch Scan Terminal
+              </button>
+            </div>
           </div>
+        </div>
 
           {/* Scan History Feature & Auditability Panel */}
           <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs space-y-6">

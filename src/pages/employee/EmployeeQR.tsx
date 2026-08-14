@@ -1,8 +1,11 @@
 import React, { useRef, useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext.js";
+import { useToast } from "../../context/ToastContext.js";
 import { 
   QrCode, 
-  Printer, 
+  Printer,
+  Eye,
+  X, 
   ShieldCheck, 
   Download, 
   Upload, 
@@ -16,9 +19,14 @@ import {
   RefreshCw,
   BadgeAlert,
   Info,
-  Maximize2
+  Maximize2,
+  Copy,
+  Check,
+  WifiOff,
+  Wifi
 } from "lucide-react";
 import DGMCLogo from "../../components/DGMCLogo.js";
+import PrintableHeader from "../../components/PrintableHeader.js";
 import QRCode from "qrcode";
 import { motion } from "motion/react";
 
@@ -94,7 +102,44 @@ const THEME_PRESETS: ThemePreset[] = [
 
 export default function EmployeeQR() {
   const { user, branding, apiFetch } = useAuth();
+  const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [copiedId, setCopiedId] = useState(false);
+
+  const handleCopyEmployeeId = () => {
+    const empId = user?.employee_no || "";
+    if (!empId) {
+      addToast("Employee ID is not available", "error");
+      return;
+    }
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(empId).then(() => {
+        setCopiedId(true);
+        addToast(`Copied Employee ID (${empId}) to clipboard!`, "success");
+        setTimeout(() => setCopiedId(false), 2000);
+      }).catch(() => {
+        addToast("Failed to copy Employee ID", "error");
+      });
+    } else {
+      // Fallback for older browsers / iframe restrictions
+      try {
+        const textarea = document.createElement("textarea");
+        textarea.value = empId;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+        setCopiedId(true);
+        addToast(`Copied Employee ID (${empId}) to clipboard!`, "success");
+        setTimeout(() => setCopiedId(false), 2000);
+      } catch (err) {
+        addToast("Failed to copy Employee ID", "error");
+      }
+    }
+  };
   
   // Customizer state
   const [passMode, setPassMode] = useState<"badge" | "standalone">("badge");
@@ -118,7 +163,47 @@ export default function EmployeeQR() {
 
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [isGeneratingPng, setIsGeneratingPng] = useState<boolean>(false);
+  const [exportFormat, setExportFormat] = useState<"png" | "svg">("png");
+  const [showPrintPreview, setShowPrintPreview] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"layout" | "appearance" | "help">("layout");
+
+  // PWA Offline Ready state
+  const [isOfflineReady, setIsOfflineReady] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkOfflineSupport = async () => {
+      if ('serviceWorker' in navigator) {
+        try {
+          const reg = await navigator.serviceWorker.getRegistration();
+          const isControllerActive = Boolean(navigator.serviceWorker.controller || (reg && reg.active));
+          
+          let hasCachedAssets = false;
+          if ('caches' in window) {
+            const keys = await caches.keys();
+            hasCachedAssets = keys.length > 0;
+          }
+
+          if (isMounted && (isControllerActive || hasCachedAssets)) {
+            setIsOfflineReady(true);
+          }
+        } catch (_err) {
+          // Ignore offline readiness probe error
+        }
+      }
+    };
+
+    checkOfflineSupport();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('controllerchange', checkOfflineSupport);
+      return () => {
+        isMounted = false;
+        navigator.serviceWorker.removeEventListener('controllerchange', checkOfflineSupport);
+      };
+    }
+  }, []);
 
   // Batch Export state for Admin/Manager
   const [showBatchModal, setShowBatchModal] = useState(false);
@@ -133,8 +218,8 @@ export default function EmployeeQR() {
         setBatchEmployees(res);
         setShowBatchModal(true);
       }
-    } catch (e) {
-      console.error("Failed to load batch employees for QR export", e);
+    } catch (_e) {
+      // Failed to load batch employees
     } finally {
       setBatchLoading(false);
     }
@@ -150,6 +235,17 @@ export default function EmployeeQR() {
       }
     }
   }, [user]);
+
+  // Escape key handler for print preview modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && showPrintPreview) {
+        setShowPrintPreview(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showPrintPreview]);
 
   // Load dynamic cryptographically signed rotating QR code
   useEffect(() => {
@@ -168,8 +264,8 @@ export default function EmployeeQR() {
           setSecurePayload(data.qr_payload);
           setSecureExpiresIn(data.expiresIn || 60);
         }
-      } catch (err) {
-        console.error("Error fetching cryptographic QR signature:", err);
+      } catch (_err) {
+        // Suppress signature fetch error in production
       }
     };
 
@@ -209,15 +305,14 @@ export default function EmployeeQR() {
           dark: selectedTheme.id === "cosmic" ? "#000000" : selectedTheme.primary,
           light: "#ffffff",
         },
-      },
-      (err, url) => {
-        if (err) {
-          console.error("QR Code generation error", err);
-          return;
-        }
-        setQrDataUrl(url);
       }
-    );
+    )
+      .then((url) => {
+        setQrDataUrl(url);
+      })
+      .catch(() => {
+        // Suppress QR rendering error
+      });
   }, [user, selectedTheme, useSecureCrypto, securePayload]);
 
   if (!user) return null;
@@ -242,6 +337,44 @@ export default function EmployeeQR() {
     setUploadedPhoto("");
     setAvatarType("physician_m");
     localStorage.removeItem(`dgmc_avatar_${user.id}`);
+  };
+
+  
+  // Handle SVG download for QR code
+  const handleDownloadSvg = async () => {
+    try {
+      const code = (useSecureCrypto && securePayload) 
+        ? securePayload 
+        : (user.qr_code || user.employee_no || "EMP-001");
+
+      const svgString = await QRCode.toString(code, {
+        type: "svg",
+        errorCorrectionLevel: "H",
+        margin: 1,
+        color: {
+          dark: selectedTheme.id === "cosmic" ? "#000000" : selectedTheme.primary,
+          light: "#ffffff",
+        },
+      });
+
+      const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.download = `DGMC_QR_${user.first_name}_${user.last_name}.svg`;
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (_err) {
+      // Suppress SVG download error
+    }
+  };
+
+  const handleDownloadExport = () => {
+    if (exportFormat === "svg") {
+      handleDownloadSvg();
+    } else {
+      handleDownloadPng();
+    }
   };
 
   // Trigger browser printing
@@ -394,6 +527,7 @@ export default function EmployeeQR() {
                 ctx.drawImage(qrImg, qx, qy, qrSize, qrSize);
                 resolve();
               };
+              qrImg.onerror = () => resolve();
               qrImg.src = qrDataUrl;
             });
           }
@@ -471,6 +605,7 @@ export default function EmployeeQR() {
                 ctx.drawImage(qrImg, qx, qy, qrSize, qrSize);
                 resolve();
               };
+              qrImg.onerror = () => resolve();
               qrImg.src = qrDataUrl;
             });
             
@@ -594,6 +729,7 @@ export default function EmployeeQR() {
                 ctx.drawImage(img, ax, ay, avatarSize, avatarSize);
                 resolve();
               };
+              img.onerror = () => resolve();
               img.src = uploadedPhoto;
             });
           } else {
@@ -664,6 +800,7 @@ export default function EmployeeQR() {
                 ctx.drawImage(qrImg, qx, qy, qrSize, qrSize);
                 resolve();
               };
+              qrImg.onerror = () => resolve();
               qrImg.src = qrDataUrl;
             });
           }
@@ -755,6 +892,7 @@ export default function EmployeeQR() {
                 ctx.drawImage(qrImg, qx, qy, qrSize, qrSize);
                 resolve();
               };
+              qrImg.onerror = () => resolve();
               qrImg.src = qrDataUrl;
             });
 
@@ -784,6 +922,7 @@ export default function EmployeeQR() {
                 ctx.drawImage(img, ax, ay, avatarSize, avatarSize);
                 resolve();
               };
+              img.onerror = () => resolve();
               img.src = uploadedPhoto;
             });
           } else {
@@ -886,8 +1025,8 @@ export default function EmployeeQR() {
       link.download = `DGMC_Badge_${user.first_name}_${user.last_name}.png`;
       link.href = dataUrl;
       link.click();
-    } catch (e) {
-      console.error("Failed to render high-DPI canvas PNG", e);
+    } catch (_e) {
+      // Suppress render error
     } finally {
       setIsGeneratingPng(false);
     }
@@ -913,36 +1052,34 @@ export default function EmployeeQR() {
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           @page {
-            size: ${isPortrait ? '2.125in 3.375in' : '3.375in 2.125in'};
-            margin: 0 !important;
+            size: auto;
+            margin: 10mm !important;
           }
           
           /* Hide all general UI and containers */
           html, body {
-            width: ${isPortrait ? '2.125in' : '3.375in'} !important;
-            height: ${isPortrait ? '3.375in' : '2.125in'} !important;
+            width: 100% !important;
+            height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
-            overflow: hidden !important;
+            overflow: visible !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
 
-          /* Hide anything that is not our actual target card block */
-          #root, .non-printable, header, nav, footer, sidebar, aside, div:not(.print-card-wrapper):not(.printable-badge-card) {
+          /* Hide screen interface controls and non-printable elements */
+          .no-print, .non-printable, header, nav, footer, sidebar, aside, #session-dev-tools-container {
             display: none !important;
           }
 
-          /* Force print card wrapper to stand-alone fill full screen page */
+          /* Force print card wrapper to stand-alone fill document page */
           .print-card-wrapper {
             display: block !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: ${isPortrait ? '2.125in' : '3.375in'} !important;
-            height: ${isPortrait ? '3.375in' : '2.125in'} !important;
-            margin: 0 !important;
+            position: relative !important;
+            width: 100% !important;
+            max-width: 650px !important;
+            margin: 0 auto !important;
             padding: 0 !important;
             z-index: 9999999 !important;
             background: #ffffff !important;
@@ -952,70 +1089,136 @@ export default function EmployeeQR() {
             display: flex !important;
             width: ${isPortrait ? '2.125in' : '3.375in'} !important;
             height: ${isPortrait ? '3.375in' : '2.125in'} !important;
-            margin: 0 !important;
+            margin: 20px auto !important;
             padding: 0 !important;
-            border: none !important;
-            border-radius: 0 !important;
+            border: 1px solid #d1d5db !important;
+            border-radius: 12px !important;
             box-shadow: none !important;
             background: #ffffff !important;
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
+            position: relative !important;
+            overflow: hidden !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
         }
       `}} />
 
       {/* Screen Header and Title Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm non-printable">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-3xl border border-zinc-200 shadow-sm no-print non-printable">
         <div>
-          <div className="flex items-center gap-2.5 mb-1.5">
+          <div className="flex flex-wrap items-center gap-2.5 mb-1.5">
             <span className="p-1.5 bg-teal-50 rounded-lg text-teal-600 block">
               <QrCode className="w-5 h-5" />
             </span>
-            <h1 className="text-xl font-black text-zinc-950 tracking-tight">Enterprise Pass Builder</h1>
+            <h1 className="text-lg sm:text-xl font-black text-zinc-950 tracking-tight">Enterprise Pass Builder</h1>
+
+            {/* Offline Ready Indicator Badge */}
+            {isOfflineReady ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-full text-[11px] font-extrabold font-mono shadow-2xs" title="PWA Service Worker cached QR generation resources for full offline operation">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <WifiOff className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>Offline Ready</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200/80 rounded-full text-[11px] font-extrabold font-mono shadow-2xs" title="Caching QR assets with Service Worker...">
+                <RefreshCw className="w-3 h-3 text-amber-600 animate-spin shrink-0" />
+                <span>Caching Offline Pass...</span>
+              </span>
+            )}
           </div>
           <p className="text-xs text-zinc-500 font-medium leading-relaxed">
             Configure, download, and print your physical, high-resolution hospital dietary meal voucher ID badge.
           </p>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <button
+            type="button"
+            onClick={handleCopyEmployeeId}
+            className={`h-10 px-3.5 sm:px-4 text-xs font-extrabold rounded-xl flex items-center justify-center gap-2 transition-all shadow-2xs hover:scale-102 cursor-pointer border flex-1 sm:flex-none ${
+              copiedId 
+                ? "bg-emerald-600 text-white border-emerald-600" 
+                : "bg-teal-50 hover:bg-teal-100 text-teal-800 border-teal-200"
+            }`}
+            title="Copy Employee ID to clipboard"
+          >
+            {copiedId ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4 text-teal-700" />}
+            <span>{copiedId ? "Copied!" : `Copy ID (${user.employee_no || "N/A"})`}</span>
+          </button>
+
           {(user.role === "admin" || user.role === "manager") && (
             <button
               onClick={handleFetchBatchExport}
               disabled={batchLoading}
-              className="h-10 px-4 bg-amber-600 hover:bg-amber-700 text-white text-xs font-extrabold rounded-xl flex items-center justify-center gap-2 transition-all shadow-2xs hover:scale-102 disabled:opacity-50 cursor-pointer"
+              className="h-10 px-3.5 sm:px-4 bg-amber-600 hover:bg-amber-700 text-white text-xs font-extrabold rounded-xl flex items-center justify-center gap-2 transition-all shadow-2xs hover:scale-102 disabled:opacity-50 cursor-pointer flex-1 sm:flex-none"
             >
               {batchLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
-              <span>Export QR Codes (Batch)</span>
+              <span>Export QR (Batch)</span>
             </button>
           )}
 
           <button
+            type="button"
+            onClick={() => setShowPrintPreview(true)}
+            className="h-10 px-3.5 sm:px-4 bg-white hover:bg-zinc-50 text-zinc-800 border border-zinc-200 text-xs font-extrabold rounded-xl flex items-center justify-center gap-2 transition-all shadow-2xs hover:scale-102 cursor-pointer flex-1 sm:flex-none"
+          >
+            <Eye className="w-4 h-4 text-teal-700" />
+            <span>Print Preview</span>
+          </button>
+
+          <button
             onClick={handlePrint}
-            className="h-10 px-4 bg-zinc-900 hover:bg-black text-white text-xs font-extrabold rounded-xl flex items-center justify-center gap-2 transition-all shadow-2xs hover:scale-102"
+            className="h-10 px-3.5 sm:px-4 bg-zinc-900 hover:bg-black text-white text-xs font-extrabold rounded-xl flex items-center justify-center gap-2 transition-all shadow-2xs hover:scale-102 flex-1 sm:flex-none"
           >
             <Printer className="w-4 h-4" />
             <span>Print Badge (CR80)</span>
           </button>
 
+          <div className="flex items-center bg-zinc-100 p-1 rounded-xl border border-zinc-200 shrink-0">
+            <button
+              type="button"
+              onClick={() => setExportFormat("png")}
+              className={`px-2.5 py-1 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                exportFormat === "png"
+                  ? "bg-white text-zinc-950 shadow-2xs"
+                  : "text-zinc-500 hover:text-zinc-800"
+              }`}
+            >
+              PNG
+            </button>
+            <button
+              type="button"
+              onClick={() => setExportFormat("svg")}
+              className={`px-2.5 py-1 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                exportFormat === "svg"
+                  ? "bg-white text-zinc-950 shadow-2xs"
+                  : "text-zinc-500 hover:text-zinc-800"
+              }`}
+            >
+              SVG
+            </button>
+          </div>
+
           <button
-            onClick={handleDownloadPng}
+            onClick={handleDownloadExport}
             disabled={isGeneratingPng}
-            className="h-10 px-4 bg-teal-700 hover:bg-teal-800 text-white text-xs font-extrabold rounded-xl flex items-center justify-center gap-2 transition-all shadow-2xs hover:scale-102 disabled:opacity-50"
+            className="h-10 px-3.5 sm:px-4 bg-teal-700 hover:bg-teal-800 text-white text-xs font-extrabold rounded-xl flex items-center justify-center gap-2 transition-all shadow-2xs hover:scale-102 disabled:opacity-50 cursor-pointer flex-1 sm:flex-none"
           >
             {isGeneratingPng ? (
               <RefreshCw className="w-4 h-4 animate-spin" />
             ) : (
               <Download className="w-4 h-4" />
             )}
-            <span>Download High-Res PNG</span>
+            <span>Download ({exportFormat.toUpperCase()})</span>
           </button>
         </div>
       </div>
 
       {/* Roster Information Guidelines Banner */}
-      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-150 rounded-2xl p-4 flex items-start gap-3 non-printable">
+      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-150 rounded-2xl p-3.5 sm:p-4 flex items-start gap-3 non-printable">
         <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
         <div className="text-xs text-emerald-950 leading-relaxed">
           <p className="font-extrabold uppercase tracking-wider text-emerald-800 text-[10px] font-mono">Hospital Roster Verified</p>
@@ -1026,7 +1229,7 @@ export default function EmployeeQR() {
       </div>
 
       {/* Segmented control for switching mode */}
-      <div className="flex bg-zinc-100 p-1 rounded-2xl max-w-md non-printable border border-zinc-200 shadow-3xs">
+      <div className="flex bg-zinc-100 p-1 rounded-2xl max-w-md w-full non-printable border border-zinc-200 shadow-3xs">
         <button
           onClick={() => setPassMode("badge")}
           className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
@@ -1058,45 +1261,45 @@ export default function EmployeeQR() {
         <div className="lg:col-span-7 bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-xs">
           
           {/* Settings Tabs Header */}
-          <div className="flex border-b border-zinc-100 bg-zinc-50/50 p-2">
+          <div className="flex border-b border-zinc-100 bg-zinc-50/50 p-2 overflow-x-auto gap-1 no-scrollbar">
             <button
               onClick={() => setActiveTab("layout")}
-              className={`flex-1 py-2.5 text-xs font-bold font-mono uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 min-w-[120px] py-2.5 px-3 text-xs font-bold font-mono uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
                 activeTab === "layout" 
                   ? "bg-white border border-zinc-200 text-zinc-900 shadow-3xs" 
                   : "text-zinc-550 hover:text-zinc-800"
               }`}
             >
-              <Settings className="w-3.5 h-3.5 text-zinc-500" />
+              <Settings className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
               <span>Layout &amp; Orientation</span>
             </button>
             
             <button
               onClick={() => setActiveTab("appearance")}
-              className={`flex-1 py-2.5 text-xs font-bold font-mono uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 min-w-[120px] py-2.5 px-3 text-xs font-bold font-mono uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
                 activeTab === "appearance" 
                   ? "bg-white border border-zinc-200 text-zinc-900 shadow-3xs" 
                   : "text-zinc-550 hover:text-zinc-800"
               }`}
             >
-              <Palette className="w-3.5 h-3.5 text-zinc-500" />
+              <Palette className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
               <span>Identity &amp; Presets</span>
             </button>
 
             <button
               onClick={() => setActiveTab("help")}
-              className={`flex-1 py-2.5 text-xs font-bold font-mono uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 min-w-[100px] py-2.5 px-3 text-xs font-bold font-mono uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
                 activeTab === "help" 
                   ? "bg-white border border-zinc-200 text-zinc-900 shadow-3xs" 
                   : "text-zinc-550 hover:text-zinc-800"
               }`}
             >
-              <Info className="w-3.5 h-3.5 text-zinc-500" />
+              <Info className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
               <span>Print Guide</span>
             </button>
           </div>
 
-          <div className="p-6 space-y-6">
+          <div className="p-4 sm:p-6 space-y-6">
             
             {/* TAB 1: LAYOUT & CONFIG */}
             {activeTab === "layout" && (
@@ -1412,6 +1615,12 @@ export default function EmployeeQR() {
                       <strong>Hardware Recommendation:</strong> Print on thick cardstock paper (e.g. 250gsm+), PVC printable card trays, or standard adhesive paper for durable hospital badge backings.
                     </p>
                   </div>
+                  <div className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">5</span>
+                    <p>
+                      <strong>PWA Offline Generation:</strong> The Progressive Web App Service Worker pre-caches all QR rendering dependencies. Look for the <span className="font-bold text-emerald-700 bg-emerald-50 px-1 rounded inline-flex items-center gap-1"><WifiOff className="w-2.5 h-2.5 text-emerald-600" /> Offline Ready</span> badge at the top of the pass builder to verify offline availability.
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
@@ -1429,7 +1638,7 @@ export default function EmployeeQR() {
           </div>
 
           {/* Fully Interactive ID Card Rendering Frame */}
-          <div className="p-8 border border-zinc-200 bg-zinc-50 border-dashed rounded-3xl w-full flex items-center justify-center min-h-[460px] relative overflow-hidden shadow-inner">
+          <div className="p-4 sm:p-8 border border-zinc-200 bg-zinc-50 border-dashed rounded-3xl w-full flex items-center justify-center min-h-[380px] sm:min-h-[460px] relative overflow-x-auto shadow-inner no-scrollbar">
             
             {/* Guide Gridlines Layer (Scaffolding preview) */}
             {showGuideLines && (
@@ -1633,7 +1842,20 @@ export default function EmployeeQR() {
                     <div className="grid grid-cols-2 gap-2 border-t border-zinc-100 pt-2 w-full text-[7px] font-mono text-zinc-600">
                       <div className="text-left">
                         <span className="text-zinc-400 block font-bold leading-none">EMP ID:</span>
-                        <span className="font-black text-zinc-900 block mt-0.5">{user.employee_no || "N/A"}</span>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="font-black text-zinc-900 block">{user.employee_no || "N/A"}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyEmployeeId();
+                            }}
+                            className="p-0.5 text-zinc-400 hover:text-teal-700 transition-colors cursor-pointer"
+                            title="Copy Employee ID"
+                          >
+                            <Copy className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
                       </div>
                       <div className="text-right">
                         <span className="text-zinc-400 block font-bold leading-none">DIVISION:</span>
@@ -1725,7 +1947,20 @@ export default function EmployeeQR() {
                     <div className="grid grid-cols-2 gap-3 border-t border-dashed border-zinc-200 pt-3 text-[8px] font-mono text-zinc-600">
                       <div>
                         <span className="text-zinc-400 block font-bold leading-none uppercase">Emp ID</span>
-                        <span className="font-black text-zinc-950 block mt-0.5">{user.employee_no || "N/A"}</span>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="font-black text-zinc-950 block">{user.employee_no || "N/A"}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyEmployeeId();
+                            }}
+                            className="p-0.5 text-zinc-400 hover:text-teal-700 transition-colors cursor-pointer"
+                            title="Copy Employee ID"
+                          >
+                            <Copy className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
                       </div>
                       <div>
                         <span className="text-zinc-400 block font-bold leading-none uppercase">Department</span>
@@ -1765,10 +2000,20 @@ export default function EmployeeQR() {
             </div>
           </div>
           
-          {/* Helpful advice under preview */}
-          <p className="text-[10px] text-zinc-400 font-mono mt-3 text-center">
-            Aspect ratio calibrated precisely to ISO/IEC 7810 ID-1 standard sizing (85.6mm x 53.98mm).
-          </p>
+          {/* Helpful advice and action button under preview */}
+          <div className="mt-3 flex flex-col items-center gap-2">
+            <p className="text-[10px] text-zinc-400 font-mono text-center">
+              Aspect ratio calibrated precisely to ISO/IEC 7810 ID-1 standard sizing (85.6mm x 53.98mm).
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowPrintPreview(true)}
+              className="mt-1 px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-extrabold rounded-xl flex items-center gap-2 transition-all shadow-xs cursor-pointer hover:scale-102"
+            >
+              <Eye className="w-4 h-4" />
+              <span>View Formatted Printable ID &amp; QR Modal</span>
+            </button>
+          </div>
 
         </div>
 
@@ -1776,6 +2021,15 @@ export default function EmployeeQR() {
 
       {/* DEDICATED PRINT CONTAINER - HIDDEN ON SCREEN, RE-STYLED ENTIRELY ON PRINT */}
       <div className="hidden print-card-wrapper">
+        <PrintableHeader 
+          title="Employee Meal Voucher QR Credential"
+          meta={[
+            { label: "Employee Name", value: `${user.first_name} ${user.last_name}` },
+            { label: "Employee ID", value: user.employee_no || "N/A" },
+            { label: "Department", value: getDeptDisplay() },
+            { label: "Date Printed", value: new Date().toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" }) }
+          ]}
+        />
         <div className="printable-badge-card bg-white" style={{ borderColor: selectedTheme.primary }}>
           {passMode === "standalone" ? (
             isPortrait ? (
@@ -2074,6 +2328,253 @@ export default function EmployeeQR() {
         </div>
       )}
 
-    </div>
+    
+      {/* FULL-PAGE PRINT PREVIEW OVERLAY MODAL */}
+      {showPrintPreview && (
+        <div className="fixed inset-0 z-50 bg-zinc-950/85 backdrop-blur-md flex flex-col no-print animate-fade-in">
+          {/* Preview Header Bar */}
+          <div className="bg-zinc-900 border-b border-zinc-800 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 text-white shadow-md shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-teal-500/10 border border-teal-500/20 rounded-xl text-teal-400">
+                <Eye className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                  Printable ID &amp; QR Code Modal
+                </h3>
+                <p className="text-xs text-zinc-400 font-medium mt-0.5">
+                  Formatted printable document layout utilizing print-specific CSS styles (<code className="text-teal-400 font-mono text-[11px]">PrintableHeader</code> &amp; <code className="text-teal-400 font-mono text-[11px]">printable-badge-card</code>)
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Layout controls inside modal */}
+              <div className="flex items-center bg-zinc-800 p-1 rounded-xl border border-zinc-700/60 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setOrientation("portrait")}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    orientation === "portrait" ? "bg-teal-600 text-white shadow-2xs" : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  Portrait
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrientation("landscape")}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    orientation === "landscape" ? "bg-teal-600 text-white shadow-2xs" : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  Landscape
+                </button>
+              </div>
+
+              <div className="flex items-center bg-zinc-800 p-1 rounded-xl border border-zinc-700/60 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setPassMode("badge")}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    passMode === "badge" ? "bg-teal-600 text-white shadow-2xs" : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  ID Badge
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPassMode("standalone")}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    passMode === "standalone" ? "bg-teal-600 text-white shadow-2xs" : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  Token Only
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  window.print();
+                }}
+                className="h-9 px-4 bg-teal-600 hover:bg-teal-500 text-white text-xs font-extrabold rounded-xl flex items-center gap-2 transition-all shadow-sm cursor-pointer hover:scale-102"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print Document</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPrintPreview(false)}
+                className="h-9 w-9 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-xl flex items-center justify-center transition-all cursor-pointer"
+                title="Close Modal (Esc)"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Printable Sheet View Container */}
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6 md:p-10 flex flex-col items-center justify-start">
+            <div className="print-card-wrapper bg-white shadow-2xl rounded-sm border border-zinc-300 p-4 sm:p-8 md:p-12 max-w-2xl w-full text-zinc-950 min-h-[550px] sm:min-h-[700px] flex flex-col justify-between relative overflow-x-auto">
+              
+              {/* Top simulated header on paper */}
+              <div>
+                <PrintableHeader 
+                  title="Employee Meal Voucher QR Credential"
+                  meta={[
+                    { label: "Employee Name", value: `${user.first_name} ${user.last_name}` },
+                    { label: "Employee ID", value: user.employee_no || "N/A" },
+                    { label: "Department", value: getDeptDisplay() },
+                    { label: "Date Printed", value: new Date().toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" }) }
+                  ]}
+                />
+
+                {/* Center Badge preview area with cut-out lines */}
+                <div className="my-8 flex flex-col items-center justify-center">
+                  <div className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-teal-500"></span>
+                    <span>CR80 Badge Cut-Out Area (Scale: 100%)</span>
+                  </div>
+                  
+                  <div className="p-4 border-2 border-dashed border-zinc-300 rounded-2xl bg-zinc-50/50 flex items-center justify-center shadow-inner">
+                    <div className="printable-badge-card bg-white shadow-md rounded-xl overflow-hidden border" style={{ borderColor: selectedTheme.primary }}>
+                      {passMode === "standalone" ? (
+                        isPortrait ? (
+                          <div className="w-full h-full flex flex-col justify-between bg-white text-zinc-950 p-0 relative border border-zinc-200" style={{ width: '2.125in', height: '3.375in' }}>
+                            <div className="bg-zinc-50 border-b border-zinc-150 p-2 text-center">
+                              <h4 className="text-[10px] font-black tracking-wider text-zinc-800 uppercase leading-none">{branding.companyName}</h4>
+                              <p className="text-[7.5px] text-zinc-500 font-mono tracking-widest uppercase mt-0.5">Standalone Dietary Token</p>
+                            </div>
+                            <div className="flex-1 flex flex-col items-center justify-center p-2 gap-1">
+                              <div className="relative w-20 h-20 bg-white border border-zinc-200 rounded-xl flex items-center justify-center p-1 shadow-sm shrink-0">
+                                {qrDataUrl && <img src={qrDataUrl} alt="Standalone QR Pass" className="w-full h-full object-contain" referrerPolicy="no-referrer" />}
+                              </div>
+                              <span className="text-[7px] font-mono text-zinc-400 tracking-widest">TKN: {user.qr_code || user.employee_no || "N/A"}</span>
+                            </div>
+                            <div className="p-2 border-t border-zinc-150 bg-zinc-50 text-center">
+                              <h5 className="text-xs font-black text-zinc-900 leading-none">{user.first_name} {user.last_name}</h5>
+                              <p className="text-[7.5px] text-zinc-500 font-bold uppercase tracking-wider mt-0.5">{user.position || "Hospital Personnel"}</p>
+                              <div className="mt-1 flex items-center justify-center gap-1">
+                                <span className="text-[7px] font-mono font-bold text-zinc-400">ID NO:</span>
+                                <span className="text-[8px] font-mono font-black text-zinc-800 bg-white border border-zinc-150 px-1.5 py-0.5 rounded">{user.employee_no || "N/A"}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-full h-full flex bg-white text-zinc-950 p-0 relative border border-zinc-200" style={{ width: '3.375in', height: '2.125in' }}>
+                            <div className="w-28 border-r border-zinc-150 bg-zinc-50 p-2 flex flex-col items-center justify-center text-center">
+                              <div className="relative w-18 h-18 bg-white border border-zinc-200 rounded-xl flex items-center justify-center p-1 shadow-sm shrink-0">
+                                {qrDataUrl && <img src={qrDataUrl} alt="Standalone QR Pass" className="w-full h-full object-contain" referrerPolicy="no-referrer" />}
+                              </div>
+                              <span className="text-[6.5px] font-mono text-zinc-400 mt-1 tracking-widest">TKN: {user.qr_code || user.employee_no || "N/A"}</span>
+                            </div>
+                            <div className="flex-1 p-2 flex flex-col justify-between">
+                              <div>
+                                <h4 className="text-[10px] font-black tracking-wider text-zinc-800 uppercase leading-none">{branding.companyName}</h4>
+                                <p className="text-[7px] text-zinc-500 font-mono tracking-widest uppercase mt-0.5">Standalone Dietary Token</p>
+                                <div className="h-px bg-zinc-150 my-1" />
+                              </div>
+                              <div>
+                                <h5 className="text-sm font-black text-zinc-900 leading-none">{user.first_name} {user.last_name}</h5>
+                                <p className="text-[7.5px] text-zinc-500 font-bold uppercase tracking-wider mt-0.5">{user.position || "Hospital Personnel"}</p>
+                                <p className="text-[7.5px] font-mono mt-0.5 text-zinc-400">ID: {user.employee_no || "N/A"}</p>
+                              </div>
+                              <div className="text-[6px] text-emerald-600 bg-emerald-50 border border-emerald-150 rounded px-1 py-0.5 font-bold flex items-center gap-0.5 leading-none">
+                                <span>VERIFIED SHIFT CLAIM CREDENTIAL</span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      ) : isPortrait ? (
+                        <div className="w-full h-full flex flex-col justify-between bg-white text-zinc-950 p-0 relative" style={{ width: '2.125in', height: '3.375in' }}>
+                          <div className={`p-4 text-center flex flex-col items-center shrink-0 ${selectedTheme.bannerBg} relative`} style={{ height: '0.85in' }}>
+                            <h3 className="text-[10px] font-black uppercase tracking-wider text-white leading-none mb-1">{branding.companyName}</h3>
+                            <p className="text-[6px] text-zinc-300 font-mono tracking-widest uppercase">Dietary Services Pass</p>
+                            <div className="text-[6px] font-bold font-mono tracking-widest uppercase py-0.5 px-2 rounded mt-1 border border-white/20 inline-block text-white" style={{ backgroundColor: selectedTheme.accentColor }}>
+                              Verified personnel
+                            </div>
+                          </div>
+                          <div className="flex-1 flex flex-col items-center justify-between p-3 text-center bg-white">
+                            <div className="w-14 h-14 rounded-full border-2 border-zinc-100 overflow-hidden relative shadow-md shrink-0 bg-white" style={{ borderColor: selectedTheme.accentColor }}>
+                              {renderAvatarContent()}
+                            </div>
+                            <div className="space-y-0.5 mt-1">
+                              <h4 className="text-xs font-black text-zinc-900 leading-none">{user.first_name} {user.last_name}</h4>
+                              {showPosition && <p className="text-[8px] text-zinc-500 font-bold uppercase tracking-wider">{user.position || "Medical Staff"}</p>}
+                            </div>
+                            <div className="relative w-20 h-20 bg-white border border-zinc-200 rounded-xl flex items-center justify-center p-1 overflow-hidden shrink-0">
+                              {qrDataUrl && <img src={qrDataUrl} alt="Voucher QR Code" className="w-full h-full object-contain" referrerPolicy="no-referrer" />}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 border-t border-zinc-100 pt-1 w-full text-[7px] font-mono text-zinc-600">
+                              <div className="text-left">
+                                <span className="text-zinc-400 block font-bold leading-none">EMP ID:</span>
+                                <span className="font-black text-zinc-900 block mt-0.5">{user.employee_no || "N/A"}</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-zinc-400 block font-bold leading-none">DIVISION:</span>
+                                <span className="font-black text-zinc-900 truncate block mt-0.5">{getDeptDisplay()}</span>
+                              </div>
+                            </div>
+                          </div>
+                          {showDisclaimer && (
+                            <div className="text-[6px] font-mono bg-zinc-50 border-t border-zinc-100 py-1 text-center text-zinc-400 uppercase tracking-tight shrink-0">
+                              Property of {branding.companyName} • Authorized use only
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex bg-white text-zinc-950 p-0 relative" style={{ width: '3.375in', height: '2.125in' }}>
+                          <div className={`w-32 h-full flex flex-col justify-between p-3 text-center shrink-0 border-r border-zinc-100 ${selectedTheme.bannerBg}`} style={{ width: '1.25in' }}>
+                            <div className="space-y-1">
+                              <h3 className="text-[9px] font-black uppercase tracking-wider text-white leading-tight">{branding.companyName}</h3>
+                              <p className="text-[6px] text-zinc-400 font-mono uppercase tracking-widest">Dietary Pass</p>
+                            </div>
+                            <div className="w-16 h-16 bg-white border border-zinc-150 rounded-lg flex items-center justify-center p-1 mx-auto shadow-sm">
+                              {qrDataUrl && <img src={qrDataUrl} alt="Voucher QR Code" className="w-full h-full object-contain" referrerPolicy="no-referrer" />}
+                            </div>
+                            <div className="text-[6px] font-mono text-white bg-white/10 py-0.5 rounded border border-white/5 truncate">
+                              TKN: {user.qr_code || "EMP-001"}
+                            </div>
+                          </div>
+                          <div className="flex-1 flex flex-col justify-between p-3 bg-white">
+                            <div className="flex justify-between items-start gap-2">
+                              <div className="space-y-0.5">
+                                <h4 className="text-xs font-black text-zinc-900 leading-tight tracking-tight">{user.first_name} {user.last_name}</h4>
+                                {showPosition && <p className="text-[8px] text-zinc-500 font-bold uppercase tracking-wider">{user.position || "Medical Officer"}</p>}
+                              </div>
+                              <div className="w-10 h-10 rounded-full border border-zinc-100 overflow-hidden shrink-0 relative bg-white" style={{ borderColor: selectedTheme.accentColor }}>
+                                {renderAvatarContent()}
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 border-t border-dashed border-zinc-200 pt-2 text-[7px] font-mono text-zinc-600">
+                              <div>
+                                <span className="text-zinc-400 block font-bold leading-none uppercase">Emp ID</span>
+                                <span className="font-black text-zinc-950 block mt-0.5">{user.employee_no || "N/A"}</span>
+                              </div>
+                              <div>
+                                <span className="text-zinc-400 block font-bold leading-none uppercase">Department</span>
+                                <span className="font-black text-zinc-950 truncate block mt-0.5">{getDeptDisplay()}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer disclaimer on document */}
+              <div className="border-t border-zinc-200 pt-4 mt-8 flex flex-col sm:flex-row items-center justify-between text-[9px] font-mono text-zinc-400 gap-2">
+                <span>DIVINE GRACE MEDICAL CENTER • OFFICIAL DIETARY BENEFIT DOCUMENT</span>
+                <span>DOCUMENT REF: DGMC-QR-{new Date().getFullYear()}</span>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+</div>
   );
 }

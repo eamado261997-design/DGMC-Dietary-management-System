@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { MIN_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH_LIMITS } from "../../constants/security.js";
+import { DEFAULT_MIN_PASSWORD_LENGTH } from "../../utils/password.js";
 import { useAuth } from "../../context/AuthContext.js";
 import PageHeader from "../../components/PageHeader.js";
 import { useDebounce } from "../../hooks/useDebounce.js";
@@ -87,7 +89,6 @@ export default function SystemSettings() {
         throw new Error(data?.error || "Failed to retrieve diagnostics data");
       }
     } catch (err: any) {
-      console.error("Error fetching diagnostics:", err);
       setDiagnosticsError(err.message || "Failed to retrieve database diagnostics.");
     } finally {
       setLoadingDiagnostics(false);
@@ -141,7 +142,7 @@ export default function SystemSettings() {
 
 
   // Other rule properties in the system settings
-  const [minPasswordLength, setMinPasswordLength] = useState("8");
+  const [minPasswordLength, setMinPasswordLength] = useState(String(MIN_PASSWORD_LENGTH));
   const [freeMealLimitDaily, setFreeMealLimitDaily] = useState("1");
   const [auditLogRetentionDays, setAuditLogRetentionDays] = useState("30");
 
@@ -207,8 +208,8 @@ export default function SystemSettings() {
       } else {
         setAuditLogs(logs);
       }
-    } catch (err) {
-      console.error("Audit log retrieval failed", err);
+    } catch (_err) {
+      // Suppress audit log retrieval error
     } finally {
       setLogsLoading(false);
     }
@@ -225,8 +226,8 @@ export default function SystemSettings() {
         }));
         setSystemUsers(usersList);
       }
-    } catch (err) {
-      console.error("Failed to load user list for filter", err);
+    } catch (_err) {
+      // Suppress user list fetch error
     }
   };
 
@@ -248,6 +249,14 @@ export default function SystemSettings() {
     setSavingSettings(true);
     setSettingsSuccess(null);
     setSettingsError(null);
+
+    // Validate minimum password length input
+    const parsedMinPassLen = parseInt(minPasswordLength, 10);
+    if (isNaN(parsedMinPassLen) || parsedMinPassLen < MIN_PASSWORD_LENGTH_LIMITS.MIN || parsedMinPassLen > MIN_PASSWORD_LENGTH_LIMITS.MAX) {
+      setSettingsError(`Minimum password length must be a valid integer between ${MIN_PASSWORD_LENGTH_LIMITS.MIN} and ${MIN_PASSWORD_LENGTH_LIMITS.MAX}.`);
+      setSavingSettings(false);
+      return;
+    }
 
     // Prepare settings array
     const payload = {
@@ -333,7 +342,6 @@ export default function SystemSettings() {
         throw new Error(data?.error || "Invalid response from backup server");
       }
     } catch (err: any) {
-      console.error("Backup trigger failed:", err);
       setSettingsError(err.message || "Failed to generate secure ZIP database backup.");
     } finally {
       setGeneratingBackup(false);

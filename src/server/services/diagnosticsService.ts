@@ -189,8 +189,12 @@ export async function getSystemDiagnosticsData(benchmarkLogs: any[]) {
       path: log.path,
       method: log.method,
       status: log.status,
-      message: log.status >= 500 ? "Internal server error or exception caught" : "Client request validation or unauthorized access error",
-      ip: log.ip
+      isSeed: !!log.isSeed,
+      message: log.errorMessage || (log.isSeed
+        ? (log.status >= 500 ? "[Synthetic Telemetry Baseline] Internal server exception simulation" : "[Synthetic Telemetry Baseline] Client validation error simulation")
+        : (log.status >= 500 ? "Internal server error or exception caught" : "Client request validation or unauthorized access error")),
+      ip: log.ip,
+      errorStack: log.errorStack
     }));
 
   // Fetch actual or fallback record counts for the 8 schemas

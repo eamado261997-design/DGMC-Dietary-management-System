@@ -84,7 +84,6 @@ async function connectWithRetry<T>(
       if (attempt > maxRetries) {
         throw err;
       }
-      console.warn(`[DATA-ENGINE] [MySQL] Connection attempt ${attempt}/${maxRetries} failed: ${err.message}. Retrying in ${delay}ms...`);
       await new Promise((resolve) => setTimeout(resolve, delay));
       delay *= 2;
     }
@@ -186,20 +185,9 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
   const sslOptions = getSslOption();
 
   if (!host || host === 'YOUR_MYSQL_HOST' || host === '' || host === 'dgmc' || host === 'EMPTY') {
-    console.log("-------------------------------------------------------------------");
-    console.log("[DATA-ENGINE] MySQL is currently INACTIVE.");
-    console.log(`[DEBUG] Current Environment:`);
-    console.log(` - MYSQL_HOST: "${host || 'UNDEFINED'}"`);
-    console.log(` - MYSQL_PORT: "${portString}"`);
-    console.log(` - MYSQL_USER: "${user}"`);
-    console.log(`[ACTION] To enable MySQL, ensure you have a .env file with:`);
-    console.log(`         MYSQL_HOST=127.0.0.1`);
-    console.log("-------------------------------------------------------------------");
     isMysqlActive = false;
     return null;
   }
-
-  console.log(`[DATA-ENGINE] [MySQL] Connecting to: ${user}@${host}:${port}/${dbName} (SSL: ${sslOptions ? "Enabled" : "Disabled"})`);
 
   try {
     // 1. Establish connection to ensure database exists, wrapped in retry backoff
@@ -213,7 +201,6 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
       });
     }, 3, 500);
 
-    console.log(`[DATA-ENGINE] [MySQL] Dial-in handshake succeeded. Verifying database: "${dbName}"...`);
     await adminConnection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
     await adminConnection.end();
 
@@ -234,10 +221,8 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
     });
 
     isMysqlActive = true;
-    console.log(`[DATA-ENGINE] [MySQL] Persistent connection pool established in "${dbName}".`);
 
     // 3. Auto-Create target tables (DDL operations)
-    console.log(`[DATA-ENGINE] [MySQL] Running DDL integrity checks...`);
 
     // A. Departments table
     await dbPool.query(`
@@ -296,9 +281,16 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
         is_free TINYINT(1) NOT NULL DEFAULT 0,
         meal_amount DECIMAL(10, 2) NOT NULL,
         status VARCHAR(20) NOT NULL DEFAULT 'completed',
+        meal_type VARCHAR(20) NOT NULL DEFAULT 'paid',
         created_at VARCHAR(50) NOT NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    try {
+      await dbPool.query("ALTER TABLE transactions ADD COLUMN meal_type VARCHAR(20) NOT NULL DEFAULT 'paid'");
+    } catch (e) {
+      // Column already exists, safe to ignore
+    }
 
     // E. Free allowance logging
     await dbPool.query(`
@@ -378,27 +370,16 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
     const count = rows[0]?.cnt || 0;
 
     if (count === 0) {
-      console.log("[DATA-ENGINE] [MySQL] CLEAN SLATE DETECTED. Executing production-ready auto-seed script with batch operations...");
       await seedMySQL(dbPool, defaultDb);
       return defaultDb;
     } else {
-      console.log("[DATA-ENGINE] [MySQL] Database active. Loading records into system memory...");
       const loaded = await loadFromMySQL(dbPool);
-      console.log(`[DATA-ENGINE] [MySQL] Load completed. System ready.`);
       return loaded;
     }
 
-  } catch (error: any) {
+  } catch (_error: any) {
     totalQueryErrors++;
     lastErrorTimestamp = new Date().toISOString();
-    if (error.code === "EAI_AGAIN" || error.message?.includes("EAI_AGAIN") || error.code === "ENOTFOUND") {
-      console.warn("\n⚠️ [DATA-ENGINE] [MySQL] DNS Lookup failed! The MySQL hostname you configured ('" + host + "') is not resolvable from this container environment.");
-      console.log("👉 If you are in AI Studio / Cloud Run, please verify that you are referencing a publicly accessible database connection URL, or an active public IP address with proper port access rules configured.");
-      console.log("👉 If you are running locally on your computer via VS Code, make sure your MySQL service is running and configured correctly in your project's local .env file.\n");
-    } else {
-      console.error("❌ [DATA-ENGINE] [MySQL] Connection halted with error:", error.message);
-    }
-    console.log("[DATA-ENGINE] Zero-Downtime Fallback: Reverting immediately to standard local db.json storage engine. System is fully operational!");
     isMysqlActive = false;
     dbPool = null;
     return null;
@@ -489,8 +470,8 @@ async function seedMySQL(pool: any, defaultDb: DatabaseSchema): Promise<void> {
 
   // D. Seed Transactions
   if (defaultDb.transactions.length > 0) {
-    const txRows = defaultDb.transactions.map(t => [t.id, t.person_id, t.cashier_person_id, t.meal_date, t.meal_time, t.is_free ? 1 : 0, t.meal_amount, t.status, t.created_at]);
-    await batchReplace(pool, "transactions", ["id", "person_id", "cashier_person_id", "meal_date", "meal_time", "is_free", "meal_amount", "status", "created_at"], txRows);
+    const txRows = defaultDb.transactions.map(t => [t.id, t.person_id, t.cashier_person_id, t.meal_date, t.meal_time, t.is_free ? 1 : 0, t.meal_amount, t.status, t.meal_type || (t.is_free ? "free" : "paid"), t.created_at]);
+    await batchReplace(pool, "transactions", ["id", "person_id", "cashier_person_id", "meal_date", "meal_time", "is_free", "meal_amount", "status", "meal_type", "created_at"], txRows);
   }
 
   // E. Seed Free Meal Logs
@@ -504,8 +485,6 @@ async function seedMySQL(pool: any, defaultDb: DatabaseSchema): Promise<void> {
     const settingRows = defaultDb.system_settings.map(s => [s.id, s.setting_key, s.setting_value, s.updated_at, s.updated_by || null]);
     await batchReplace(pool, "system_settings", ["id", "setting_key", "setting_value", "updated_at", "updated_by"], settingRows);
   }
-
-  console.log("[DATA-ENGINE] [MySQL] Batch seeding completed. Tables primed.");
 }
 
 /**
@@ -565,6 +544,7 @@ async function loadFromMySQL(pool: any): Promise<DatabaseSchema> {
       is_free: t.is_free === 1 || t.is_free === true,
       meal_amount: Number(t.meal_amount),
       status: t.status,
+      meal_type: t.meal_type || (t.is_free ? "free" : "paid"),
       created_at: t.created_at
     })),
     free_meal_log: (freeLogs as any[]).map(f => ({
@@ -668,9 +648,9 @@ export async function syncStateToMySQL(pool: any, data: DatabaseSchema): Promise
 
     // 4. Synchronize Transactions
     if (data.transactions.length > 0) {
-      const rows = data.transactions.map(t => [t.id, t.person_id, t.cashier_person_id, t.meal_date, t.meal_time, t.is_free ? 1 : 0, t.meal_amount, t.status, t.created_at]);
-      const updateCols = "person_id=VALUES(person_id), cashier_person_id=VALUES(cashier_person_id), meal_date=VALUES(meal_date), meal_time=VALUES(meal_time), is_free=VALUES(is_free), meal_amount=VALUES(meal_amount), status=VALUES(status), created_at=VALUES(created_at)";
-      await batchUpsert(conn, "transactions", ["id", "person_id", "cashier_person_id", "meal_date", "meal_time", "is_free", "meal_amount", "status", "created_at"], rows, updateCols);
+      const rows = data.transactions.map(t => [t.id, t.person_id, t.cashier_person_id, t.meal_date, t.meal_time, t.is_free ? 1 : 0, t.meal_amount, t.status, t.meal_type || (t.is_free ? "free" : "paid"), t.created_at]);
+      const updateCols = "person_id=VALUES(person_id), cashier_person_id=VALUES(cashier_person_id), meal_date=VALUES(meal_date), meal_time=VALUES(meal_time), is_free=VALUES(is_free), meal_amount=VALUES(meal_amount), status=VALUES(status), meal_type=VALUES(meal_type), created_at=VALUES(created_at)";
+      await batchUpsert(conn, "transactions", ["id", "person_id", "cashier_person_id", "meal_date", "meal_time", "is_free", "meal_amount", "status", "meal_type", "created_at"], rows, updateCols);
     }
 
     // 5. Synchronize Free Meal Logs
@@ -747,11 +727,10 @@ export async function syncStateToMySQL(pool: any, data: DatabaseSchema): Promise
     }
 
     await conn.commit();
-  } catch (syncError: any) {
+  } catch (_syncError: any) {
     if (conn) {
       try { await conn.rollback(); } catch (_e) {}
     }
-    console.error("❌ [DATA-ENGINE] [MySQL] Failed background tick sync:", syncError.message);
   } finally {
     if (conn) {
       try { conn.release(); } catch (_e) {}

@@ -5,11 +5,12 @@ import PageHeader from "../../components/PageHeader.js";
 import VitalSignsLoader from "../../components/VitalSignsLoader.js";
 import { Person, Department } from "../../types.js";
 import { Plus, Edit2, Trash2, X, Lock, Check, UserCheck, Shield, Search } from "lucide-react";
+import { MIN_PASSWORD_LENGTH } from "../../constants/security.js";
 import { validatePasswordComplexity } from "../../utils/password.js";
 import { useDebounce } from "../../hooks/useDebounce.js";
 
 export default function SystemUsers() {
-  const { apiFetch } = useAuth();
+  const { apiFetch, user: authUser } = useAuth();
   const { openModal } = useModal();
   const [users, setUsers] = useState<Person[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -21,12 +22,20 @@ export default function SystemUsers() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editUser, setEditUser] = useState<Person | null>(null);
 
+  const isTargetProtected = editUser && (
+    editUser.id === 1 ||
+    editUser.role === "admin" ||
+    editUser.is_protected === true ||
+    editUser.protected === true
+  );
+  const isFieldsDisabled = isTargetProtected && authUser?.role !== "admin";
+
   // Form Fields
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"admin" | "manager" | "cashier">("manager");
+  const [role, setRole] = useState<"admin" | "dietary_admin" | "manager" | "cashier">("manager");
   const [managerDeptId, setManagerDeptId] = useState("");
   const [isActive, setIsActive] = useState(true);
 
@@ -34,6 +43,7 @@ export default function SystemUsers() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [roleFilter, setRoleFilter] = useState("");
+  const [minPasswordLength, setMinPasswordLength] = useState(MIN_PASSWORD_LENGTH);
 
   // Load data
   const loadData = React.useCallback(async () => {
@@ -43,6 +53,17 @@ export default function SystemUsers() {
       const dList = await apiFetch("/api/departments");
       setUsers(systemUsers);
       setDepartments(dList);
+
+      try {
+        const settings = await apiFetch("/api/settings");
+        if (Array.isArray(settings)) {
+          const item = settings.find((s: any) => s.setting_key === "min_password_length");
+          if (item && item.setting_value) {
+            const val = parseInt(item.setting_value, 10);
+            if (!isNaN(val) && val > 0) setMinPasswordLength(val);
+          }
+        }
+      } catch (sErr) {}
     } catch (err: any) {
       setError(err.message || "Failed to load system users.");
     } finally {
@@ -96,8 +117,16 @@ export default function SystemUsers() {
   };
 
   const handleDelete = async (id: number) => {
-    if (id === 1) {
-      alert("System Protected Administrator account cannot be deleted.");
+    const targetUser = users.find(u => u.id === id);
+    const isTargetProtected = id === 1 || (targetUser && (
+      targetUser.role === "admin" ||
+      targetUser.is_protected === true ||
+      targetUser.protected === true
+    ));
+    const isDietaryAdmin = authUser?.role !== "admin";
+
+    if (id === 1 || (isDietaryAdmin && isTargetProtected)) {
+      alert("Protected System Administrator account is untouchable and cannot be deleted.");
       return;
     }
     openModal(
@@ -119,10 +148,27 @@ export default function SystemUsers() {
     if (isSubmitting) return;
     setError(null);
 
+    const isTargetProtected = editUser && (
+      editUser.id === 1 ||
+      editUser.role === "admin" ||
+      editUser.is_protected === true ||
+      editUser.protected === true
+    );
+    const isDietaryAdmin = authUser?.role !== "admin";
+    if (isDietaryAdmin && isTargetProtected) {
+      setError("Protected System Administrator account cannot be modified by other accounts.");
+      return;
+    }
+
+    if (role === "admin" && isDietaryAdmin) {
+      setError("Only System Administrator can assign or manage admin roles.");
+      return;
+    }
+
     // Validate password complexity if editing with a new password, or creating a new user
     if (editUser) {
       if (password && password.trim() !== "") {
-        const passError = validatePasswordComplexity(password);
+        const passError = validatePasswordComplexity(password, minPasswordLength);
         if (passError) {
           setError(passError);
           return;
@@ -133,7 +179,7 @@ export default function SystemUsers() {
         setError("Password is required for creating new users.");
         return;
       }
-      const passError = validatePasswordComplexity(password);
+      const passError = validatePasswordComplexity(password, minPasswordLength);
       if (passError) {
         setError(passError);
         return;
@@ -248,7 +294,7 @@ export default function SystemUsers() {
                         <tr key={u.id} className="hover:bg-zinc-50/50 transition-colors">
                           <td className="px-6 py-4 flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center font-bold">
-                              {u.first_name[0]}{u.last_name[0]}
+                              {u.first_name?.[0] || u.username?.[0] || 'U'}{u.last_name?.[0] || ''}
                             </div>
                             <span className="font-bold text-zinc-900">
                               {u.first_name} {u.last_name}
@@ -285,23 +331,33 @@ export default function SystemUsers() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => openEditModal(u)}
-                                className="p-1.5 hover:bg-zinc-100 rounded-lg text-zinc-550 hover:text-teal-900 transition-colors"
-                                title="Edit System Privileges"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(u.id)}
-                                disabled={u.id === 1}
-                                className={`p-1.5 rounded-lg transition-colors ${
-                                  u.id === 1 ? "opacity-30 cursor-not-allowed" : "hover:bg-rose-50 text-zinc-550 hover:text-rose-600"
-                                }`}
-                                title="Delete Registry"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              {(() => {
+                                const isTargetProtected = u.id === 1 || u.role === "admin" || u.is_protected === true || u.protected === true;
+                                const isDietaryAdmin = authUser?.role !== "admin";
+                                const cannotDelete = isDietaryAdmin && isTargetProtected;
+                                const isViewOnly = isDietaryAdmin && isTargetProtected;
+                                return (
+                                  <>
+                                    <button
+                                      onClick={() => openEditModal(u)}
+                                      className="p-1.5 rounded-lg transition-colors hover:bg-zinc-100 text-zinc-550 hover:text-teal-900"
+                                      title={isViewOnly ? "View Protected System Administrator (Read-Only)" : "Edit System Privileges"}
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDelete(u.id)}
+                                      disabled={cannotDelete || u.id === 1}
+                                      className={`p-1.5 rounded-lg transition-colors ${
+                                        cannotDelete || u.id === 1 ? "opacity-30 cursor-not-allowed text-zinc-400" : "hover:bg-rose-50 text-zinc-550 hover:text-rose-600"
+                                      }`}
+                                      title={u.id === 1 ? "Primary administrator cannot be deleted" : cannotDelete ? "Protected System Administrator account cannot be deleted" : "Delete Registry"}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                );
+                              })()}
                             </div>
                           </td>
                         </tr>
@@ -319,9 +375,17 @@ export default function SystemUsers() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-3xl w-full max-w-lg max-h-[92vh] overflow-y-auto border border-zinc-200 shadow-2xl flex flex-col my-auto">
             <div className="p-4 sm:p-6 border-b border-zinc-150 flex items-center justify-between bg-zinc-50 rounded-t-3xl sticky top-0 z-10">
-              <h3 className="text-sm font-black text-zinc-900">
-                {editUser ? "Edit System User" : "Add System User"}
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-black text-zinc-900">
+                  {editUser ? "Edit System User" : "Add System User"}
+                </h3>
+                {isTargetProtected && (
+                  <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider animate-pulse">
+                    <Shield className="w-2.5 h-2.5" />
+                    Protected
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
@@ -338,6 +402,16 @@ export default function SystemUsers() {
                 </div>
               )}
 
+              {isFieldsDisabled && (
+                <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl font-medium flex items-start gap-2">
+                  <Lock className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="font-bold block">Super-Admin Clearance Required</span>
+                    This is a protected system administrator account. You may view its details, but you do not have permission to modify its settings or terminal privileges.
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] font-bold text-zinc-600 block mb-1">First Name</label>
@@ -346,7 +420,8 @@ export default function SystemUsers() {
                     required
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full h-9 px-3 text-xs bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none"
+                    disabled={isFieldsDisabled}
+                    className="w-full h-9 px-3 text-xs bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -356,7 +431,8 @@ export default function SystemUsers() {
                     required
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full h-9 px-3 text-xs bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none"
+                    disabled={isFieldsDisabled}
+                    className="w-full h-9 px-3 text-xs bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -369,7 +445,8 @@ export default function SystemUsers() {
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full h-9 px-3 text-xs bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none font-mono"
+                    disabled={isFieldsDisabled}
+                    className="w-full h-9 px-3 text-xs bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -377,12 +454,15 @@ export default function SystemUsers() {
                   <select
                     value={role}
                     onChange={(e) => setRole(e.target.value as any)}
-                    className="w-full h-9 px-3 text-xs bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none text-zinc-600 font-bold"
+                    disabled={isFieldsDisabled}
+                    className="w-full h-9 px-3 text-xs bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none text-zinc-600 font-bold disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <option value="manager">Manager (Manage Dept Schedules)</option>
                     <option value="dietary_admin">Dietary Admin (Stats, Dashboard, Employees, Users, Depts, Reports)</option>
                     <option value="cashier">Cashier (Process Meal Barcodes)</option>
-                    <option value="admin">Administrator (Full Systems Access)</option>
+                    {authUser?.role === "admin" && (
+                      <option value="admin">Administrator (Full Systems Access)</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -394,13 +474,14 @@ export default function SystemUsers() {
                 <input
                   type="password"
                   required={!editUser}
-                  placeholder={editUser ? "••••••••" : "Min 12 chars, numbers, symbols, mixed case"}
+                  placeholder={editUser ? "••••••••" : `Min ${minPasswordLength} chars, numbers, symbols, mixed case`}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-9 px-3 text-xs bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none"
+                  disabled={isFieldsDisabled}
+                  className="w-full h-9 px-3 text-xs bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                 />
                 <span className="text-[9px] text-zinc-400 block mt-1">
-                  Must be at least 12 characters, and contain mixed case letters, at least one number, and one symbol.
+                  Must be at least {minPasswordLength} characters, and contain mixed case letters, at least one number, and one symbol.
                 </span>
               </div>
 
@@ -413,7 +494,8 @@ export default function SystemUsers() {
                     required
                     value={managerDeptId}
                     onChange={(e) => setManagerDeptId(e.target.value)}
-                    className="w-full h-9 px-3 text-xs bg-zinc-50 border border-teal-200 rounded-lg focus:outline-none text-teal-900 font-bold"
+                    disabled={isFieldsDisabled}
+                    className="w-full h-9 px-3 text-xs bg-zinc-50 border border-teal-200 rounded-lg focus:outline-none text-teal-900 font-bold disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {departments.map((d) => (
                       <option key={d.id} value={d.id}>
@@ -433,7 +515,8 @@ export default function SystemUsers() {
                   id="user_active_chk"
                   checked={isActive}
                   onChange={(e) => setIsActive(e.target.checked)}
-                  className="w-4 h-4 text-teal-700 bg-zinc-50 border-zinc-300 rounded focus:ring-teal-500"
+                  disabled={isFieldsDisabled}
+                  className="w-4 h-4 text-teal-700 bg-zinc-50 border-zinc-300 rounded focus:ring-teal-500 disabled:opacity-60 disabled:cursor-not-allowed"
                 />
                 <label htmlFor="user_active_chk" className="text-[10px] font-bold text-zinc-600 select-none cursor-pointer uppercase">
                   Account is active (permit network access)
@@ -449,13 +532,20 @@ export default function SystemUsers() {
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="h-9 px-5 bg-teal-800 hover:bg-teal-900 text-white rounded-lg text-xs font-bold disabled:opacity-50"
-                >
-                  {isSubmitting ? "Saving..." : "Confirm Credentials"}
-                </button>
+                {!isFieldsDisabled ? (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="h-9 px-5 bg-teal-800 hover:bg-teal-900 text-white rounded-lg text-xs font-bold disabled:opacity-50"
+                  >
+                    {isSubmitting ? "Saving..." : "Confirm Credentials"}
+                  </button>
+                ) : (
+                  <div className="text-xs text-rose-700 font-bold bg-rose-50 border border-rose-150 px-3 py-1.5 rounded-xl flex items-center gap-1.5 font-mono">
+                    <Lock className="w-3.5 h-3.5" />
+                    Read-Only Mode
+                  </div>
+                )}
               </div>
             </form>
           </div>

@@ -65,7 +65,7 @@ export default function ManagerDashboard({ onViewChange }: { onViewChange: (v: s
         }));
         setSchedules(normalizedSchedules);
       })
-      .catch((err) => console.error("Manager dashboard data load error", err))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 

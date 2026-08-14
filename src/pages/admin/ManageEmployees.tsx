@@ -5,6 +5,7 @@ import PageHeader from "../../components/PageHeader.js";
 import VitalSignsLoader from "../../components/VitalSignsLoader.js";
 import { Person, Department } from "../../types.js";
 import { Search, Plus, Edit2, Trash2, ShieldAlert, User, Check, X, Building, Upload, FileText, Download, CheckCircle2, AlertCircle, Lock as LockIcon } from "lucide-react";
+import { MIN_PASSWORD_LENGTH } from "../../constants/security.js";
 import { validatePasswordComplexity } from "../../utils/password.js";
 import { SecureField } from "../../components/SecureField.js";
 import { useDebounce } from "../../hooks/useDebounce.js";
@@ -40,13 +41,14 @@ export default function ManageEmployees() {
   const [importingCsv, setImportingCsv] = useState(false);
   const [csvSuccessMsg, setCsvSuccessMsg] = useState<string | null>(null);
   const [csvErrorMsg, setCsvErrorMsg] = useState<string | null>(null);
+  const [minPasswordLength, setMinPasswordLength] = useState(MIN_PASSWORD_LENGTH);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!personToReset || isSubmitting) return;
     setResetError(null);
 
-    const passError = validatePasswordComplexity(resetPassword);
+    const passError = validatePasswordComplexity(resetPassword, minPasswordLength);
     if (passError) {
       setResetError(passError);
       return;
@@ -88,6 +90,17 @@ export default function ManageEmployees() {
       const dList = await apiFetch("/api/departments");
       setEmployees(pList);
       setDepartments(dList);
+
+      try {
+        const settings = await apiFetch("/api/settings");
+        if (Array.isArray(settings)) {
+          const item = settings.find((s: any) => s.setting_key === "min_password_length");
+          if (item && item.setting_value) {
+            const val = parseInt(item.setting_value, 10);
+            if (!isNaN(val) && val > 0) setMinPasswordLength(val);
+          }
+        }
+      } catch (sErr) {}
     } catch (err: any) {
       setError(err.message || "Failed to load employee records.");
     } finally {
@@ -139,8 +152,7 @@ export default function ManageEmployees() {
             body: JSON.stringify({ ciphertext: val })
           });
           return res.decrypted || val;
-        } catch (e) {
-          console.error("Failed to decrypt field during edit:", e);
+        } catch (_e) {
           return val;
         }
       }
@@ -192,7 +204,7 @@ export default function ManageEmployees() {
     // Validate password complexity if editing with a new password, or creating a new employee
     if (editPerson && editPerson.id) {
       if (formPassword && formPassword.trim() !== "") {
-        const passError = validatePasswordComplexity(formPassword);
+        const passError = validatePasswordComplexity(formPassword, minPasswordLength);
         if (passError) {
           setError(passError);
           return;
@@ -203,7 +215,7 @@ export default function ManageEmployees() {
         setError("Password is required for introducing new personnel.");
         return;
       }
-      const passError = validatePasswordComplexity(formPassword);
+      const passError = validatePasswordComplexity(formPassword, minPasswordLength);
       if (passError) {
         setError(passError);
         return;
@@ -513,7 +525,7 @@ export default function ManageEmployees() {
                       <tr key={e.id} className="hover:bg-zinc-50/50 transition-colors">
                         <td className="px-6 py-4 flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-teal-50 text-teal-700 border border-teal-100 flex items-center justify-center font-bold font-mono text-[10px]">
-                            {e.first_name[0]}{e.last_name[0]}
+                            {e.first_name?.[0] || e.username?.[0] || 'E'}{e.last_name?.[0] || ''}
                           </div>
                           <div>
                             <span className="font-bold text-zinc-900 block">
@@ -653,11 +665,11 @@ export default function ManageEmployees() {
                     required={!editPerson}
                     value={formPassword}
                     onChange={(e) => setFormPassword(e.target.value)}
-                    placeholder={editPerson ? "Unchanged" : "Min 12 chars, numbers, symbols, mixed case"}
+                    placeholder={editPerson ? "Unchanged" : `Min ${minPasswordLength} chars, numbers, symbols, mixed case`}
                     className="w-full h-9 px-3 text-xs bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-700 focus:bg-white"
                   />
                   <span className="text-[9px] text-zinc-400 block mt-1">
-                    Must be at least 12 characters, and contain mixed case letters, at least one number, and one symbol.
+                    Must be at least {minPasswordLength} characters, and contain mixed case letters, at least one number, and one symbol.
                   </span>
                 </div>
 

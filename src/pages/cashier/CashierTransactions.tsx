@@ -3,6 +3,7 @@ import { useAuth } from "../../context/AuthContext.js";
 import PageHeader from "../../components/PageHeader.js";
 import { Transaction } from "../../types.js";
 import { RefreshCw, Ban, CheckCircle2, History, AlertTriangle, Printer, Download } from "lucide-react";
+import PrintableHeader from "../../components/PrintableHeader.js";
 
 export default function CashierTransactions() {
   const { apiFetch } = useAuth();
@@ -14,8 +15,8 @@ export default function CashierTransactions() {
     try {
       const data = await apiFetch("/api/cashier/transactions");
       setTransactions(data);
-    } catch (err: any) {
-      console.error(err);
+    } catch (_err: any) {
+      // Suppress error in production
     } finally {
       setLoading(false);
     }

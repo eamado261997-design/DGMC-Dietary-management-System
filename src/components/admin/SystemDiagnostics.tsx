@@ -63,6 +63,8 @@ interface DiagnosticsData {
     status: number;
     message: string;
     ip: string;
+    isSeed?: boolean;
+    errorStack?: string;
   }>;
 }
 
@@ -83,7 +85,7 @@ export default function SystemDiagnostics() {
   const [data, setData] = useState<DiagnosticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(false);
   const [flushingCache, setFlushingCache] = useState(false);
   const [failoverActionLoading, setFailoverActionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "cache" | "errors" | "tips">("overview");
@@ -98,8 +100,8 @@ export default function SystemDiagnostics() {
           setData(res);
         }
       })
-      .catch((err) => {
-        console.error("Failed to fetch diagnostics:", err);
+      .catch(() => {
+        // Suppress console diagnostics in production
       })
       .finally(() => {
         setLoading(false);
@@ -115,7 +117,7 @@ export default function SystemDiagnostics() {
     if (!autoRefresh) return;
     const interval = setInterval(() => {
       fetchDiagnostics(false);
-    }, 5000);
+    }, 15000);
     return () => clearInterval(interval);
   }, [autoRefresh]);
 
@@ -125,7 +127,7 @@ export default function SystemDiagnostics() {
       .then(() => {
         fetchDiagnostics(false);
       })
-      .catch((err) => console.error("Failed to clear cache:", err))
+      .catch(() => {})
       .finally(() => setFlushingCache(false));
   };
 
@@ -138,7 +140,7 @@ export default function SystemDiagnostics() {
       .then(() => {
         fetchDiagnostics(false);
       })
-      .catch((err) => console.error("Failed to trigger failover:", err))
+      .catch(() => {})
       .finally(() => setFailoverActionLoading(false));
   };
 
@@ -150,7 +152,7 @@ export default function SystemDiagnostics() {
       .then(() => {
         fetchDiagnostics(false);
       })
-      .catch((err) => console.error("Failed to recover primary:", err))
+      .catch(() => {})
       .finally(() => setFailoverActionLoading(false));
   };
 
@@ -200,7 +202,7 @@ export default function SystemDiagnostics() {
               onChange={(e) => setAutoRefresh(e.target.checked)}
               className="w-4 h-4 rounded text-teal-600 border-zinc-350 focus:ring-teal-500 accent-teal-600 cursor-pointer"
             />
-            <span>Auto-refresh (5s)</span>
+            <span>Auto-refresh (15s)</span>
           </label>
 
           <button
@@ -565,7 +567,16 @@ export default function SystemDiagnostics() {
                           <span className="text-zinc-800 font-semibold">{err.path}</span>
                         </td>
                         <td className="py-3 px-4 text-rose-600 font-medium truncate max-w-xs" title={err.message}>
-                          {err.message}
+                          {err.isSeed ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold bg-zinc-100 text-zinc-600 border border-zinc-200 mr-2 shrink-0">
+                              Synthetic Seed
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold bg-rose-100 text-rose-800 border border-rose-200 mr-2 shrink-0">
+                              Live Exception
+                            </span>
+                          )}
+                          <span>{err.message}</span>
                         </td>
                         <td className="py-3 px-4 text-center font-mono">
                           <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 font-bold rounded-full text-[10px]">

@@ -66,8 +66,7 @@ export const SecureField: React.FC<SecureFieldProps> = ({
       } else {
         throw new Error("Invalid response");
       }
-    } catch (err: any) {
-      console.error("Failed on-demand decryption:", err);
+    } catch (_err: any) {
       setError("Failed");
       setTimeout(() => setError(null), 2500);
     } finally {

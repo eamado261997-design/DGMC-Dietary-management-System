@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext.js";
 import VitalSignsLoader from "../../components/VitalSignsLoader.js";
 import { History, Search, Calendar, ChevronRight, Activity, Receipt, BadgeAlert, Coins, Printer, AlertCircle } from "lucide-react";
+import PrintableHeader from "../../components/PrintableHeader.js";
 
 interface Transaction {
   id: number;
@@ -40,8 +41,7 @@ export default function EmployeeMeals() {
         localStorage.setItem("cached_employee_meals_timestamp", nowStr);
         setCacheTimestamp(nowStr);
         setIsOfflineMode(false);
-      } catch (err) {
-        console.error("Failed to load personal ledger", err);
+      } catch (_err) {
         const cached = localStorage.getItem("cached_employee_meals");
         if (cached) {
           setTransactions(JSON.parse(cached));
@@ -126,25 +126,13 @@ export default function EmployeeMeals() {
 
   return (
     <div id="employee-meals-ledger-view" className="space-y-6 max-w-4xl mx-auto animate-fade-in pb-12">
-      {/* Official Print-Only Branding Header */}
-      <div className="print-header-brand">
-        <h1>Divine Grace Medical Center</h1>
-        <p>Compassionate Care, Exceptional Service</p>
-        <p className="doc-title">Personal Dietary Benefit Claim Ledger</p>
-      </div>
-
-      <div className="print-meta-grid">
-        <div className="print-meta-item">
-          <span>Date Printed: </span>
-          <span>{new Date().toLocaleString()}</span>
-        </div>
-        <div className="print-meta-item">
-          <span>Selected Period: </span>
-          <span>
-            {selectedPeriod === "all" ? "Full History Record" : selectedPeriod === "11_25" ? `${months[selectedMonth]} 11th to 25th, ${selectedYear}` : `${months[selectedMonth]} 26th to 10th, ${selectedYear}`}
-          </span>
-        </div>
-      </div>
+      <PrintableHeader 
+        title="Personal Dietary Benefit Claim Ledger"
+        meta={[
+          { label: "Date Printed", value: new Date().toLocaleString() },
+          { label: "Selected Period", value: selectedPeriod === "all" ? "Full History Record" : selectedPeriod === "11_25" ? `${months[selectedMonth]} 11th to 25th, ${selectedYear}` : `${months[selectedMonth]} 26th to 10th, ${selectedYear}` }
+        ]}
+      />
 
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-200 pb-5 no-print">

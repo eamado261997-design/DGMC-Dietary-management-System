@@ -48,8 +48,7 @@ export function verifyPassword(password: string, storedHash: string): boolean {
       const originalHash = parts[3];
       const testHash = crypto.pbkdf2Sync(password, salt, iterations, 64, "sha512").toString("hex");
       return testHash === originalHash;
-    } catch (err) {
-      console.error("[SECURITY] PBKDF2 password verification error:", err);
+    } catch (_err) {
       return false;
     }
   }
@@ -67,8 +66,7 @@ export function generateToken(payload: any): string {
 export function verifyToken(token: string): any {
   try {
     return jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
-  } catch (err) {
-    console.error("[SECURITY] Token verification error:", err);
+  } catch (_err) {
     return null;
   }
 }
@@ -78,8 +76,6 @@ let cachedDbState: DatabaseSchema | null = null;
 
 // Dual-mode database loader, executed at start-up
 export async function loadAndInitDatabase(): Promise<void> {
-  console.log("[DATA-ENGINE] Initializing dual database storage layer...");
-  
   let activeState: DatabaseSchema;
   if (fs.existsSync(DB_FILE_PATH)) {
     try {
@@ -177,7 +173,6 @@ export async function loadAndInitDatabase(): Promise<void> {
       });
     }
 
-    console.log("[DATA-ENGINE] Utilizing LIVE MySQL storage engine. Backup stored locally at db.json and SQLite");
     // Ensure backup is saved in encrypted format
     const encryptedPeople = cachedDbState.people.map(encryptPerson);
     const dataToSave = {
@@ -187,12 +182,9 @@ export async function loadAndInitDatabase(): Promise<void> {
     fs.writeFileSync(DB_FILE_PATH, JSON.stringify(dataToSave, null, 2), "utf-8");
     
     // Keep SQLite database in lockstep with MySQL loads
-    await syncStateToSqlite(cachedDbState).catch((err) => {
-      console.error("[DATA-ENGINE] SQLite synchronization from MySQL loaded state failed:", err);
-    });
+    await syncStateToSqlite(cachedDbState).catch(() => {});
   } else {
     cachedDbState = activeState;
-    console.log("[DATA-ENGINE] Utilizing LOCAL SQLite & JSON storage engine fallback.");
     // Save local backup with updated admin
     const encryptedPeople = cachedDbState.people.map(encryptPerson);
     const dataToSave = {
@@ -202,9 +194,7 @@ export async function loadAndInitDatabase(): Promise<void> {
     fs.writeFileSync(DB_FILE_PATH, JSON.stringify(dataToSave, null, 2), "utf-8");
     
     // Ensure SQLite is in sync
-    await syncStateToSqlite(cachedDbState).catch((err) => {
-      console.error("[DATA-ENGINE] Local SQLite synchronization failed:", err);
-    });
+    await syncStateToSqlite(cachedDbState).catch(() => {});
   }
 }
 
@@ -218,8 +208,7 @@ export function readDatabase(): DatabaseSchema {
           parsed.people = parsed.people.map(decryptPerson);
         }
         cachedDbState = parsed;
-      } catch (err) {
-        console.error("Error reading fallback database JSON:", err);
+      } catch (_err) {
         cachedDbState = seedDatabase();
       }
     } else {
@@ -279,21 +268,17 @@ export function writeDatabase(data: DatabaseSchema): void {
   // 1. Instantly write to local backup JSON file
   try {
     fs.writeFileSync(DB_FILE_PATH, JSON.stringify(dataToSave, null, 2), "utf-8");
-  } catch (err) {
-    console.error("[DATA-ENGINE] Error writing local JSON backup:", err);
+  } catch (_err) {
+    // Suppress JSON write error
   }
 
   // 2. Synchronize in lockstep to SQLite
-  syncStateToSqlite(data).catch((err) => {
-    console.error("[DATA-ENGINE] Background SQLite synchronization failed:", err);
-  });
+  syncStateToSqlite(data).catch(() => {});
 
   // 3. Asynchronously synchronizes in lockstep to active MySQL tables
   const pool = getMysqlPool();
   if (pool) {
-    syncStateToMySQL(pool, dataToSave).catch((err) => {
-      console.error("[DATA-ENGINE] Background MySQL synchronization failed:", err);
-    });
+    syncStateToMySQL(pool, dataToSave).catch(() => {});
   }
 }
 
@@ -315,6 +300,8 @@ function seedDatabase(): DatabaseSchema {
       email: "it.admin@dgmc.com",
       phone: "",
       is_active: true,
+      is_protected: true,
+      protected: true,
       created_at: nowStr,
       updated_at: nowStr
     },
@@ -349,7 +336,7 @@ function seedDatabase(): DatabaseSchema {
     { id: 6, setting_key: "schedule_cutoff_days", setting_value: "3", updated_at: nowStr },
     { id: 7, setting_key: "max_login_attempts", setting_value: "5", updated_at: nowStr },
     { id: 8, setting_key: "lockout_duration_minutes", setting_value: "15", updated_at: nowStr },
-    { id: 9, setting_key: "min_password_length", setting_value: "8", updated_at: nowStr },
+    { id: 9, setting_key: "min_password_length", setting_value: "6", updated_at: nowStr },
     { id: 10, setting_key: "company_name", setting_value: "Divine Grace Medical Center", updated_at: nowStr },
     { id: 11, setting_key: "company_tagline", setting_value: "Compassionate Care, Exceptional Service", updated_at: nowStr },
     { id: 12, setting_key: "company_logo_url", setting_value: "", updated_at: nowStr },

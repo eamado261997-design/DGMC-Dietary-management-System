@@ -66,8 +66,7 @@ export default function Layout({ children, activeView, onViewChange }: LayoutPro
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response to PWA install prompt in sidebar: ${outcome}`);
+    await deferredPrompt.userChoice;
     setDeferredPrompt(null);
     setShowInstallBtn(false);
   };
@@ -85,8 +84,10 @@ export default function Layout({ children, activeView, onViewChange }: LayoutPro
           { id: "admin-users", label: "System Users", icon: ClipboardList },
           { id: "admin-departments", label: "Departments", icon: Building },
           { id: "admin-reports", label: "Reports & Auditing", icon: BarChart3 },
-          ...(user.role === "admin" ? [{ id: "admin-settings", label: "System Settings", icon: Settings }] : []),
-          { id: "admin-audit-trail", label: "Compliance Audit", icon: ShieldAlert },
+          ...(user.role === "admin" ? [
+            { id: "admin-settings", label: "System Settings", icon: Settings },
+            { id: "admin-audit-trail", label: "Compliance Audit", icon: ShieldAlert }
+          ] : []),
           { id: "change-password", label: "Security & Pass", icon: Lock }
         ];
       case "manager":
@@ -246,7 +247,7 @@ export default function Layout({ children, activeView, onViewChange }: LayoutPro
           {/* User Profile Summary */}
           <div className="p-4 mx-3 my-4 rounded-xl bg-teal-900/40 border border-teal-900 flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-teal-800/80 border border-teal-700 font-mono text-zinc-100 flex items-center justify-center font-bold text-xs select-none">
-              {user.first_name[0]}{user.last_name[0]}
+              {user.first_name?.[0] || user.username?.[0] || 'U'}{user.last_name?.[0] || ''}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold text-white truncate leading-tight">{user.first_name} {user.last_name}</p>

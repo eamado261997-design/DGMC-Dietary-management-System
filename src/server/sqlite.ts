@@ -18,8 +18,6 @@ export function isSqliteConnected(): boolean {
 }
 
 export async function initializeSqlite(defaultDb: DatabaseSchema): Promise<DatabaseSchema | null> {
-  console.log(`[DATA-ENGINE] [SQLite] Initializing SQLite storage layer at: ${SQLITE_DB_PATH}`);
-  
   try {
     sqliteDb = new Database(SQLITE_DB_PATH);
     // Enable WAL mode for high performance concurrent reads and writes
@@ -27,7 +25,6 @@ export async function initializeSqlite(defaultDb: DatabaseSchema): Promise<Datab
     sqliteDb.pragma("foreign_keys = ON");
     
     isSqliteActive = true;
-    console.log("[DATA-ENGINE] [SQLite] Persistent database connection established.");
 
     // Create tables
     sqliteDb.exec(`
@@ -77,6 +74,7 @@ export async function initializeSqlite(defaultDb: DatabaseSchema): Promise<Datab
         is_free INTEGER NOT NULL DEFAULT 0,
         meal_amount REAL NOT NULL,
         status TEXT NOT NULL DEFAULT 'completed',
+        meal_type TEXT NOT NULL DEFAULT 'paid',
         created_at TEXT NOT NULL
       );
 
@@ -116,6 +114,12 @@ export async function initializeSqlite(defaultDb: DatabaseSchema): Promise<Datab
       );
     `);
 
+    try {
+      sqliteDb.exec("ALTER TABLE transactions ADD COLUMN meal_type TEXT DEFAULT 'paid'");
+    } catch (e) {
+      // Column might already exist
+    }
+
     // Create indexes for high performance query optimization
     sqliteDb.exec(`
       CREATE INDEX IF NOT EXISTS idx_people_dept ON people(department_id);
@@ -133,17 +137,13 @@ export async function initializeSqlite(defaultDb: DatabaseSchema): Promise<Datab
     const count = result?.cnt || 0;
 
     if (count === 0) {
-      console.log("[DATA-ENGINE] [SQLite] CLEAN SLATE DETECTED. Executing automatic database seeding...");
       await syncStateToSqlite(defaultDb);
       return defaultDb;
     } else {
-      console.log("[DATA-ENGINE] [SQLite] Loading records into memory cache...");
       const loaded = await loadFromSqlite();
-      console.log("[DATA-ENGINE] [SQLite] Load completed successfully.");
       return loaded;
     }
-  } catch (error: any) {
-    console.error("❌ [DATA-ENGINE] [SQLite] Initialization failed:", error.message);
+  } catch (_error: any) {
     isSqliteActive = false;
     sqliteDb = null;
     return null;
@@ -208,6 +208,7 @@ export async function loadFromSqlite(): Promise<DatabaseSchema> {
       is_free: t.is_free === 1 || t.is_free === true,
       meal_amount: Number(t.meal_amount),
       status: t.status,
+      meal_type: t.meal_type || (t.is_free === 1 || t.is_free === true ? "free" : "paid"),
       created_at: t.created_at
     })),
     free_meal_log: freeLogs.map(f => ({
@@ -310,11 +311,22 @@ export async function syncStateToSqlite(data: DatabaseSchema): Promise<void> {
     // 4. Transactions
     if (data.transactions.length > 0) {
       const insertStmt = sqliteDb!.prepare(`
-        INSERT OR REPLACE INTO transactions (id, person_id, cashier_person_id, meal_date, meal_time, is_free, meal_amount, status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO transactions (id, person_id, cashier_person_id, meal_date, meal_time, is_free, meal_amount, status, meal_type, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       for (const t of data.transactions) {
-        insertStmt.run(t.id, t.person_id, t.cashier_person_id, t.meal_date, t.meal_time, t.is_free ? 1 : 0, t.meal_amount, t.status, t.created_at);
+        insertStmt.run(
+          t.id,
+          t.person_id,
+          t.cashier_person_id,
+          t.meal_date,
+          t.meal_time,
+          t.is_free ? 1 : 0,
+          t.meal_amount,
+          t.status,
+          t.meal_type || (t.is_free ? "free" : "paid"),
+          t.created_at
+        );
       }
     }
 
@@ -409,7 +421,7 @@ export async function syncStateToSqlite(data: DatabaseSchema): Promise<void> {
 
   try {
     syncTx();
-  } catch (err: any) {
-    console.error("[DATA-ENGINE] [SQLite] Transaction sync failed:", err.message);
+  } catch (_err: any) {
+    // Suppress SQLite sync error in production
   }
 }

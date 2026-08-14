@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
-import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import { AlertTriangle, RefreshCw, Home, Mail } from "lucide-react";
 
 interface Props {
   children: ReactNode;
@@ -20,8 +20,8 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("Uncaught error:", error, errorInfo);
+  public componentDidCatch(_error: Error, _errorInfo: ErrorInfo) {
+    // Suppress console diagnostics in production
   }
 
   private handleReset = () => {
@@ -31,6 +31,30 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
+      const supportEmail = "itsupport@dgmc.ph";
+      const subject = encodeURIComponent("[System Error Report] Interface Exception Trace");
+      const errorMsg = this.state.error?.message || "Unknown Application Error";
+      const errorStack = this.state.error?.stack || "No stack trace recorded";
+      const currentUrl = typeof window !== "undefined" ? window.location.href : "Unknown URL";
+      const timestamp = new Date().toISOString();
+      const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : "Unknown Client";
+
+      const bodyText = `Hello IT Support,
+
+An unexpected error occurred in the DGMC Meal Management & Dining Portal.
+
+--- ERROR DETAILS ---
+Error Message: ${errorMsg}
+Page URL: ${currentUrl}
+Timestamp: ${timestamp}
+User Agent: ${userAgent}
+
+--- STACK TRACE ---
+${errorStack}
+`;
+
+      const mailtoUrl = `mailto:${supportEmail}?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
+
       return (
         <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-6 font-sans">
           <div className="max-w-md w-full bg-white rounded-3xl border border-zinc-200 p-8 shadow-2xl">
@@ -49,15 +73,23 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="space-y-3">
               <button
                 onClick={this.handleReset}
-                className="w-full h-11 bg-zinc-900 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-zinc-800 transition-all active:scale-95 shadow-lg shadow-zinc-200"
+                className="w-full h-11 bg-zinc-900 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-zinc-800 transition-all active:scale-95 shadow-lg shadow-zinc-200 cursor-pointer"
               >
                 <RefreshCw className="w-4 h-4" />
                 Reload Application
               </button>
+
+              <a
+                href={mailtoUrl}
+                className="w-full h-11 bg-teal-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-teal-800 transition-all active:scale-95 shadow-md shadow-teal-700/20"
+              >
+                <Mail className="w-4 h-4" />
+                Contact IT Support
+              </a>
               
               <button
                 onClick={() => window.location.href = "/"}
-                className="w-full h-11 bg-white border border-zinc-200 text-zinc-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-zinc-50 transition-all"
+                className="w-full h-11 bg-white border border-zinc-200 text-zinc-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-zinc-50 transition-all cursor-pointer"
               >
                 <Home className="w-4 h-4" />
                 Return to Dashboard
@@ -82,3 +114,4 @@ export class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
+

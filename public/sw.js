@@ -10,10 +10,17 @@ const PRE_CACHE_ASSETS = [
 // Install Event: Pre-cache core assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
+    caches.open(CACHE_NAME).then(async (cache) => {
       console.log('[Service Worker] Pre-caching core offline assets');
-      return cache.addAll(PRE_CACHE_ASSETS);
+      for (const asset of PRE_CACHE_ASSETS) {
+        try {
+          await cache.add(asset);
+        } catch (err) {
+          console.warn('[Service Worker] Pre-cache skipped asset:', asset, err);
+        }
+      }
     }).then(() => self.skipWaiting())
+      .catch((err) => console.warn('[Service Worker] Install error:', err))
   );
 });
 
@@ -55,8 +62,8 @@ self.addEventListener('fetch', (event) => {
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, networkResponse);
-            });
+              cache.put(event.request, networkResponse).catch(() => {});
+            }).catch(() => {});
           }
         }).catch(() => {
           // Ignore offline errors on background sync
@@ -72,16 +79,21 @@ self.addEventListener('fetch', (event) => {
 
         const responseToCache = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
+          cache.put(event.request, responseToCache).catch(() => {});
+        }).catch(() => {});
 
         return networkResponse;
-      }).catch((err) => {
+      }).catch(async (err) => {
         // Fallback for index.html when navigator is navigating offline
         if (event.request.mode === 'navigate') {
-          return caches.match('/');
+          const fallbackResponse = await caches.match('/');
+          if (fallbackResponse) return fallbackResponse;
         }
-        throw err;
+        return new Response('Network unavailable', {
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: new Headers({ 'Content-Type': 'text/plain' }),
+        });
       });
     })
   );

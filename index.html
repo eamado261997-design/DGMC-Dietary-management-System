@@ -7,6 +7,55 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#18181b" />
     <link rel="apple-touch-icon" href="/assets/pwa_icon.jpg" />
+    <script>
+      console.log('[Diagnostic Stage 1] Head script initialized.');
+
+      // Check DOM state immediately when head is parsed
+      console.log('[Diagnostic Stage 1.1] Document readyState:', document.readyState);
+
+      window.addEventListener('DOMContentLoaded', () => {
+        console.log('[Diagnostic Stage 2] DOMContentLoaded fired.');
+        const rootDiv = document.getElementById('root');
+        if (rootDiv) {
+          console.log('[Diagnostic Stage 2.1] #root container detected in DOM:', {
+            childCount: rootDiv.children.length,
+            innerHTML: rootDiv.innerHTML,
+            offsetHeight: rootDiv.offsetHeight
+          });
+          
+          // Attach MutationObserver on #root to log every DOM mutation (mounting & clearing)
+          const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+              console.log('[Diagnostic Stage 3 - MutationObserver] #root modified:', {
+                type: mutation.type,
+                addedNodesCount: mutation.addedNodes.length,
+                removedNodesCount: mutation.removedNodes.length,
+                totalChildrenNow: rootDiv.children.length
+              });
+            });
+          });
+          observer.observe(rootDiv, { childList: true, subtree: true });
+        } else {
+          console.error('[Diagnostic Error] CRITICAL: #root element NOT found in DOM!');
+        }
+      });
+
+      window.addEventListener('load', () => {
+        const rootDiv = document.getElementById('root');
+        console.log('[Diagnostic Stage 4] Window load complete.', {
+          rootMounted: rootDiv ? rootDiv.children.length > 0 : false,
+          childCount: rootDiv ? rootDiv.children.length : 0
+        });
+      });
+
+      window.addEventListener('error', (event) => {
+        console.error('[Diagnostic Global Error Caught]', event.error || event.message, event.filename, event.lineno);
+      });
+
+      window.addEventListener('unhandledrejection', (event) => {
+        console.error('[Diagnostic Unhandled Promise Rejection]', event.reason);
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

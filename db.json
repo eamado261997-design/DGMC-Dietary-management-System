@@ -1,16 +1,22 @@
 {
-  "departments": [],
+  "departments": [
+    {
+      "id": 1,
+      "name": "Nursing Department",
+      "created_at": "2026-08-12T11:17:13.113Z"
+    }
+  ],
   "people": [
     {
       "id": 1,
       "username": "admin",
-      "password": "enc_det:27b3e68a942a2c295384f627:bbd3a7a681f72e5834204931b8bb9491b6f4add56182bec29c1a601d78759f1ccc8ee08623ed035de4eea5e680e2bf8cd974625d0d21b3374ad70de198b5515395c2161adb730015b9fbe3a62ea551b7fb61308340e8a081e116645a6b66da08e191a4e835712cbaa62b0b597295993c88380d00ce637a43f47ee0c6d595e25515b73c64c2c3452a884f34d5c5f8c84dc959792a3b64efcd170c40c739fdd11eda5c2a8c546008a53060c6bca1bd:dfd3a4b3dcec9d4d016b479e797fca10",
+      "password": "enc_det:b7e390d2580d8faf4ea332a0:197eb9749e5abb970314ebdd1917f8ec2e948735b14124e7f1e91304ea5791c69ee6e15411bf590a2a24a32c8b96196bef33686794ee917b0df076c4d1193a62bd34412d185257d63a4c6ccc543c31c7ba8788a08fc14b335bce17e9faa03c0996414cd3b6645a6f49607935212007503f35f842320875a3152611e93c923e9b535207fabff609dea0fdc02f7866d939ba9ce9a82fbc04f0cd14dd35f0b2d10b6e2feaf235bd7bdf45b8f97ef3dd:0459e900f2bf3923ceff02f2d29a5c55",
       "role": "admin",
       "first_name": "enc_det:68f3cca718fecb844a667e3e:8605750a2a70:28e406ba282ff49a890b75e9f383eeda",
       "last_name": "enc_det:d3dcc4c0b42dd8e4c59a0022:0b75e721e0408a23636afa44be:d4e2fe3a44940cfe1af8c62bfbf5b9b5",
       "email": "enc_det:a73109318222e2a5aa6acebf:4c73bff4838ceec9e8ce2680468c15675d:d09d4a549b2a7f3e120fe862dfb31ac6",
       "is_active": true,
-      "last_login": "2026-07-29T10:58:32.144Z",
+      "last_login": "2026-08-12T11:33:27.995Z",
       "created_at": "2026-06-30T21:40:00.000Z",
       "updated_at": "2026-06-30T21:40:00.000Z",
       "employee_status": "active"
@@ -18,19 +24,72 @@
     {
       "id": 99,
       "username": "dietary_admin",
-      "password": "enc_det:57a8648af2015d8f3c6045ec:860b2520280afbba8567aba1da4519124231cd3b6d2d0d5336af24dcdcb5db052bb95f608130688e9fb548f0d1a33bad946fae9f573cf070861512700b4ca2c332c4b4e69f23467ec99c27ad6e7a5666e93ed68f77de14acd208f152842b50131e96b659af46b83f4afac411b0cda30066cd6d555b05c03a3a979976d7b2baa926762faaf0618ad1b2c75fd510d62d7d48090a7082b6f5df87b07cac3157d6b407136915b98daaee8f5ac099e183:3b7acde368077b6b5f6458219b444fff",
+      "password": "enc_det:3e6992af7219560b8a406402:1dc7a98e45a05cf0a88c0a3dc6056bdd5bbc0839433ca5e5beefd276dbc290a8715c033cede61c0f1e96720e28bc291c8a53cdec0fe98dceed654a6599a7e20d580f6915212741686d917c11e9872cc691a5951ef864d1614de2fc1147a4ca9700f7ca976527ce2311ec80ee23df35cc90963b313b0269080ecf850cb897284a34ea130422fddb1e12d8731ad69c6eee714ca102cc972a24d3833afa185408d3808b3cf03434d84b15bc3b066550:ab79b6b18169a85978bb7a0bf4a3a01a",
       "role": "dietary_admin",
       "first_name": "enc_det:5bff7477599904dbb79191fd:ca9d9ba42fd3b2:68f6563a7fdcf569091c37fdcb7278fc",
       "last_name": "enc_det:d3dcc4c0b42dd8e4c59a0022:0b75e721e0408a23636afa44be:d4e2fe3a44940cfe1af8c62bfbf5b9b5",
       "email": "enc_det:17f627d9ea11e721a04271d4:be2579955020c214b04f6111bbefd9b64bd37922342d:2e7cb534c8fb20b82cda9dec7b322531",
       "is_active": true,
-      "last_login": null,
+      "last_login": "2026-08-10T20:28:35.376Z",
       "created_at": "2026-08-10T03:14:35.416Z",
       "updated_at": "2026-08-10T03:14:35.416Z",
       "employee_status": "active"
+    },
+    {
+      "id": 100,
+      "username": "Nurse_dept",
+      "password": "enc_det:e761d0667a75f31add6fe7cd:e108887bd2f8594f7148ab05bdd802c72b02ec649071e76b1a79189672c3d81f3fe950aea2d51d15b720f5aea4ec589870cc8bd7ad0418d88204bccc30dc7191db49a45c31d55eb7df526e3bbf33c868b76187ea9ac91abbd72366c30b0fedcf702176e9a3cc1ae1aaf84ddc2b8beef17d54922501a4910a429dc2b77d6b1fe91a50e2b00d5250fb42582d8f338ff8f94f7c8c4fbf22ad3def4d9454e61a9206b7f855e213e1d2992105f41b5f16:5b5575eb98507ab43c3c2953ad978c23",
+      "role": "manager",
+      "first_name": "enc_det:1752f6c2ae9c2b33666d7e16:48d73f38aa:7827cef9814e6a2cc79baeaa0aec1b92",
+      "last_name": "enc_det:ecaefc6b892d1a71a9238c35:02a851097552484866ad:64f1c123e03785ad7ce3481df1cdc14e",
+      "is_active": true,
+      "last_login": "2026-08-12T11:27:08.989Z",
+      "created_at": "2026-08-12T11:24:26.296Z",
+      "updated_at": "2026-08-12T11:24:26.296Z",
+      "employee_no": "enc_det:13cfe916e903f2063f524f0c:3571dbb5fc1c0a:002c1e1eb6b08fa7c394c7f75298870a",
+      "department_id": 1,
+      "qr_code": "enc_det:13cfe916e903f2063f524f0c:3571dbb5fc1c0a:002c1e1eb6b08fa7c394c7f75298870a",
+      "employee_status": "active",
+      "hire_date": "2026-08-12",
+      "managed_department_id": 1
+    },
+    {
+      "id": 101,
+      "username": "Emp-001",
+      "password": "enc_det:597763aaf9fa0907d2c0b2d9:c1a48039528ab5feb5c30f77aed0313ff9a6fc4a4bd7faf11fde4846afc700b4e0a22b80c88fc1b5c0f3a0a6d6e281a9f3554f8060272adaac0bd24bf088b6c74f134a4503781cb00656c60febf497e0d3ed3bb55417eaf72b334b1175e194eb2980dad1263445e853274f58062200970f4aaac5096b1dcc5b558b4d51b4a041b65e01906802faa39be0c5bc80b5bf504c2080559b0a7e798dc4392566afe44866e622ac8d561454146d887c44f3:fc71c5d9a680e954d88936ac31630c46",
+      "role": "employee",
+      "first_name": "enc_det:a953db18cea29650f391b5ca:574f27:44439c3e6bde0448a4c43614008a79d4",
+      "last_name": "enc_det:65bcd2479b9362e51233aceb:89e00a4f81:a7def55a7287dc9d9cb6d72567924de2",
+      "is_active": true,
+      "last_login": null,
+      "created_at": "2026-08-12T11:25:45.581Z",
+      "updated_at": "2026-08-12T11:25:45.581Z",
+      "employee_no": "enc_det:af7bcea384a28f01bb0f47fe:c51f519eee7c49:1c5cbf869755e401cea416fda321888d",
+      "position": "Resident Nurse",
+      "department_id": 1,
+      "qr_code": "enc_det:af7bcea384a28f01bb0f47fe:c51f519eee7c49:1c5cbf869755e401cea416fda321888d",
+      "employee_status": "active",
+      "hire_date": "2026-08-12"
     }
   ],
-  "employee_schedules": [],
+  "employee_schedules": [
+    {
+      "id": 1,
+      "person_id": 101,
+      "work_date": "2026-08-12",
+      "shift_type": "night",
+      "created_by": 100,
+      "created_at": "2026-08-12T11:27:38.074Z"
+    },
+    {
+      "id": 2,
+      "person_id": 101,
+      "work_date": "2026-08-13",
+      "shift_type": "day",
+      "created_by": 100,
+      "created_at": "2026-08-12T11:27:38.074Z"
+    }
+  ],
   "transactions": [],
   "free_meal_log": [],
   "system_settings": [
@@ -97,7 +156,170 @@
       "new_value": "Successful web login",
       "ip_address": "127.0.0.1",
       "created_at": "2026-07-29T10:58:32.146Z"
+    },
+    {
+      "id": 4,
+      "user_id": 1,
+      "action": "DEPARTMENT_CREATE",
+      "entity_type": "departments",
+      "entity_id": "1",
+      "old_value": null,
+      "new_value": "{\"id\":1,\"name\":\"Nursing Department\",\"created_at\":\"2026-08-12T11:17:13.113Z\"}",
+      "ip_address": "112.206.240.51, 169.254.169.126",
+      "created_at": "2026-08-12T11:17:13.116Z"
+    },
+    {
+      "id": 5,
+      "user_id": 1,
+      "action": "EMPLOYEE_CREATE",
+      "entity_type": "people",
+      "entity_id": "100",
+      "old_value": null,
+      "new_value": "{\"id\":100,\"username\":\"Nurse_dept\",\"role\":\"manager\",\"first_name\":\"Nurse\",\"last_name\":\"Department\",\"email\":null,\"phone\":null,\"is_active\":true,\"employee_no\":\"EMP1402\",\"position\":null,\"department_id\":1,\"qr_code\":\"EMP1402\",\"employee_status\":\"active\",\"hire_date\":\"2026-08-12\",\"managed_department_id\":1,\"is_protected\":false,\"protected\":false,\"created_at\":\"2026-08-12T11:24:26.296Z\",\"updated_at\":\"2026-08-12T11:24:26.296Z\"}",
+      "ip_address": "112.206.240.51, 169.254.169.126",
+      "created_at": "2026-08-12T11:24:26.314Z"
+    },
+    {
+      "id": 6,
+      "user_id": 1,
+      "action": "EMPLOYEE_CREATE",
+      "entity_type": "people",
+      "entity_id": "101",
+      "old_value": null,
+      "new_value": "{\"id\":101,\"username\":\"Emp-001\",\"role\":\"employee\",\"first_name\":\"Red\",\"last_name\":\"Amado\",\"email\":null,\"phone\":null,\"is_active\":true,\"employee_no\":\"Emp-002\",\"position\":\"Resident Nurse\",\"department_id\":1,\"qr_code\":\"Emp-002\",\"employee_status\":\"active\",\"hire_date\":\"2026-08-12\",\"managed_department_id\":null,\"is_protected\":false,\"protected\":false,\"created_at\":\"2026-08-12T11:25:45.581Z\",\"updated_at\":\"2026-08-12T11:25:45.581Z\"}",
+      "ip_address": "112.206.240.51, 169.254.169.126",
+      "created_at": "2026-08-12T11:25:45.600Z"
+    },
+    {
+      "id": 7,
+      "user_id": 100,
+      "action": "BATCH_SCHEDULE_UPDATE",
+      "entity_type": "employee_schedules",
+      "old_value": null,
+      "new_value": "2 schedules updated",
+      "ip_address": "112.206.240.51, 169.254.169.126",
+      "created_at": "2026-08-12T11:27:38.078Z"
     }
   ],
-  "login_attempts": []
+  "login_attempts": [
+    {
+      "id": 1,
+      "username": "dietary_admin",
+      "ip_address": "122.2.98.255, 169.254.169.126",
+      "timestamp": "2026-08-10T08:25:39.631Z",
+      "success": true
+    },
+    {
+      "id": 2,
+      "username": "admin",
+      "ip_address": "122.2.98.255, 169.254.169.126",
+      "timestamp": "2026-08-10T08:33:10.124Z",
+      "success": true
+    },
+    {
+      "id": 3,
+      "username": "admin",
+      "ip_address": "122.2.98.255, 169.254.169.126",
+      "timestamp": "2026-08-10T09:03:32.295Z",
+      "success": true
+    },
+    {
+      "id": 4,
+      "username": "admin",
+      "ip_address": "122.2.98.255, 169.254.169.126",
+      "timestamp": "2026-08-10T09:33:19.364Z",
+      "success": true
+    },
+    {
+      "id": 5,
+      "username": "admin",
+      "ip_address": "2001:fd8:1f61:2ee6:f82b:3cff:fefe:226f, 169.254.169.126",
+      "timestamp": "2026-08-10T20:14:40.606Z",
+      "success": true
+    },
+    {
+      "id": 6,
+      "username": "admin",
+      "ip_address": "2001:fd8:1f61:2ee6:f82b:3cff:fefe:226f, 169.254.169.126",
+      "timestamp": "2026-08-10T20:15:24.515Z",
+      "success": true
+    },
+    {
+      "id": 7,
+      "username": "admin",
+      "ip_address": "2001:fd8:1f61:2ee6:f82b:3cff:fefe:226f, 169.254.169.126",
+      "timestamp": "2026-08-10T20:24:55.253Z",
+      "success": true
+    },
+    {
+      "id": 8,
+      "username": "dietary_admin",
+      "ip_address": "2001:fd8:1f61:2ee6:f82b:3cff:fefe:226f, 169.254.169.126",
+      "timestamp": "2026-08-10T20:28:35.376Z",
+      "success": true
+    },
+    {
+      "id": 9,
+      "username": "admin",
+      "ip_address": "2001:fd8:1f61:2ee6:f82b:3cff:fefe:226f, 169.254.169.126",
+      "timestamp": "2026-08-10T20:40:56.594Z",
+      "success": true
+    },
+    {
+      "id": 10,
+      "username": "admin",
+      "ip_address": "2001:fd8:1f61:2ee6:9842:9a5a:96eb:80d0, 169.254.169.126",
+      "timestamp": "2026-08-10T21:57:42.960Z",
+      "success": true
+    },
+    {
+      "id": 11,
+      "username": "admin",
+      "ip_address": "2001:fd8:1f61:2ee6:9842:9a5a:96eb:80d0, 169.254.169.126",
+      "timestamp": "2026-08-10T22:06:06.569Z",
+      "success": true
+    },
+    {
+      "id": 12,
+      "username": "admin",
+      "ip_address": "112.206.240.51, 169.254.169.126",
+      "timestamp": "2026-08-12T11:15:50.626Z",
+      "success": true
+    },
+    {
+      "id": 13,
+      "username": "admin",
+      "ip_address": "112.206.240.51, 169.254.169.126",
+      "timestamp": "2026-08-12T11:19:00.050Z",
+      "success": true
+    },
+    {
+      "id": 14,
+      "username": "Nurse_dept",
+      "ip_address": "112.206.240.51, 169.254.169.126",
+      "timestamp": "2026-08-12T11:26:31.134Z",
+      "success": true
+    },
+    {
+      "id": 15,
+      "username": "Nurse_dept",
+      "ip_address": "112.206.240.51, 169.254.169.126",
+      "success": true,
+      "timestamp": "2026-08-12T11:27:08.989Z"
+    },
+    {
+      "id": 16,
+      "username": "manager",
+      "ip_address": "127.0.0.1",
+      "success": false,
+      "timestamp": "2026-08-12T11:33:09.557Z"
+    },
+    {
+      "id": 17,
+      "username": "admin",
+      "ip_address": "127.0.0.1",
+      "success": true,
+      "timestamp": "2026-08-12T11:33:27.995Z"
+    }
+  ]
 }

@@ -90,7 +90,6 @@ export class CacheLayer {
           this.redisClient.on("connect", () => {
             this.isRedisConnected = true;
             this.redisErrorMsg = null;
-            console.log("[CACHE-ENGINE] [Redis] Connected to Redis cache service.");
           });
 
           this.redisClient.on("error", (err) => {
@@ -101,15 +100,12 @@ export class CacheLayer {
           this.redisClient.connect().catch((err) => {
             this.isRedisConnected = false;
             this.redisErrorMsg = err.message;
-            console.log(`[CACHE-ENGINE] [Redis] Connection inactive (${err.message}). Using L1 in-memory cache.`);
           });
         }
       } catch (err: any) {
         this.isRedisConnected = false;
         this.redisErrorMsg = err.message;
       }
-    } else {
-      console.log("[CACHE-ENGINE] [Redis] No Redis host configured. Running with high-speed L1 in-memory cache.");
     }
   }
 

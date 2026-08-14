@@ -33,6 +33,10 @@ export interface Person {
   
   // Manager-specific attributes
   managed_department_id?: number | null;
+
+  // Security protected attributes
+  is_protected?: boolean;
+  protected?: boolean;
 }
 
 export interface Transaction {
@@ -45,6 +49,7 @@ export interface Transaction {
   meal_amount: number;
   status: TransactionStatus;
   created_at: string;
+  meal_type?: string;
   
   // Expanded visual properties
   employee_name?: string;

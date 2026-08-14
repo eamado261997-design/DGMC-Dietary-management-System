@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import os from 'os';
+import fs from 'fs';
 import compression from 'compression';
 import crypto from 'crypto';
 import cors from 'cors';
@@ -89,9 +90,8 @@ async function startServer() {
         defaultSrc: ["'self'"],
         scriptSrc: [
           "'self'",
-          (req, res) => `'nonce-${(res as any).locals.nonce}'`,
-          // Only fall back to 'unsafe-inline' and 'unsafe-eval' during local development if needed by Vite/HMR
-          ...(process.env.NODE_ENV !== 'production' ? ["'unsafe-inline'", "'unsafe-eval'"] : []),
+          "'unsafe-inline'",
+          "'unsafe-eval'",
           "https://*"
         ],
         styleSrc: ["'self'", "'unsafe-inline'", "https://*"],
@@ -147,7 +147,6 @@ async function startServer() {
   if (cacheLayer.getIsRedisConnected()) {
     const redisClient = cacheLayer.getRedisClient();
     if (redisClient) {
-      console.log("[RATE-LIMIT] Redis is connected. Using RedisStore for rate limiting.");
       limiterStore = new RedisStore({
         sendCommand: ((...args: string[]) => redisClient.call(args[0], ...args.slice(1))) as any,
       });
@@ -319,7 +318,18 @@ async function startServer() {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.status(result.status).json(result.body);
     } catch (err: any) {
-      res.status(500).json({ error: err.message || 'Internal Server Error' });
+      const errMsg = err?.message || 'Internal Server Error';
+      const errStack = err?.stack || '';
+      logger.error(`[API Server Endpoint Failure] [${req.method} ${req.path}]: ${errMsg}`, {
+        method: req.method,
+        path: req.path,
+        error: errMsg,
+        stack: errStack
+      });
+      res.status(500).json({
+        error: errMsg,
+        stack: process.env.NODE_ENV !== 'production' ? errStack : undefined
+      });
     }
   });
 

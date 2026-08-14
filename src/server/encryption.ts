@@ -33,8 +33,7 @@ export function encryptDeterministic(text: string | null | undefined): string {
     encrypted += cipher.final("hex");
     const authTag = cipher.getAuthTag().toString("hex");
     return `enc_det:${iv.toString("hex")}:${encrypted}:${authTag}`;
-  } catch (err) {
-    console.error("[SECURITY] Deterministic encryption failed:", err);
+  } catch (_err) {
     return text;
   }
 }
@@ -62,8 +61,7 @@ export function decrypt(cipherText: string | null | undefined): string {
     let decrypted = decipher.update(encryptedText, "hex", "utf8");
     decrypted += decipher.final("utf8");
     return decrypted;
-  } catch (err) {
-    console.error("[SECURITY] Decryption failed, returning input:", err);
+  } catch (_err) {
     return cipherText;
   }
 }

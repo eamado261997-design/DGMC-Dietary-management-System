@@ -80,12 +80,12 @@ export default function ManagerSchedule() {
       const schedList = await apiFetch("/api/manager/employee-schedules");
       
       // Normalize dates to YYYY-MM-DD format (resolving timezone and ISO format differences)
-      const normalizedSchedules = (schedList || []).map((s: any) => ({
+      const normalizedSchedules = (Array.isArray(schedList) ? schedList : []).map((s: any) => ({
         ...s,
         work_date: s.work_date ? s.work_date.substring(0, 10) : ""
       }));
 
-      setEmployees(staffList);
+      setEmployees(Array.isArray(staffList) ? staffList : []);
       setRealSchedules(normalizedSchedules);
       
       // Initialize draft map with existing values

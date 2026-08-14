@@ -29,8 +29,8 @@ export default function DatabaseStatusIndicator() {
         setStatus(data);
         lastFetchedRef.current = Date.now();
       }
-    } catch (error) {
-      console.error("[DatabaseStatusIndicator] Failed to fetch database status:", error);
+    } catch (_error) {
+      // Suppress console diagnostics in production
     } finally {
       setLoading(false);
     }

@@ -48,8 +48,7 @@ export default function EmployeeDashboard({ onViewChange }: { onViewChange: (vie
         localStorage.setItem("cached_employee_dashboard_timestamp", nowStr);
         setCacheTimestamp(nowStr);
         setIsOfflineMode(false);
-      } catch (err) {
-        console.error("Failed to load employee telemetry", err);
+      } catch (_err) {
         const cached = localStorage.getItem("cached_employee_dashboard");
         if (cached) {
           setData(JSON.parse(cached));

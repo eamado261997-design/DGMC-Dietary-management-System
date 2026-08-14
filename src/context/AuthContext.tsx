@@ -75,8 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           itSupportPhone: data.itSupportPhone || "Medical arts Bldg. 5th floor/ICT dept. / 2568"
         });
       }
-    } catch (err) {
-      console.error("Failed to fetch dynamic branding settings", err);
+    } catch (_err) {
+      // Ignore branding fetch error
     }
   };
 
@@ -103,8 +103,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.removeItem("dgmc_token");
             setAuthState({ token: null, user: null });
           }
-        } catch (e) {
-          console.error("Failed to revalidate token session", e);
+        } catch (_e) {
+          // Token session revalidation failed
         }
       }
       setLoading(false);
@@ -199,13 +199,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           user: data.user || prev.user
         }));
       } else if (res.status === 401) {
-        console.warn("[Auth] Token refresh failed (401). Clearing session.");
         logout();
-      } else {
-        console.warn(`[Auth] Silent refresh failed with status ${res.status}`);
       }
-    } catch (err) {
-      console.error("[Auth] Error during silent refresh", err);
+    } catch (_err) {
+      // Ignore silent refresh error
     } finally {
       setIsRefreshing(false);
     }
@@ -225,8 +222,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Most tokens last 1 hour. 10 mins is a safe window.
     const refreshThreshold = 10 * 60 * 1000;
     const delay = Math.max(0, timeToExpiry - refreshThreshold);
-
-    console.log(`[Auth] Session active. Next token refresh in ${Math.round(delay / 60000)} minutes.`);
 
     const timeout = setTimeout(() => {
       refreshToken();
@@ -261,10 +256,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!autoSync || queue.length === 0) return;
-    const interval = setInterval(async () => {
-        setIsAutoRetrying(true);
-        await processQueue();
-        setIsAutoRetrying(false);
+    const interval = setInterval(() => {
+      setIsAutoRetrying(true);
+      processQueue()
+        .catch(() => {})
+        .finally(() => setIsAutoRetrying(false));
     }, autoRetryInterval);
     return () => clearInterval(interval);
   }, [autoRetryInterval, autoSync, queue.length]);
@@ -339,7 +335,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             addSyncLog("success", `Conflict resolved (Keep Local): ${item.path}`, 0);
           }
         } else {
-          console.error("Failed to sync item", item, e);
           addSyncLog("fail", `Failed to sync record: ${item.path}`, 0);
           setIsSyncing(false);
           break;
@@ -350,8 +345,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    window.addEventListener("online", processQueue);
-    return () => window.removeEventListener("online", processQueue);
+    const handleOnline = () => {
+      processQueue().catch(() => {});
+    };
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
   }, [queue, authState.token]);
 
   const apiFetch = React.useCallback(async (path: string, options: RequestInit = {}) => {
