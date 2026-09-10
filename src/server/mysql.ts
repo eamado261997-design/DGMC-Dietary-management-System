@@ -298,9 +298,16 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
         id INT AUTO_INCREMENT PRIMARY KEY,
         person_id INT NOT NULL,
         meal_date VARCHAR(10) NOT NULL,
-        created_at VARCHAR(50) NOT NULL
+        created_at VARCHAR(50) NOT NULL,
+        claimed_at VARCHAR(50)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    try {
+      await dbPool.query("ALTER TABLE free_meal_logs ADD COLUMN claimed_at VARCHAR(50)");
+    } catch (e) {
+      // Column already exists
+    }
 
     // F. System settings table
     await dbPool.query(`
@@ -476,8 +483,8 @@ async function seedMySQL(pool: any, defaultDb: DatabaseSchema): Promise<void> {
 
   // E. Seed Free Meal Logs
   if (defaultDb.free_meal_log.length > 0) {
-    const logRows = defaultDb.free_meal_log.map(f => [f.id, f.person_id, f.meal_date, f.created_at]);
-    await batchReplace(pool, "free_meal_logs", ["id", "person_id", "meal_date", "created_at"], logRows);
+    const logRows = defaultDb.free_meal_log.map(f => [f.id, f.person_id, f.meal_date, f.created_at, f.claimed_at || null]);
+    await batchReplace(pool, "free_meal_logs", ["id", "person_id", "meal_date", "created_at", "claimed_at"], logRows);
   }
 
   // F. Seed System settings
@@ -551,7 +558,8 @@ async function loadFromMySQL(pool: any): Promise<DatabaseSchema> {
       id: f.id,
       person_id: f.person_id,
       meal_date: f.meal_date,
-      created_at: f.created_at
+      created_at: f.created_at,
+      claimed_at: f.claimed_at || undefined
     })),
     system_settings: (settings as any[]).map(s => ({
       id: s.id,
@@ -655,9 +663,9 @@ export async function syncStateToMySQL(pool: any, data: DatabaseSchema): Promise
 
     // 5. Synchronize Free Meal Logs
     if (data.free_meal_log.length > 0) {
-      const rows = data.free_meal_log.map(f => [f.id, f.person_id, f.meal_date, f.created_at]);
-      const updateCols = "person_id=VALUES(person_id), meal_date=VALUES(meal_date), created_at=VALUES(created_at)";
-      await batchUpsert(conn, "free_meal_logs", ["id", "person_id", "meal_date", "created_at"], rows, updateCols);
+      const rows = data.free_meal_log.map(f => [f.id, f.person_id, f.meal_date, f.created_at, f.claimed_at || null]);
+      const updateCols = "person_id=VALUES(person_id), meal_date=VALUES(meal_date), created_at=VALUES(created_at), claimed_at=VALUES(claimed_at)";
+      await batchUpsert(conn, "free_meal_logs", ["id", "person_id", "meal_date", "created_at", "claimed_at"], rows, updateCols);
     }
 
     // 6. Synchronize System Settings

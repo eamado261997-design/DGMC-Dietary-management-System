@@ -72,6 +72,7 @@ export interface FreeMealLog {
   person_id: number;
   meal_date: string; // YYYY-MM-DD
   created_at: string;
+  claimed_at?: string;
 }
 
 export interface AuthState {
