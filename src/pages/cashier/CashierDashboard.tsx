@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext.js";
 import PageHeader from "../../components/PageHeader.js";
 import { Skeleton } from "../../components/Skeleton.js";
+import TransactionSummaryWidget from "../../components/TransactionSummaryWidget.js";
 import { Activity, Coins, Utensils, QrCode, HelpCircle, X, Search, ShieldCheck, History, RefreshCw, BarChart3, Lightbulb } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts";
 import { useDebounce } from "../../hooks/useDebounce.js";
@@ -22,6 +23,14 @@ export default function CashierDashboard({ onViewChange }: { onViewChange: (v: s
   const [scanSearch, setScanSearch] = useState("");
   const debouncedScanSearch = useDebounce(scanSearch, 300);
   const [filterType, setFilterType] = useState<"all" | "free" | "paid">("all");
+  const [visibleSeries, setVisibleSeries] = useState({
+    Complimentary: true,
+    Paid: true,
+  });
+
+  const toggleSeries = (key: "Complimentary" | "Paid") => {
+    setVisibleSeries(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const loadData = () => {
     setLoading(true);
@@ -54,23 +63,38 @@ export default function CashierDashboard({ onViewChange }: { onViewChange: (v: s
 
   const weeklyTrends = React.useMemo(() => {
     const map: Record<string, { free: number; paid: number }> = {
-      Mon: { free: 42, paid: 18 },
-      Tue: { free: 55, paid: 24 },
-      Wed: { free: 49, paid: 20 },
-      Thu: { free: 63, paid: 27 },
-      Fri: { free: 58, paid: 32 },
-      Sat: { free: 28, paid: 12 },
-      Sun: { free: 22, paid: 9 },
+      Mon: { free: 0, paid: 0 },
+      Tue: { free: 0, paid: 0 },
+      Wed: { free: 0, paid: 0 },
+      Thu: { free: 0, paid: 0 },
+      Fri: { free: 0, paid: 0 },
+      Sat: { free: 0, paid: 0 },
+      Sun: { free: 0, paid: 0 },
     };
 
     transactions.forEach(t => {
-      if (t.created_at) {
-        const d = new Date(t.created_at);
-        const dayIdx = d.getDay();
-        const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dayIdx];
-        if (map[dayName]) {
-          if (t.is_free) map[dayName].free += 1;
-          else map[dayName].paid += 1;
+      const dateStr = t.meal_date || t.created_at;
+      if (dateStr) {
+        let d: Date;
+        if (typeof dateStr === "string" && dateStr.includes("-") && dateStr.length >= 10) {
+          const datePart = dateStr.substring(0, 10);
+          const parts = datePart.split("-").map(Number);
+          if (parts.length === 3 && !parts.some(isNaN)) {
+            d = new Date(parts[0], parts[1] - 1, parts[2]);
+          } else {
+            d = new Date(dateStr);
+          }
+        } else {
+          d = new Date(dateStr);
+        }
+
+        if (!isNaN(d.getTime())) {
+          const dayIdx = d.getDay();
+          const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dayIdx];
+          if (map[dayName]) {
+            if (t.is_free) map[dayName].free += 1;
+            else map[dayName].paid += 1;
+          }
         }
       }
     });
@@ -211,6 +235,13 @@ export default function CashierDashboard({ onViewChange }: { onViewChange: (v: s
           </div>
 
         </div>
+
+        {/* Transaction Summary & Pricing Charts Component */}
+        <TransactionSummaryWidget
+          totalVolume={stats?.totalMeals || 0}
+          totalRevenue={stats?.totalRevenue || 0}
+          avgMealPrice={stats?.paidCount && stats.paidCount > 0 ? (stats.totalRevenue / stats.paidCount) : 150}
+        />
 
         {/* Daily Summary & Terminal Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -360,13 +391,33 @@ export default function CashierDashboard({ onViewChange }: { onViewChange: (v: s
                   </h4>
                   <p className="text-[11px] text-zinc-500 mt-0.5">Complimentary work-shift claims vs. paid cash meal redemptions across the current week</p>
                 </div>
-                <div className="flex items-center gap-3 text-[10px] font-bold">
-                  <span className="flex items-center gap-1 text-teal-800">
-                    <span className="w-2.5 h-2.5 rounded-sm bg-teal-700"></span> Complimentary
-                  </span>
-                  <span className="flex items-center gap-1 text-amber-700">
-                    <span className="w-2.5 h-2.5 rounded-sm bg-amber-500"></span> Paid Cash
-                  </span>
+                <div className="flex items-center gap-2 text-[10px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => toggleSeries("Complimentary")}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                      visibleSeries.Complimentary
+                        ? "bg-teal-50 border-teal-200 text-teal-800 shadow-2xs"
+                        : "bg-zinc-100 border-zinc-200 text-zinc-400 line-through opacity-60"
+                    }`}
+                    title="Click to toggle Complimentary series"
+                  >
+                    <span className={`w-2.5 h-2.5 rounded-sm ${visibleSeries.Complimentary ? "bg-teal-700" : "bg-zinc-300"}`}></span> 
+                    Complimentary
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleSeries("Paid")}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                      visibleSeries.Paid
+                        ? "bg-amber-50 border-amber-200 text-amber-800 shadow-2xs"
+                        : "bg-zinc-100 border-zinc-200 text-zinc-400 line-through opacity-60"
+                    }`}
+                    title="Click to toggle Paid Cash series"
+                  >
+                    <span className={`w-2.5 h-2.5 rounded-sm ${visibleSeries.Paid ? "bg-amber-500" : "bg-zinc-300"}`}></span> 
+                    Paid Cash
+                  </button>
                 </div>
               </div>
 
@@ -383,8 +434,12 @@ export default function CashierDashboard({ onViewChange }: { onViewChange: (v: s
                         contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
                         formatter={(value: any, name: any) => [`${value} meals`, name]}
                       />
-                      <Bar dataKey="Complimentary" fill="#0f766e" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="Paid" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                      {visibleSeries.Complimentary && (
+                        <Bar dataKey="Complimentary" fill="#0f766e" radius={[4, 4, 0, 0]} />
+                      )}
+                      {visibleSeries.Paid && (
+                        <Bar dataKey="Paid" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                      )}
                     </BarChart>
                   </ResponsiveContainer>
                 )}

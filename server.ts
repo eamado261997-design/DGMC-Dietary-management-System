@@ -307,6 +307,13 @@ async function startServer() {
         req.query
       );
 
+      // Apply any custom headers requested by the API handler (e.g. Server-Timing, X-Lookup-DB-Latency-Ms)
+      if (result.headers) {
+        for (const [name, val] of Object.entries(result.headers)) {
+          res.setHeader(name, val);
+        }
+      }
+
       // Apply any cookies requested by the API handler (e.g. XSRF-TOKEN)
       if (result.cookies) {
         for (const [name, config] of Object.entries(result.cookies)) {

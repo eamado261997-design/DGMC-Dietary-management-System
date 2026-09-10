@@ -28,6 +28,7 @@ import {
 import DGMCLogo from "../../components/DGMCLogo.js";
 import PrintableHeader from "../../components/PrintableHeader.js";
 import QRCode from "qrcode";
+import { Department } from "../../types.js";
 import { motion } from "motion/react";
 
 interface ThemePreset {
@@ -105,6 +106,21 @@ export default function EmployeeQR() {
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [copiedId, setCopiedId] = useState(false);
+  const [departments, setDepartments] = useState<Department[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    apiFetch("/api/departments")
+      .then((data: any) => {
+        if (isMounted && Array.isArray(data)) {
+          setDepartments(data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleCopyEmployeeId = () => {
     const empId = user?.employee_no || "";
@@ -823,11 +839,7 @@ export default function EmployeeQR() {
           ctx.font = "bold 15px system-ui, sans-serif";
           ctx.fillText(user.employee_no || "N/A", 100, blockY + 44);
           
-          let deptName = "Dietary Services";
-          if (user.department_id === 1) deptName = "ICT Department";
-          else if (user.department_id === 2) deptName = "Nursing Department";
-          else if (user.department_id === 3) deptName = "Emergency Room Services";
-          else if (user.department_id === 5) deptName = "Cardiology Unit";
+          let deptName = getDeptDisplay();
           ctx.fillText(showDepartment ? deptName : "Divine Grace Staff", cx + 20, blockY + 44);
           
           if (showHireDate) {
@@ -970,11 +982,7 @@ export default function EmployeeQR() {
           ctx.font = "bold 18px system-ui, sans-serif";
           ctx.fillText(user.employee_no || "N/A", rx, labelsY + 30);
           
-          let deptName = "Dietary Services";
-          if (user.department_id === 1) deptName = "ICT Department";
-          else if (user.department_id === 2) deptName = "Nursing Department";
-          else if (user.department_id === 3) deptName = "Emergency Room Services";
-          else if (user.department_id === 5) deptName = "Cardiology Unit";
+          let deptName = getDeptDisplay();
           ctx.fillText(showDepartment ? deptName : "Divine Grace Staff", rx + 200, labelsY + 30);
           
           if (showHireDate) {
@@ -1034,14 +1042,16 @@ export default function EmployeeQR() {
 
   const isPortrait = orientation === "portrait";
 
-  // Get department name
+  // Get department name dynamically from departments list or user record
   const getDeptDisplay = () => {
-    if (!user.department_id) return "Divine Grace Medical Center";
-    if (user.department_id === 1) return "ICT Department";
-    if (user.department_id === 2) return "Nursing Department";
-    if (user.department_id === 3) return "Emergency Room Services";
-    if (user.department_id === 4) return "Dietary Services";
-    if (user.department_id === 5) return "Cardiology Unit";
+    if (user?.department_id) {
+      const match = departments.find(d => Number(d.id) === Number(user.department_id));
+      if (match) return match.name;
+    }
+    if ((user as any)?.department_name && (user as any).department_name !== "N/A") {
+      return (user as any).department_name;
+    }
+    if (!user?.department_id) return branding?.companyName || "Divine Grace Medical Center";
     return "Hospital Staff";
   };
 

@@ -4,6 +4,7 @@ import { isMysqlConnected, query, execute } from "../mysql.js";
 import { DEFAULT_MIN_PASSWORD_LENGTH } from "../../utils/password.js";
 import { validatePasswordComplexity } from "../../utils/password.js";
 import { Person } from "../../types.js";
+import { startTimer, recordEmployeePerfMetric, getPerfHeaders } from "../utils/performanceTracker.js";
 
 function isProtectedUser(user: any): boolean {
   if (!user) return false;
@@ -100,6 +101,15 @@ export async function handleEmployeeRoutes(
         return jsonResponse(403, { error: "Only System Administrator can assign, manage, or create protected/admin accounts." });
       }
 
+      if (department_id !== undefined && department_id !== null) {
+        const deptIdNum = parseInt(department_id, 10);
+        if (isNaN(deptIdNum)) return jsonResponse(400, { error: "Invalid Hospital Division ID / department_id format." });
+        const dRows = await query("SELECT id FROM departments WHERE id = ?", [deptIdNum]);
+        if (dRows.length === 0) {
+          return jsonResponse(400, { error: `Data Integrity Violation: Assigned Hospital Division ID (department_id: ${deptIdNum}) does not match any valid department record in the registry.` });
+        }
+      }
+
       if (password && password.trim() !== "") {
         const minPassLenStr = await getSettingValue("min_password_length", String(DEFAULT_MIN_PASSWORD_LENGTH));
         const minPassLen = parseInt(minPassLenStr, 10) || DEFAULT_MIN_PASSWORD_LENGTH;
@@ -184,6 +194,15 @@ export async function handleEmployeeRoutes(
 
       if ((role === "admin" || body.is_protected === true || body.is_protected === 1 || body.protected === true || body.protected === 1) && authUser?.role !== "admin") {
         return jsonResponse(403, { error: "Only System Administrator can assign, manage, or create protected/admin accounts." });
+      }
+
+      if (department_id !== undefined && department_id !== null) {
+        const deptIdNum = parseInt(department_id, 10);
+        if (isNaN(deptIdNum)) return jsonResponse(400, { error: "Invalid Hospital Division ID / department_id format." });
+        const deptExists = (db.departments || []).some(d => Number(d.id) === deptIdNum);
+        if (!deptExists) {
+          return jsonResponse(400, { error: `Data Integrity Violation: Assigned Hospital Division ID (department_id: ${deptIdNum}) does not match any valid department record in the registry.` });
+        }
       }
 
       if (password && password.trim() !== "") {
@@ -280,8 +299,10 @@ export async function handleEmployeeRoutes(
 
       if (hasTransactionsRows.length > 0) {
         await execute("UPDATE people SET is_active = 0, employee_status = 'inactive' WHERE id = ?", [targetId]);
-        await logToAudit("EMPLOYEE_DEACTIVATE", "people", targetId, null, "Account deactivated gracefully due to active transaction receipts.");
-        return jsonResponse(200, { message: "Person has active transaction receipts. Gracefully deactivated account to preserve database integrity." });
+        const todayStr = new Date().toISOString().split('T')[0];
+        await execute("DELETE FROM employee_schedules WHERE person_id = ? AND work_date >= ?", [targetId, todayStr]);
+        await logToAudit("EMPLOYEE_DEACTIVATE", "people", targetId, null, "Account deactivated gracefully due to active transaction receipts. Future schedules purged.");
+        return jsonResponse(200, { message: "Person has active transaction receipts. Gracefully deactivated account and purged future schedules to preserve database integrity." });
       }
 
       await execute("DELETE FROM people WHERE id = ?", [targetId]);
@@ -308,9 +329,11 @@ export async function handleEmployeeRoutes(
       if (hasTransactions) {
         db.people[index].is_active = false;
         db.people[index].employee_status = "inactive";
+        const todayStr = new Date().toISOString().split('T')[0];
+        db.employee_schedules = db.employee_schedules.filter(s => !(s.person_id === targetId && s.work_date >= todayStr));
         writeDatabase(db);
-        await logToAudit("EMPLOYEE_DEACTIVATE", "people", targetId, null, "Account deactivated gracefully due to active transaction receipts.");
-        return jsonResponse(200, { message: "Person has active transaction receipts. Gracefully deactivated account to preserve database integrity." });
+        await logToAudit("EMPLOYEE_DEACTIVATE", "people", targetId, null, "Account deactivated gracefully due to active transaction receipts. Future schedules purged.");
+        return jsonResponse(200, { message: "Person has active transaction receipts. Gracefully deactivated account and purged future schedules to preserve database integrity." });
       }
 
       db.people.splice(index, 1);
@@ -329,27 +352,92 @@ export async function handleEmployeeRoutes(
     if (!requireRole(["admin", "dietary_admin", "manager"])) return jsonResponse(403, { error: "Admin or Manager privilege required" });
     const { role_filter, department_id } = queryParams;
 
+    const totalTimer = startTimer();
+    let dbLatencyMs = 0;
+    let joinLatencyMs = 0;
+    let recordsProcessed = 0;
+    let matchedDepartments = 0;
+    let unmatchedDepartments = 0;
+    const warnings: string[] = [];
+
     if (isMysqlConnected()) {
+      const dbTimer = startTimer();
       let q = "SELECT p.*, d.name AS department_name FROM people p LEFT JOIN departments d ON p.department_id = d.id WHERE 1=1";
       const params: any[] = [];
       if (role_filter) { q += " AND p.role = ?"; params.push(role_filter); }
       if (department_id) { q += " AND p.department_id = ?"; params.push(department_id); }
       q += " ORDER BY p.id DESC";
       const rows = await query(q, params);
-      rows.forEach(r => delete r.password);
-      return jsonResponse(200, rows);
+      dbLatencyMs = dbTimer();
+
+      const joinTimer = startTimer();
+      recordsProcessed = rows.length;
+      rows.forEach(r => {
+        delete r.password;
+        if (r.department_name && r.department_name !== "N/A") {
+          matchedDepartments++;
+        } else if (r.department_id) {
+          unmatchedDepartments++;
+          warnings.push(`User ${r.id} (${r.username}) has department_id ${r.department_id} but no matching department row in MySQL`);
+        }
+      });
+      joinLatencyMs = joinTimer();
+
+      const totalLatencyMs = totalTimer();
+      const metric = recordEmployeePerfMetric({
+        endpoint: "/api/admin/people",
+        method: "GET",
+        dbType: "mysql",
+        totalLatencyMs,
+        dbLatencyMs,
+        joinLatencyMs,
+        recordsProcessed,
+        matchedDepartments,
+        unmatchedDepartments,
+        warnings
+      });
+
+      return jsonResponse(200, rows, undefined, getPerfHeaders(metric));
     } else {
+      const dbTimer = startTimer();
       const db = readDatabase();
       let list = [...(db.people || [])];
+      dbLatencyMs = dbTimer();
+
+      const joinTimer = startTimer();
       if (role_filter) list = list.filter(p => p.role === role_filter);
       if (department_id) list = list.filter(p => p.department_id?.toString() === department_id);
+
+      recordsProcessed = list.length;
       const mapped = list.map(p => {
-        const dept = p.department_id ? db.departments?.find(d => d.id === p.department_id) : null;
+        const dept = p.department_id ? db.departments?.find(d => Number(d.id) === Number(p.department_id)) : null;
+        if (dept) {
+          matchedDepartments++;
+        } else if (p.department_id) {
+          unmatchedDepartments++;
+          warnings.push(`User ${p.id} (${p.username}) has department_id ${p.department_id} but no matching department in db.departments`);
+        }
         const cp = { ...p };
         delete cp.password;
         return { ...cp, department_name: dept ? dept.name : "N/A" };
       });
-      return jsonResponse(200, mapped.reverse());
+      joinLatencyMs = joinTimer();
+
+      const totalLatencyMs = totalTimer();
+      const metric = recordEmployeePerfMetric({
+        endpoint: "/api/admin/people",
+        method: "GET",
+        dbType: "sqlite",
+        totalLatencyMs,
+        dbLatencyMs,
+        joinLatencyMs,
+        recordsProcessed,
+        matchedDepartments,
+        unmatchedDepartments,
+        warnings
+      });
+
+      return jsonResponse(200, mapped.reverse(), undefined, getPerfHeaders(metric));
     }
   }
 
@@ -361,6 +449,10 @@ export async function handleEmployeeRoutes(
       position, department_id, qr_code, employee_status, hire_date, is_active, managed_department_id
     } = body || {};
 
+    console.log("DEBUG: handleCreateEmployee (backend) - body payload:", JSON.stringify(body, null, 2));
+
+    console.log("DEBUG: POST /api/admin/people payload:", JSON.stringify(body, null, 2));
+
     if ((role === "admin" || body.is_protected === true || body.is_protected === 1 || body.protected === true || body.protected === 1) && authUser?.role !== "admin") {
       return jsonResponse(403, { error: "Only System Administrator can assign, manage, or create protected/admin accounts." });
     }
@@ -368,6 +460,9 @@ export async function handleEmployeeRoutes(
     if (!username || !username.trim()) return jsonResponse(400, { error: "Username is required" });
     if (!first_name || !first_name.trim()) return jsonResponse(400, { error: "First name is required" });
     if (!last_name || !last_name.trim()) return jsonResponse(400, { error: "Last name is required" });
+
+    const deptId = department_id ? parseInt(department_id, 10) : 1;
+    // Removed error return for null department_id, defaulting to 1 instead.
 
     const passToHash = password && password.trim() !== "" ? password : "TempPassword123!";
     const minPassLenStr = await getSettingValue("min_password_length", String(DEFAULT_MIN_PASSWORD_LENGTH));
@@ -397,7 +492,7 @@ export async function handleEmployeeRoutes(
         [
           nextId, username.trim(), hashed, finalRole, first_name.trim(), last_name.trim(),
           email ? email.trim() : null, phone ? phone.trim() : null, finalActive, finalEmpNo,
-          position ? position.trim() : null, department_id ? parseInt(department_id, 10) : null,
+          position ? position.trim() : null, deptId,
           finalQr, employee_status || "active", hire_date || nowStr.split("T")[0],
           managed_department_id ? parseInt(managed_department_id, 10) : null, nowStr, nowStr
         ]
@@ -431,7 +526,7 @@ export async function handleEmployeeRoutes(
         is_active: Boolean(finalActive),
         employee_no: finalEmpNo,
         position: position ? position.trim() : null,
-        department_id: department_id ? parseInt(department_id, 10) : null,
+        department_id: deptId,
         qr_code: finalQr,
         employee_status: employee_status || "active",
         hire_date: hire_date || nowStr.split("T")[0],
@@ -565,6 +660,8 @@ export async function handleEmployeeRoutes(
     let totalEmployees = 0;
     let activeEmployees = 0;
     let todayFreeCount = 0;
+    let scheduledToday = 0;
+    let consumedToday = 0;
     const todayStr = new Date().toISOString().split("T")[0];
 
     if (isMysqlConnected()) {
@@ -573,15 +670,29 @@ export async function handleEmployeeRoutes(
         totalEmployees = empCount[0]?.cnt || 0;
         const actCount = await query("SELECT COUNT(*) as cnt FROM people WHERE role = 'employee' AND is_active = 1");
         activeEmployees = actCount[0]?.cnt || 0;
+        
+        const schedRes = await query("SELECT COUNT(*) as cnt FROM employee_schedules WHERE work_date = ?", [todayStr]);
+        scheduledToday = schedRes[0]?.cnt || 0;
+
         const freeT = await query("SELECT COUNT(*) as cnt FROM transactions t JOIN people p ON t.person_id = p.id WHERE t.meal_date = ? AND t.is_free = 1 AND t.status = 'completed'", [todayStr]);
         todayFreeCount = freeT[0]?.cnt || 0;
+
+        const totalT = await query("SELECT COUNT(*) as cnt FROM transactions t JOIN people p ON t.person_id = p.id WHERE t.meal_date = ? AND t.status = 'completed'", [todayStr]);
+        consumedToday = totalT[0]?.cnt || 0;
       } else {
         const empCount = await query("SELECT COUNT(*) as cnt FROM people WHERE role = 'employee' AND department_id = ?", [managedDepartmentId]);
         totalEmployees = empCount[0]?.cnt || 0;
         const actCount = await query("SELECT COUNT(*) as cnt FROM people WHERE role = 'employee' AND department_id = ? AND is_active = 1", [managedDepartmentId]);
         activeEmployees = actCount[0]?.cnt || 0;
+
+        const schedRes = await query("SELECT COUNT(*) as cnt FROM employee_schedules s JOIN people p ON s.person_id = p.id WHERE p.department_id = ? AND s.work_date = ?", [managedDepartmentId, todayStr]);
+        scheduledToday = schedRes[0]?.cnt || 0;
+
         const freeT = await query("SELECT COUNT(*) as cnt FROM transactions t JOIN people p ON t.person_id = p.id WHERE p.department_id = ? AND t.meal_date = ? AND t.is_free = 1 AND t.status = 'completed'", [managedDepartmentId, todayStr]);
         todayFreeCount = freeT[0]?.cnt || 0;
+
+        const totalT = await query("SELECT COUNT(*) as cnt FROM transactions t JOIN people p ON t.person_id = p.id WHERE p.department_id = ? AND t.meal_date = ? AND t.status = 'completed'", [managedDepartmentId, todayStr]);
+        consumedToday = totalT[0]?.cnt || 0;
       }
     } else {
       const db = readDatabase();
@@ -589,12 +700,19 @@ export async function handleEmployeeRoutes(
       totalEmployees = emps.length;
       activeEmployees = emps.filter(p => p.is_active).length;
       const empIds = new Set(emps.map(e => e.id));
+
+      scheduledToday = (db.employee_schedules || []).filter(s => s.work_date === todayStr && empIds.has(s.person_id)).length;
       todayFreeCount = db.transactions.filter(t => t.meal_date === todayStr && t.is_free && t.status === "completed" && empIds.has(t.person_id)).length;
+      consumedToday = db.transactions.filter(t => t.meal_date === todayStr && t.status === "completed" && empIds.has(t.person_id)).length;
     }
 
     return jsonResponse(200, {
       totalEmployees,
       activeEmployees,
+      departmentStaffCount: totalEmployees,
+      scheduledToday,
+      consumedToday,
+      freeMealsClaimed: todayFreeCount,
       todayFreeCount,
       managedDepartmentId
     });
@@ -628,37 +746,99 @@ export async function handleEmployeeRoutes(
     if (!authUser) return jsonResponse(401, { error: "Authentication required" });
     if (!requireRole(["manager", "admin"])) return jsonResponse(403, { error: "Manager/Admin privilege required" });
 
+    const totalTimer = startTimer();
+    let dbLatencyMs = 0;
+    let joinLatencyMs = 0;
+    let recordsProcessed = 0;
+    let matchedDepartments = 0;
+    let unmatchedDepartments = 0;
+    const warnings: string[] = [];
+
     if (isMysqlConnected()) {
+      const dbTimer = startTimer();
+      let rows: any[] = [];
       if (authUser.role === "admin") {
-        const rows = await query(`
+        rows = await query(`
           SELECT p.*, d.name AS department_name 
           FROM people p 
           LEFT JOIN departments d ON p.department_id = d.id 
           WHERE p.role = 'employee'
         `);
-        rows.forEach(r => delete r.password);
-        return jsonResponse(200, rows);
       } else {
-        const rows = await query(`
+        rows = await query(`
           SELECT p.*, d.name AS department_name 
           FROM people p 
           LEFT JOIN departments d ON p.department_id = d.id 
           WHERE p.role = 'employee' AND p.department_id = ?
         `, [managedDepartmentId]);
-        rows.forEach(r => delete r.password);
-        return jsonResponse(200, rows);
       }
+      dbLatencyMs = dbTimer();
+
+      const joinTimer = startTimer();
+      recordsProcessed = rows.length;
+      rows.forEach(r => {
+        delete r.password;
+        if (r.department_name && r.department_name !== "N/A") {
+          matchedDepartments++;
+        } else if (r.department_id) {
+          unmatchedDepartments++;
+          warnings.push(`User ${r.id} (${r.username}) missing dept in MySQL`);
+        }
+      });
+      joinLatencyMs = joinTimer();
+
+      const totalLatencyMs = totalTimer();
+      const metric = recordEmployeePerfMetric({
+        endpoint: "/api/manager/employees",
+        method: "GET",
+        dbType: "mysql",
+        totalLatencyMs,
+        dbLatencyMs,
+        joinLatencyMs,
+        recordsProcessed,
+        matchedDepartments,
+        unmatchedDepartments,
+        warnings
+      });
+
+      return jsonResponse(200, rows, undefined, getPerfHeaders(metric));
     } else {
+      const dbTimer = startTimer();
       const db = readDatabase();
-      const emps = db.people
-        .filter(p => p.role === "employee" && (authUser.role === "admin" || p.department_id === managedDepartmentId))
-        .map(p => {
-          const dept = p.department_id ? db.departments.find(d => d.id === p.department_id) : null;
-          const cp = { ...p };
-          delete cp.password;
-          return { ...cp, department_name: dept ? dept.name : "N/A" };
-        });
-      return jsonResponse(200, emps);
+      dbLatencyMs = dbTimer();
+
+      const joinTimer = startTimer();
+      const filtered = db.people.filter(p => p.role === "employee" && (authUser.role === "admin" || p.department_id === managedDepartmentId));
+      recordsProcessed = filtered.length;
+      const emps = filtered.map(p => {
+        const dept = p.department_id ? db.departments?.find(d => Number(d.id) === Number(p.department_id)) : null;
+        if (dept) {
+          matchedDepartments++;
+        } else if (p.department_id) {
+          unmatchedDepartments++;
+          warnings.push(`User ${p.id} (${p.username}) missing dept in JSON db`);
+        }
+        const cp = { ...p };
+        delete cp.password;
+        return { ...cp, department_name: dept ? dept.name : "N/A" };
+      });
+      joinLatencyMs = joinTimer();
+
+      const totalLatencyMs = totalTimer();
+      const metric = recordEmployeePerfMetric({
+        endpoint: "/api/manager/employees",
+        method: "GET",
+        dbType: "sqlite",
+        totalLatencyMs,
+        dbLatencyMs,
+        joinLatencyMs,
+        recordsProcessed,
+        matchedDepartments,
+        unmatchedDepartments,
+        warnings
+      });
+
+      return jsonResponse(200, emps, undefined, getPerfHeaders(metric));
     }
   }
 
@@ -668,20 +848,25 @@ export async function handleEmployeeRoutes(
 
     if (isMysqlConnected()) {
       if (authUser.role === "admin") {
-        const rows = await query("SELECT s.*, CONCAT(p.first_name, ' ', p.last_name) AS employee_name FROM employee_schedules s JOIN people p ON s.person_id = p.id");
+        const rows = await query(`
+          SELECT s.*, CONCAT(p.first_name, ' ', p.last_name) AS employee_name 
+          FROM employee_schedules s 
+          JOIN people p ON s.person_id = p.id 
+          WHERE p.is_active = 1
+        `);
         return jsonResponse(200, rows);
       } else {
         const rows = await query(`
           SELECT s.*, CONCAT(p.first_name, ' ', p.last_name) AS employee_name 
           FROM employee_schedules s 
           JOIN people p ON s.person_id = p.id 
-          WHERE p.department_id = ?
+          WHERE p.department_id = ? AND p.is_active = 1
         `, [managedDepartmentId]);
         return jsonResponse(200, rows);
       }
     } else {
       const db = readDatabase();
-      const empIds = new Set(db.people.filter(p => authUser.role === "admin" || p.department_id === managedDepartmentId).map(p => p.id));
+      const empIds = new Set(db.people.filter(p => (authUser.role === "admin" || p.department_id === managedDepartmentId) && p.is_active).map(p => p.id));
       const schedules = (db.employee_schedules || []).filter(s => empIds.has(s.person_id)).map(s => {
         const p = db.people.find(item => item.id === s.person_id);
         return {
@@ -706,6 +891,10 @@ export async function handleEmployeeRoutes(
         if (action === "remove") {
           await execute("DELETE FROM employee_schedules WHERE person_id = ? AND work_date = ?", [person_id, work_date]);
         } else if (action === "add" || action === "update") {
+          const p = await query("SELECT is_active FROM people WHERE id = ?", [person_id]);
+          if (p.length === 0 || !p[0].is_active) {
+             return jsonResponse(400, { error: "Cannot schedule inactive employee" });
+          }
           const check = await query("SELECT id FROM employee_schedules WHERE person_id = ? AND work_date = ?", [person_id, work_date]);
           if (check.length > 0) {
             await execute("UPDATE employee_schedules SET shift_type = ? WHERE person_id = ? AND work_date = ?", [shift_type || "day", person_id, work_date]);
@@ -730,6 +919,10 @@ export async function handleEmployeeRoutes(
           if (existing) {
             existing.shift_type = shift_type || "day";
           } else {
+            const p = db.people.find(person => person.id === person_id);
+            if (!p || !p.is_active) {
+                return jsonResponse(400, { error: "Cannot schedule inactive employee" });
+            }
             const nextId = db.employee_schedules.length > 0 ? Math.max(...db.employee_schedules.map(s => s.id)) + 1 : 1;
             db.employee_schedules.push({
               id: nextId,

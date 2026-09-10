@@ -3,6 +3,7 @@ import { readDatabase, writeDatabase } from "../db.js";
 import { isMysqlConnected, query } from "../mysql.js";
 import { cacheLayer } from "../cache.js";
 import { Person } from "../../types.js";
+import { getEmployeePerfSummary } from "../utils/performanceTracker.js";
 
 export async function handleAdminRoutes(
   method: string,
@@ -13,6 +14,14 @@ export async function handleAdminRoutes(
   queryParams: any,
   requireRole: (roles: string[]) => boolean
 ): Promise<ApiResponse | null> {
+  // Employee Lookup Performance & Join Telemetry
+  if (path === "/api/admin/employee-lookup-perf" && method === "GET") {
+    if (!authUser) return jsonResponse(401, { error: "Authentication required" });
+    if (!requireRole(["admin", "dietary_admin", "manager"])) return jsonResponse(403, { error: "Admin privilege required" });
+    const summary = getEmployeePerfSummary();
+    return jsonResponse(200, summary);
+  }
+
   // Public Stats
   if (path === "/api/public-stats" && method === "GET") {
     const cacheKey = "public_stats";
@@ -227,6 +236,38 @@ export async function handleAdminRoutes(
       recentActivities
     });
   }
+
+  // System Connectivity
+  if (path === "/api/admin/system-connectivity" && method === "GET") {
+    if (!authUser) return jsonResponse(401, { error: "Authentication required" });
+    if (!requireRole(["admin"])) return jsonResponse(403, { error: "Admin privilege required" });
+
+    // 1. MySQL Status
+    const mysqlStatus = isMysqlConnected();
+    
+    // 2. Redis Status
+    const redisStatus = cacheLayer.getIsRedisConnected();
+    
+    // 3. PM2 Status
+    let pm2Status = "unknown";
+    try {
+        const { execSync } = await import('child_process');
+        const output = execSync('npx pm2 jlist', { encoding: 'utf-8' });
+        const processes = JSON.parse(output);
+        const dgmcProcess = processes.find((p: any) => p.name === 'dgmc-dietary-system');
+        pm2Status = dgmcProcess ? dgmcProcess.pm2_env.status : "not-found";
+    } catch (e) {
+        pm2Status = "error";
+    }
+
+    return jsonResponse(200, {
+        mysql: mysqlStatus ? "connected" : "disconnected",
+        redis: redisStatus ? "connected" : "disconnected",
+        pm2: pm2Status,
+        timestamp: new Date().toISOString()
+    });
+  }
+
 
   // Reports - Meals
   if (path === "/api/admin/reports/meals" && method === "GET") {

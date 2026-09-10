@@ -93,7 +93,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             },
           });
           if (res.ok) {
-            const userProfile = await res.json();
+            const data = await res.json();
+            const userProfile = data.user || data;
             setAuthState({
               token: storedToken,
               user: userProfile,

@@ -224,7 +224,18 @@ export function readDatabase(): DatabaseSchema {
 
   // Backfill if missing loaded fields
   if (cachedDbState) {
+    const nowStr = new Date().toISOString();
     let touched = false;
+    if (!cachedDbState.departments || cachedDbState.departments.length === 0) {
+      cachedDbState.departments = [
+        { id: 1, name: "ICT Department", created_at: nowStr },
+        { id: 2, name: "Nursing Department", created_at: nowStr },
+        { id: 3, name: "Emergency Department", created_at: nowStr },
+        { id: 4, name: "Pharmacy", created_at: nowStr },
+        { id: 5, name: "Laboratory", created_at: nowStr }
+      ];
+      touched = true;
+    }
     if (!cachedDbState.system_settings) {
       const defaultSeed = seedDatabase();
       cachedDbState.system_settings = defaultSeed.system_settings;
@@ -285,8 +296,13 @@ export function writeDatabase(data: DatabaseSchema): void {
 function seedDatabase(): DatabaseSchema {
   const nowStr = new Date().toISOString();
   
-  // Production Start: No predefined departments. IT will add them via settings.
-  const depts: Department[] = [];
+  const depts: Department[] = [
+    { id: 1, name: "ICT Department", created_at: nowStr },
+    { id: 2, name: "Nursing Department", created_at: nowStr },
+    { id: 3, name: "Emergency Department", created_at: nowStr },
+    { id: 4, name: "Pharmacy", created_at: nowStr },
+    { id: 5, name: "Laboratory", created_at: nowStr }
+  ];
 
   const people: Person[] = [
     // 1. Primary System Administrator
@@ -299,6 +315,7 @@ function seedDatabase(): DatabaseSchema {
       last_name: "Administrator",
       email: "it.admin@dgmc.com",
       phone: "",
+      department_id: 1,
       is_active: true,
       is_protected: true,
       protected: true,
@@ -315,6 +332,7 @@ function seedDatabase(): DatabaseSchema {
       last_name: "Administrator",
       email: "dietary.admin@dgmc.com",
       phone: "",
+      department_id: 1,
       is_active: true,
       created_at: nowStr,
       updated_at: nowStr

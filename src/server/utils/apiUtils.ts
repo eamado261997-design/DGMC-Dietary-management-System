@@ -231,10 +231,11 @@ export const seedBenchmarks = () => {
 seedBenchmarks();
 
 // Helper for formatted responses definitions (moved early for security block returns)
-export const jsonResponse = (status: number, data: any, cookies?: any): ApiResponse => ({
+export const jsonResponse = (status: number, data: any, cookies?: any, headers?: Record<string, string>): ApiResponse => ({
   status,
   body: data,
-  cookies
+  cookies,
+  headers
 });
 
 export const parseCookies = (cookieHeader: string | undefined): Record<string, string> => {

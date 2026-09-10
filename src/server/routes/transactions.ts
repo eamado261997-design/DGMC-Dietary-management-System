@@ -256,135 +256,39 @@ export async function handleTransactionRoutes(
         }
       }
 
-      const mealAmount = isFree ? 0 : sysSettings.mealPrice;
-
+      let deptName = "N/A";
       if (isMysqlConnected()) {
-        const tRows = await query("SELECT MAX(id) as maxId FROM transactions");
-        const nextId = (tRows[0]?.maxId || 0) + 1;
-        await execute(
-          `INSERT INTO transactions (id, person_id, meal_date, meal_time, is_free, meal_amount, status, meal_type, cashier_person_id, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?)`,
-          [nextId, person.id, todayStr, timeStr, isFree ? 1 : 0, mealAmount, isFree ? "free" : "paid", authUser.id, new Date().toISOString()]
-        );
-
-        if (isFree) {
-          const fRows = await query("SELECT MAX(id) as maxId FROM free_meal_logs");
-          const nextFId = (fRows[0]?.maxId || 0) + 1;
-          await execute(
-            `INSERT INTO free_meal_logs (id, person_id, meal_date, claimed_at) VALUES (?, ?, ?, ?)`,
-            [nextFId, person.id, todayStr, new Date().toISOString()]
-          );
-        }
-
-        let deptName = "N/A";
         if (person.department_id) {
           const deptRows = await query("SELECT name FROM departments WHERE id = ?", [person.department_id]);
           deptName = deptRows[0]?.name || "N/A";
         }
-
-        const txRecord = {
-          id: nextId,
-          person_id: person.id,
-          employee_name: `${person.first_name} ${person.last_name}`,
-          employee_no: person.employee_no,
-          department_name: deptName,
-          meal_date: todayStr,
-          meal_time: timeStr,
-          is_free: isFree,
-          meal_amount: mealAmount,
-          status: "completed",
-          meal_type: isFree ? "free" : "paid",
-          cashier_name: `${authUser.first_name} ${authUser.last_name}`
-        };
-
-        await logToAudit(isFree ? "MEAL_SCAN_FREE" : "MEAL_SCAN_PAID", "transactions", nextId, null, txRecord);
-        return jsonResponse(200, {
-          eligible: isFree,
-          reason,
-          shift_type: shiftType,
-          windowDetails,
-          secure_verified: true,
-          security_method: "HMAC SHA-256 Badge Token",
-          remainingQuota: isFree ? 1 : 0,
-          totalQuota: 1,
-          claimedCount: alreadyClaimedFree ? 1 : 0,
-          employee: {
-            id: person.id,
-            name: `${person.first_name} ${person.last_name}`,
-            employee_no: person.employee_no,
-            department_name: deptName,
-            position: person.position || "Staff Member"
-          },
-          success: true,
-          transaction: txRecord,
-          isFree,
-          message: isFree ? "Free meal verified and recorded." : "Recorded as paid meal."
-        });
       } else {
         const db = readDatabase();
-        const transactionsList = db.transactions || [];
-        const nextId = transactionsList.length > 0 ? Math.max(...transactionsList.map(t => t.id)) + 1 : 1;
-        const tx: Transaction = {
-          id: nextId,
-          person_id: person.id,
-          cashier_person_id: authUser.id,
-          meal_date: todayStr,
-          meal_time: timeStr,
-          is_free: isFree,
-          meal_amount: mealAmount,
-          status: "completed",
-          meal_type: isFree ? "free" : "paid",
-          created_at: new Date().toISOString()
-        };
-        if (!db.transactions) db.transactions = [];
-        db.transactions.push(tx);
-
-        if (isFree) {
-          if (!db.free_meal_log) db.free_meal_log = [];
-          const nextFId = db.free_meal_log.length > 0 ? Math.max(...db.free_meal_log.map(f => f.id)) + 1 : 1;
-          db.free_meal_log.push({
-            id: nextFId,
-            person_id: person.id,
-            meal_date: todayStr,
-            created_at: new Date().toISOString()
-          });
-        }
-        writeDatabase(db);
-
         const dept = person.department_id ? (db.departments || []).find(d => d.id === person.department_id) : null;
-        const deptName = dept ? dept.name : "N/A";
-        const txRecord = {
-          ...tx,
-          employee_name: `${person.first_name} ${person.last_name}`,
+        deptName = dept ? dept.name : "N/A";
+      }
+
+      return jsonResponse(200, {
+        eligible: isFree,
+        reason,
+        shift_type: shiftType,
+        windowDetails,
+        secure_verified: true,
+        security_method: "HMAC SHA-256 Badge Token",
+        remainingQuota: isFree ? (alreadyClaimedFree ? 0 : 1) : 0,
+        totalQuota: 1,
+        claimedCount: alreadyClaimedFree ? 1 : 0,
+        employee: {
+          id: person.id,
+          name: `${person.first_name} ${person.last_name}`,
           employee_no: person.employee_no,
           department_name: deptName,
-          cashier_name: `${authUser.first_name} ${authUser.last_name}`
-        };
-
-        await logToAudit(isFree ? "MEAL_SCAN_FREE" : "MEAL_SCAN_PAID", "transactions", nextId, null, txRecord);
-        return jsonResponse(200, {
-          eligible: isFree,
-          reason,
-          shift_type: shiftType,
-          windowDetails,
-          secure_verified: true,
-          security_method: "HMAC SHA-256 Badge Token",
-          remainingQuota: isFree ? 1 : 0,
-          totalQuota: 1,
-          claimedCount: alreadyClaimedFree ? 1 : 0,
-          employee: {
-            id: person.id,
-            name: `${person.first_name} ${person.last_name}`,
-            employee_no: person.employee_no,
-            department_name: deptName,
-            position: person.position || "Staff Member"
-          },
-          success: true,
-          transaction: txRecord,
-          isFree,
-          message: isFree ? "Free meal verified and recorded." : "Recorded as paid meal."
-        });
-      }
+          position: person.position || "Staff Member"
+        },
+        success: true,
+        isFree,
+        message: isFree ? "Complimentary meal voucher verified." : "Quota limit reached or off schedule. Standard cash sale required."
+      });
     }
 
     // Cashier process manual
@@ -458,8 +362,11 @@ export async function handleTransactionRoutes(
         }
       }
 
-      const sysSettings = await getSystemSettings();
-      const amount = freeBool ? 0 : Number(meal_amount || sysSettings.mealPrice);
+      const numAmount = Number(meal_amount);
+      if (!freeBool && (isNaN(numAmount) || numAmount <= 0)) {
+        return jsonResponse(400, { error: "Manual price input is required for paid transactions." });
+      }
+      const amount = freeBool ? 0 : numAmount;
 
       if (isMysqlConnected()) {
         const tRows = await query("SELECT MAX(id) as maxId FROM transactions");

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../context/AuthContext.js";
+import { useToast } from "../../context/ToastContext.js";
 import PageHeader from "../../components/PageHeader.js";
 import { Person } from "../../types.js";
-import { QrCode, MonitorCheck, HelpCircle, ShieldAlert, CheckCircle2, Coins, CreditCard, Sparkles, AlertCircle, RefreshCw, Smartphone, Eye, Volume2, VolumeX, Search, X, Keyboard, UserCheck, ScanLine } from "lucide-react";
+import { QrCode, MonitorCheck, HelpCircle, ShieldAlert, CheckCircle2, Coins, CreditCard, Sparkles, AlertCircle, RefreshCw, Smartphone, Eye, Volume2, VolumeX, Search, X, Keyboard, UserCheck, ScanLine, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import PerformanceMetrics, { ScanEvent, HourlyData } from "./PerformanceMetrics.js";
 
@@ -27,6 +28,7 @@ interface ScannedEmployeeResult {
 
 export default function CashierScan() {
   const { apiFetch, branding } = useAuth();
+  const { addToast } = useToast();
   
   const [manualSearchId, setManualSearchId] = useState("");
   const [scanning, setScanning] = useState(false);
@@ -189,15 +191,15 @@ export default function CashierScan() {
   }, []);
 
   // checkout form parameters
-  const [paidAmount, setPaidAmount] = useState(branding?.mealPrice ? branding.mealPrice.toFixed(2) : "150.00");
+  const [paidAmount, setPaidAmount] = useState("");
   const [loadingCheckout, setLoadingCheckout] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState<string | null>(null);
 
   useEffect(() => {
-    if (branding && branding.mealPrice) {
-      setPaidAmount(branding.mealPrice.toFixed(2));
-    }
-  }, [branding]);
+    // Optionally keep existing branding logic if you still want a default, 
+    // but the user requested manual input. 
+    // Given the request, I will remove the auto-prefill entirely.
+  }, []);
 
   const filterInputRef = useRef<HTMLInputElement>(null);
 
@@ -232,13 +234,6 @@ export default function CashierScan() {
       if (data) {
         setResult(data);
         setManualSearchId("");
-        
-        setFeedbackModalData({
-          employeeName: data.employee?.name || "Unknown Employee",
-          mealType: data.isFree ? "Complimentary" : "Standard",
-          tag: data.isFree ? "free" : "paid",
-          mealAmount: data.transaction?.meal_amount || 0
-        });
 
         if (data.eligible) {
           setShowScanFlash(true);
@@ -272,7 +267,18 @@ export default function CashierScan() {
   };
 
   const handleCheckout = async (isFree: boolean) => {
-    if (!result) return;
+    if (!result || !result.employee) {
+      addToast("No valid employee record found for checkout.", "error");
+      return;
+    }
+    
+    // Enforce manual price input for paid meals and verify valid employee record returned
+    const amount = parseFloat(paidAmount);
+    if (!isFree && (isNaN(amount) || amount <= 0)) {
+      addToast("Please enter a valid positive price for the cash transaction.", "error");
+      return;
+    }
+
     setLoadingCheckout(true);
     try {
       const data = await apiFetch("/api/cashier/process", {
@@ -280,18 +286,26 @@ export default function CashierScan() {
         body: JSON.stringify({
           person_id: result.employee.id,
           is_free: isFree,
-          meal_amount: isFree ? 0 : parseFloat(paidAmount || (branding?.mealPrice || 150).toFixed(2)),
+          meal_amount: isFree ? 0 : amount,
         }),
       });
 
-      setCheckoutSuccess(
-        isFree
-          ? `Redemption Successful! Printed complimentary meal ticket for ${result.employee.name}.`
-          : `Processed successfully! Logged cash receipt of ${branding?.currencySymbol || "₱"}${Number(paidAmount).toFixed(2)} parameters.`
-      );
+      const successMsg = isFree
+        ? `Redemption Successful! Printed complimentary meal ticket for ${result.employee.name}.`
+        : `Successfully processed paid transaction of ${branding?.currencySymbol || "₱"}${amount.toFixed(2)} for ${result.employee.name}.`;
+
+      setCheckoutSuccess(successMsg);
+      addToast(successMsg, "success");
+
+      setFeedbackModalData({
+        employeeName: result.employee.name,
+        mealType: isFree ? "Complimentary" : "Standard",
+        tag: isFree ? "free" : "paid",
+        mealAmount: data.transaction?.meal_amount || (isFree ? 0 : amount)
+      });
       setResult(null);
     } catch (err: any) {
-      alert("Checkout failure: " + err.message);
+      addToast("Checkout failure: " + err.message, "error");
     } finally {
       setLoadingCheckout(false);
     }
@@ -390,135 +404,7 @@ export default function CashierScan() {
             </form>
           </div>
 
-          {/* Live Scanner Viewfinder Card */}
-          <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${scanning ? "bg-rose-400" : "bg-emerald-400"}`}></span>
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${scanning ? "bg-rose-500" : "bg-emerald-500"}`}></span>
-                </span>
-                {scanning ? "Scanning Code..." : "Scanner Viewfinder"}
-              </h3>
-              <span className="text-[10px] font-mono font-bold bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-md uppercase">
-                {scanning ? "Active" : "Standby"}
-              </span>
-            </div>
 
-            {/* Viewfinder Frame */}
-            <div className="relative aspect-square w-full rounded-2xl overflow-hidden border border-zinc-200 bg-zinc-950 flex flex-col items-center justify-center text-center">
-              {/* Corner Brackets */}
-              <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-teal-500 rounded-tl-sm"></div>
-              <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-teal-500 rounded-tr-sm"></div>
-              <div className="absolute bottom-4 left-4 w-4 h-4 border-b-2 border-l-2 border-teal-500 rounded-bl-sm"></div>
-              <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-teal-500 rounded-br-sm"></div>
-
-              {/* High-tech tech grid design */}
-              <div className="absolute inset-0 bg-[radial-gradient(#115e59_1px,transparent_1px)] [background-size:16px_16px] opacity-10"></div>
-
-              {/* Success Flash Overlay */}
-              <AnimatePresence>
-                {showScanFlash && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 z-40 bg-emerald-500/20 flex items-center justify-center pointer-events-none"
-                  >
-                    <motion.div
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: [0.5, 1.2, 1], opacity: 1 }}
-                      exit={{ scale: 1.5, opacity: 0 }}
-                      className="bg-white/90 p-4 rounded-full shadow-2xl shadow-emerald-500/50"
-                    >
-                      <CheckCircle2 className="w-12 h-12 text-emerald-600" />
-                    </motion.div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Simulated scan laser bar */}
-              <motion.div
-                className={`absolute left-4 right-4 h-[2px] shadow-[0_0_12px_rgba(20,184,166,0.8)] z-10 ${
-                  scanning ? "bg-rose-500 shadow-[0_0_16px_rgba(244,63,94,0.9)]" : "bg-teal-500"
-                }`}
-                animate={{
-                  top: ["10%", "90%", "10%"]
-                }}
-                transition={{
-                  duration: scanning ? 1.0 : 3.0,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-              />
-
-              {/* Viewfinder Center Display */}
-              <div className="z-10 px-4">
-                <AnimatePresence mode="wait">
-                  {scanning ? (
-                    <motion.div
-                      key="scanning-state"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className="space-y-3"
-                    >
-                      {/* Pulse target ring */}
-                      <div className="relative mx-auto w-16 h-16 flex items-center justify-center">
-                        <motion.div 
-                          className="absolute inset-0 border-2 border-rose-500 rounded-full"
-                          animate={{ scale: [1, 1.4, 1], opacity: [0.8, 0, 0.8] }}
-                          transition={{ duration: 1.2, repeat: Infinity }}
-                        />
-                        <QrCode className="w-8 h-8 text-rose-500 animate-pulse" />
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <p className="text-xs font-black text-rose-450 uppercase tracking-widest font-mono">
-                          Analyzing Token
-                        </p>
-                        <p className="text-[10px] text-zinc-450 font-medium font-mono">
-                          Checking mount-points &amp; schedules...
-                        </p>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="idle-state"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className="space-y-3"
-                    >
-                      <QrCode className="mx-auto w-12 h-12 text-teal-650/60" />
-                      <div className="space-y-1">
-                        <p className="text-xs font-bold text-zinc-300">ALIGN QR CODE</p>
-                        <p className="text-[9px] text-zinc-500 max-w-[180px] mx-auto">
-                          Position physical badge barcode under the beam or click simulation below
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Subtle sweep glow background */}
-              <motion.div 
-                className={`absolute inset-x-0 w-full opacity-5 pointer-events-none ${
-                  scanning ? "bg-gradient-to-b from-rose-500/30 to-transparent" : "bg-gradient-to-b from-teal-500/20 to-transparent"
-                }`}
-                animate={{
-                  height: ["0%", "100%", "0%"],
-                  top: ["0%", "0%", "100%"]
-                }}
-                transition={{
-                  duration: scanning ? 1.0 : 3.0,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-              />
-            </div>
-          </div>
 
           {/* Quick Badge Simulation Panel */}
           <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs space-y-4">
@@ -689,7 +575,7 @@ export default function CashierScan() {
           )}
 
           {/* Real Scan Results display panel */}
-          {result && (
+          {result && result.employee && (
             <div className="bg-white border border-zinc-200 rounded-3xl shadow-sm overflow-hidden flex flex-col min-h-[400px] animate-fade-in">
               
               {/* Header result notification banner */}
@@ -827,52 +713,78 @@ export default function CashierScan() {
                       </span>
                     </div>
 
-                    {result.eligible ? (
-                      <div>
-                        <h4 className="text-xs font-bold text-zinc-900 uppercase tracking-wider mb-2">Checkout Voucher</h4>
-                        <p className="text-[11px] text-zinc-500 leading-relaxed mb-4">
-                          The employee is active and rostered today. Redirection complete; clicking the button below prints the free meal ticket.
-                        </p>
-                        <button
-                          onClick={() => handleCheckout(true)}
-                          disabled={loadingCheckout}
-                          className="w-full h-10 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white font-bold rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer"
-                        >
-                          <Sparkles className="w-4 h-4" />
-                          {loadingCheckout ? "Logging..." : "Process Complimentary Meal"}
-                        </button>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">Checkout Options</h4>
+                        <span className="text-[10px] font-mono text-zinc-500">Manual Price Override Active</span>
                       </div>
-                    ) : (
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <AlertCircle className="w-4 h-4 text-rose-600" />
-                          <h4 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">Debit Paid Meal</h4>
-                        </div>
-                        <p className="text-[11px] text-zinc-500 leading-relaxed mb-4">
-                          Quota limit reached for this shift. Employees can buy meals at direct cafeteria rates in cash.
-                        </p>
+                      <p className="text-[11px] text-zinc-500 leading-relaxed mb-4">
+                        Select complimentary voucher claim or process a paid cash sale with a custom manual price.
+                      </p>
 
-                        <div className="space-y-4">
+                      <div className="space-y-4">
+                        {result.eligible && (
+                          <button
+                            onClick={() => handleCheckout(true)}
+                            disabled={loadingCheckout}
+                            className="w-full h-10 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white font-bold rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                          >
+                            <Sparkles className="w-4 h-4" />
+                            {loadingCheckout ? "Logging..." : "Process Complimentary Meal"}
+                          </button>
+                        )}
+
+                        <div className="p-4 bg-white border border-zinc-200 rounded-2xl space-y-3 shadow-2xs">
                           <div>
-                            <label className="text-[9px] font-bold text-zinc-650 block mb-1">Meal Price Cash ({branding?.currencySymbol || "₱"})</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[10px] font-bold text-zinc-800 uppercase tracking-wider block">
+                                Manual Price Override ({branding?.currencySymbol || "₱"})
+                              </label>
+                              {paidAmount !== "" && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPaidAmount("")}
+                                  className="text-[10px] text-teal-800 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                                  title="Clear manual override"
+                                >
+                                  <RotateCcw className="w-3 h-3" /> Undo Override
+                                </button>
+                              )}
+                            </div>
                             <input
                               type="number"
+                              step="0.01"
+                              min="0.01"
+                              placeholder="Enter manual price..."
                               value={paidAmount}
                               onChange={(e) => setPaidAmount(e.target.value)}
-                              className="w-full h-8 px-2 text-xs bg-white border border-zinc-250 rounded-lg focus:outline-none font-mono font-bold"
+                              className={`w-full h-10 px-3 text-sm bg-zinc-50 border rounded-xl focus:outline-none focus:ring-2 font-mono font-bold text-zinc-900 ${
+                                paidAmount !== "" && (isNaN(parseFloat(paidAmount)) || parseFloat(paidAmount) <= 0)
+                                  ? "border-rose-300 focus:ring-rose-500 bg-rose-50/20"
+                                  : "border-zinc-300 focus:ring-teal-500"
+                              }`}
                             />
+                            {paidAmount !== "" && (isNaN(parseFloat(paidAmount)) || parseFloat(paidAmount) <= 0) ? (
+                              <span className="text-[10px] text-rose-600 mt-1 block font-medium">
+                                Error: Price must be a positive number greater than 0.
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-zinc-400 mt-1 block">
+                                Direct manual input. Bypasses any automated payroll deductions or default meal pricing.
+                              </span>
+                            )}
                           </div>
                           <button
                             onClick={() => handleCheckout(false)}
-                            disabled={loadingCheckout}
-                            className="w-full h-10 bg-teal-800 hover:bg-teal-950 disabled:bg-teal-300 text-white font-bold rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                            disabled={loadingCheckout || (paidAmount === "" || isNaN(parseFloat(paidAmount)) || parseFloat(paidAmount) <= 0)}
+                            className="w-full h-10 bg-teal-800 hover:bg-teal-950 disabled:bg-teal-300 text-white font-bold rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm"
                           >
                             <Coins className="w-4 h-4" />
-                            {loadingCheckout ? "Logging..." : `Process Paid Transaction (${branding?.currencySymbol || "₱"}${parseFloat(paidAmount || (branding?.mealPrice || 150).toString()).toFixed(2)})`}
+                            {loadingCheckout ? "Logging..." : `Process Paid Transaction (${branding?.currencySymbol || "₱"}${parseFloat(paidAmount || "0").toFixed(2)})`}
                           </button>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
 

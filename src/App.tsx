@@ -19,6 +19,7 @@ import AdminReports from "./pages/admin/AdminReports.js";
 import SystemSettings from "./pages/admin/SystemSettings.js";
 import AuditTrail from "./pages/admin/AuditTrail.js";
 import DietaryDashboard from "./pages/admin/DietaryDashboard.js";
+import SystemConnectivity from "./pages/admin/SystemConnectivity.js";
 
 // Manager Views
 import ManagerDashboard from "./pages/manager/ManagerDashboard.js";
@@ -77,7 +78,7 @@ function CoreHubApp() {
       if (view === "change-password" || view === "login") return true;
 
       if (user.role === "dietary_admin") {
-        return ["admin-dashboard", "admin-employees", "admin-users", "admin-departments", "admin-reports", "change-password"].includes(view);
+        return ["admin-dashboard", "admin-employees", "admin-users", "admin-departments", "admin-reports", "change-password", "admin-connectivity"].includes(view);
       }
       if (user.role === "manager") {
         return ["manager-dashboard", "manager-employees", "manager-schedule"].includes(view);
@@ -137,6 +138,8 @@ function CoreHubApp() {
       case "admin-audit-trail":
       case "audit-trail":
         return <AuditTrail />;
+      case "admin-connectivity":
+        return <SystemConnectivity />;
 
       // Supervisor Lead Portals
       case "manager-dashboard":

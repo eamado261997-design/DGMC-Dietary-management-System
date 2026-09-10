@@ -5,6 +5,8 @@ import { Skeleton } from "../../components/Skeleton.js";
 import EmptyState from "../../components/EmptyState.js";
 import SystemDiagnostics from "../../components/admin/SystemDiagnostics.js";
 import OperationalSummaryCard from "../../components/OperationalSummaryCard.js";
+import PaymentOverviewWidget from "../../components/admin/PaymentOverviewWidget.js";
+import TransactionSummaryWidget from "../../components/TransactionSummaryWidget.js";
 import RBACPermissionMatrix from "../../components/admin/RBACPermissionMatrix.js";
 import LatencyPercentilePanel from "../../components/admin/LatencyPercentilePanel.js";
 import DiagnosticChart from "../../components/admin/DiagnosticChart.js";
@@ -313,10 +315,21 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
         title="Administrator Dashboard"
         subtitle={`${branding.companyName} Cafeteria Operations Hub`}
       />
+      <div className="flex justify-end mb-6">
+        <button
+          onClick={() => onViewChange("admin-connectivity")}
+          className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 font-bold text-xs rounded-xl transition-all flex items-center gap-2"
+        >
+          <Server className="w-3 h-3" />
+          System Health Monitor
+        </button>
+      </div>
 
           <div className="space-y-8">
             {/* Quick Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+              
+              <PaymentOverviewWidget paidAmountToday={stats?.paidAmountToday || 0} />
               
               <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600 shrink-0">
@@ -379,6 +392,13 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
               </div>
 
             </div>
+
+            {/* Transaction Summary & Pricing Charts Component */}
+            <TransactionSummaryWidget
+              totalVolume={(stats?.freeMealsToday || 0) + (stats?.cashMealsTodayCount || 0)}
+              totalRevenue={stats?.paidAmountToday || 0}
+              avgMealPrice={stats?.cashMealsTodayCount && stats.cashMealsTodayCount > 0 ? (stats.paidAmountToday / stats.cashMealsTodayCount) : 150}
+            />
 
             {/* Operational Watch & Daily Indicators Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

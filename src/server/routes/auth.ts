@@ -6,6 +6,7 @@ import { LoginSchema } from "../schemas.js";
 import { MIN_PASSWORD_LENGTH } from "../../constants/security.js";
 import { validatePasswordComplexity } from "../../utils/password.js";
 import { Person, LoginAttempt } from "../../types.js";
+import { startTimer, recordEmployeePerfMetric, getPerfHeaders } from "../utils/performanceTracker.js";
 
 export async function handleAuthRoutes(
   method: string,
@@ -74,8 +75,21 @@ export async function handleAuthRoutes(
 
     const token = generateToken({ id: user.id, username: user.username, role: user.role });
     const xsrfToken = generateXsrfToken();
-    const safeUser = { ...user };
-    delete (safeUser as any).password;
+    const safeUser: any = { ...user };
+    delete safeUser.password;
+
+    if (safeUser.department_id) {
+      if (isMysqlConnected()) {
+        const dRows = await query("SELECT name FROM departments WHERE id = ?", [safeUser.department_id]);
+        safeUser.department_name = dRows[0]?.name || "N/A";
+      } else {
+        const db = readDatabase();
+        const dMatch = db.departments?.find((d: any) => Number(d.id) === Number(safeUser.department_id));
+        safeUser.department_name = dMatch ? dMatch.name : "N/A";
+      }
+    } else {
+      safeUser.department_name = "N/A";
+    }
 
     return jsonResponse(200, {
       success: true,
@@ -90,17 +104,87 @@ export async function handleAuthRoutes(
   if (path === "/api/auth/refresh" && method === "POST") {
     if (!authUser) return jsonResponse(401, { error: "Authentication session expired. Please sign in." });
     const newToken = generateToken({ id: authUser.id, username: authUser.username, role: authUser.role });
-    const safeUser = { ...authUser };
-    delete (safeUser as any).password;
+    const safeUser: any = { ...authUser };
+    delete safeUser.password;
+    if (safeUser.department_id) {
+      if (isMysqlConnected()) {
+        const dRows = await query("SELECT name FROM departments WHERE id = ?", [safeUser.department_id]);
+        safeUser.department_name = dRows[0]?.name || "N/A";
+      } else {
+        const db = readDatabase();
+        const dMatch = db.departments?.find((d: any) => Number(d.id) === Number(safeUser.department_id));
+        safeUser.department_name = dMatch ? dMatch.name : "N/A";
+      }
+    } else {
+      safeUser.department_name = "N/A";
+    }
     return jsonResponse(200, { success: true, token: newToken, user: safeUser });
   }
 
   // GET /api/auth/me
   if (path === "/api/auth/me" && method === "GET") {
     if (!authUser) return jsonResponse(401, { error: "Authentication session expired. Please sign in." });
-    const safeUser = { ...authUser };
-    delete (safeUser as any).password;
-    return jsonResponse(200, { success: true, user: safeUser });
+    const totalTimer = startTimer();
+    let dbLatencyMs = 0;
+    let joinLatencyMs = 0;
+    let matched = 0;
+    let unmatched = 0;
+    const warnings: string[] = [];
+
+    const safeUser: any = { ...authUser };
+    delete safeUser.password;
+    if (safeUser.department_id) {
+      if (isMysqlConnected()) {
+        const dbTimer = startTimer();
+        const dRows = await query("SELECT name FROM departments WHERE id = ?", [safeUser.department_id]);
+        dbLatencyMs = dbTimer();
+
+        const joinTimer = startTimer();
+        if (dRows && dRows.length > 0) {
+          safeUser.department_name = dRows[0].name;
+          matched = 1;
+        } else {
+          safeUser.department_name = "N/A";
+          unmatched = 1;
+          warnings.push(`User ${safeUser.id} has department_id ${safeUser.department_id} but not found in MySQL departments`);
+        }
+        joinLatencyMs = joinTimer();
+      } else {
+        const dbTimer = startTimer();
+        const db = readDatabase();
+        dbLatencyMs = dbTimer();
+
+        const joinTimer = startTimer();
+        const dMatch = db.departments?.find((d: any) => Number(d.id) === Number(safeUser.department_id));
+        if (dMatch) {
+          safeUser.department_name = dMatch.name;
+          matched = 1;
+        } else {
+          safeUser.department_name = "N/A";
+          unmatched = 1;
+          warnings.push(`User ${safeUser.id} has department_id ${safeUser.department_id} but not found in JSON departments`);
+        }
+        joinLatencyMs = joinTimer();
+      }
+    } else {
+      safeUser.department_name = "N/A";
+    }
+
+    const totalLatencyMs = totalTimer();
+    const metric = recordEmployeePerfMetric({
+      endpoint: "/api/auth/me",
+      method: "GET",
+      dbType: isMysqlConnected() ? "mysql" : "sqlite",
+      totalLatencyMs,
+      dbLatencyMs,
+      joinLatencyMs,
+      recordsProcessed: 1,
+      matchedDepartments: matched,
+      unmatchedDepartments: unmatched,
+      warnings
+    });
+
+    return jsonResponse(200, { success: true, user: safeUser }, undefined, getPerfHeaders(metric));
   }
 
   // POST /api/auth/change-password

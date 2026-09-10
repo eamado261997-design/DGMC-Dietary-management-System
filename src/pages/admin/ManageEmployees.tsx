@@ -4,7 +4,7 @@ import { useModal } from "../../context/ModalContext.js";
 import PageHeader from "../../components/PageHeader.js";
 import VitalSignsLoader from "../../components/VitalSignsLoader.js";
 import { Person, Department } from "../../types.js";
-import { Search, Plus, Edit2, Trash2, ShieldAlert, User, Check, X, Building, Upload, FileText, Download, CheckCircle2, AlertCircle, Lock as LockIcon } from "lucide-react";
+import { Search, Plus, Edit2, Trash2, ShieldAlert, User, Check, X, Building, Upload, FileText, Download, CheckCircle2, AlertCircle, Lock as LockIcon, Bug, Terminal, Activity, Zap, Database, Cpu, Clock, RefreshCw } from "lucide-react";
 import { MIN_PASSWORD_LENGTH } from "../../constants/security.js";
 import { validatePasswordComplexity } from "../../utils/password.js";
 import { SecureField } from "../../components/SecureField.js";
@@ -43,6 +43,23 @@ export default function ManageEmployees() {
   const [csvErrorMsg, setCsvErrorMsg] = useState<string | null>(null);
   const [minPasswordLength, setMinPasswordLength] = useState(MIN_PASSWORD_LENGTH);
 
+  // Performance Telemetry Modal State
+  const [perfModalOpen, setPerfModalOpen] = useState(false);
+  const [perfData, setPerfData] = useState<any>(null);
+  const [loadingPerf, setLoadingPerf] = useState(false);
+
+  const fetchPerfData = async () => {
+    setLoadingPerf(true);
+    try {
+      const data = await apiFetch("/api/admin/employee-lookup-perf");
+      setPerfData(data);
+    } catch (e: any) {
+      console.error("Failed to load perf telemetry:", e);
+    } finally {
+      setLoadingPerf(false);
+    }
+  };
+
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!personToReset || isSubmitting) return;
@@ -79,7 +96,7 @@ export default function ManageEmployees() {
   const [formPhone, setFormPhone] = useState("");
   const [formEmpNo, setFormEmpNo] = useState("");
   const [formPosition, setFormPosition] = useState("");
-  const [formDeptId, setFormDeptId] = useState("");
+  const [formDeptId, setFormDeptId] = useState<number>(0);
   const [formQrCode, setFormQrCode] = useState("");
   const [formStatus, setFormStatus] = useState<"active" | "inactive">("active");
   const [formHireDate, setFormHireDate] = useState("");
@@ -122,7 +139,7 @@ export default function ManageEmployees() {
     setFormPhone("");
     setFormEmpNo("");
     setFormPosition("");
-    setFormDeptId(departments[0]?.id.toString() || "");
+    setFormDeptId(departments[0]?.id || 0);
     setFormQrCode("");
     setFormStatus("active");
     setFormHireDate(new Date().toISOString().split("T")[0]);
@@ -137,7 +154,7 @@ export default function ManageEmployees() {
     setFormUsername(p.username);
     setFormPassword(""); // Left blank to preserve current password
     setFormPosition(p.position || "");
-    setFormDeptId(p.department_id?.toString() || "");
+    setFormDeptId(p.department_id || 0);
     setFormStatus(p.employee_status || "active");
     setFormHireDate(p.hire_date || "");
     setError(null);
@@ -195,6 +212,9 @@ export default function ManageEmployees() {
     if (isSubmitting) return;
     setError(null);
 
+    // DEBUG: log department state
+    console.log("DEBUG: handleSave - formDeptId:", formDeptId, "departments:", departments);
+
     // Guard against submitting pending decryption state
     if (formEmail === "Decrypting..." || formPhone === "Decrypting..." || formEmpNo === "Decrypting..." || formQrCode === "Decrypting...") {
       setError("Please wait until sensitive fields are decrypted before saving.");
@@ -234,7 +254,7 @@ export default function ManageEmployees() {
       phone: formPhone.trim(),
       employee_no: formEmpNo.trim(),
       position: formPosition.trim(),
-      department_id: formDeptId ? parseInt(formDeptId, 10) : null,
+      department_id: formDeptId || (departments[0]?.id || 1),
       qr_code: formQrCode.trim(),
       employee_status: formStatus,
       hire_date: formHireDate,
@@ -443,6 +463,17 @@ export default function ManageEmployees() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
+                fetchPerfData();
+                setPerfModalOpen(true);
+              }}
+              className="h-10 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold px-3.5 flex items-center gap-1.5 transition-colors"
+              title="View Server-Side Lookup Latency & Join Telemetry"
+            >
+              <Activity className="w-4 h-4 text-indigo-600" />
+              Latency & Join Diagnostics
+            </button>
+            <button
+              onClick={() => {
                 setCsvRawText("");
                 setParsedRows([]);
                 setCsvErrorMsg(null);
@@ -562,6 +593,7 @@ export default function ManageEmployees() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
+
                             <button
                               onClick={() => openEditModal(e)}
                               className="p-1.5 hover:bg-zinc-100 rounded-lg text-zinc-550 hover:text-teal-900 transition-colors"
@@ -700,7 +732,7 @@ export default function ManageEmployees() {
                   <select
                     required
                     value={formDeptId}
-                    onChange={(e) => setFormDeptId(e.target.value)}
+                    onChange={(e) => setFormDeptId(parseInt(e.target.value, 10))}
                     className="w-full h-9 px-3 text-xs bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-700 focus:bg-white text-zinc-600 font-bold"
                   >
                     {departments.map((d) => (
@@ -710,6 +742,55 @@ export default function ManageEmployees() {
                     ))}
                   </select>
                 </div>
+
+                {editPerson && (() => {
+                  const cachedId = editPerson.department_id;
+                  const cachedDept = departments.find(d => d.id === cachedId);
+                  const selectedDept = departments.find(d => d.id === formDeptId);
+                  const isIdMismatch = cachedId !== formDeptId;
+                  const isMissingRecord = !cachedDept;
+
+                  return (
+                    <div className={`sm:col-span-2 p-3.5 rounded-2xl border ${
+                      isIdMismatch || isMissingRecord
+                        ? "bg-amber-50 border-amber-300 text-amber-950"
+                        : "bg-zinc-50 border-zinc-200 text-zinc-800"
+                    }`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-mono font-bold uppercase flex items-center gap-1.5">
+                          {isIdMismatch || isMissingRecord ? (
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                          ) : (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+                          )}
+                          Department Diagnostic Matcher
+                        </span>
+                        <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                          isIdMismatch ? "bg-amber-200 text-amber-900" : "bg-emerald-100 text-emerald-900"
+                        }`}>
+                          {isIdMismatch ? "MISMATCH DETECTED" : "SYNCHRONIZED"}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                        <div className="p-2 bg-white rounded-xl border border-zinc-200">
+                          <span className="text-[9px] text-zinc-400 block uppercase font-sans font-bold">Cached Record:</span>
+                          <span className="font-bold text-zinc-900">ID {cachedId ?? "None"} ({cachedDept ? cachedDept.name : "Unresolved"})</span>
+                        </div>
+                        <div className="p-2 bg-white rounded-xl border border-zinc-200">
+                          <span className="text-[9px] text-zinc-400 block uppercase font-sans font-bold">Active Form Selection:</span>
+                          <span className="font-bold text-zinc-900">ID {formDeptId} ({selectedDept ? selectedDept.name : "Unknown"})</span>
+                        </div>
+                      </div>
+
+                      {(isIdMismatch || isMissingRecord) && (
+                        <p className="text-[10px] text-amber-800 mt-2 font-medium leading-relaxed font-sans">
+                          <strong>⚠️ Department Mismatch Alert:</strong> The cached department record (ID {cachedId}) differs from your active selection (ID {formDeptId}) or could not be resolved in the departments table. Saving will reassign this employee to <strong>{selectedDept?.name}</strong>.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div>
                   <label className="text-[10px] font-bold text-zinc-600 block mb-1">Position / Title</label>
                   <input
@@ -972,6 +1053,172 @@ export default function ManageEmployees() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+
+
+      {/* Server Performance & Join Latency Telemetry Modal */}
+      {perfModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-zinc-200 overflow-hidden font-sans">
+            <div className="p-6 border-b border-zinc-200 bg-gradient-to-r from-indigo-900 to-zinc-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center">
+                  <Activity className="w-5 h-5 text-indigo-300" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white">Server-Side Employee Lookup Latency & Join Telemetry</h3>
+                  <p className="text-xs text-indigo-200 font-mono">Real-time DB Query vs Department Join Logic Performance Metrics</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={fetchPerfData}
+                  disabled={loadingPerf}
+                  className="p-2 bg-indigo-800/60 hover:bg-indigo-700/60 border border-indigo-600/40 rounded-xl text-indigo-200 transition-colors cursor-pointer"
+                  title="Refresh Metrics"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingPerf ? 'animate-spin' : ''}`} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPerfModalOpen(false)}
+                  className="p-2 hover:bg-white/10 rounded-xl text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-6">
+              {loadingPerf && !perfData ? (
+                <div className="flex justify-center py-12">
+                  <VitalSignsLoader size="md" color="teal" />
+                </div>
+              ) : perfData ? (
+                <>
+                  {/* Diagnosis Banner */}
+                  <div className="p-4 bg-indigo-50/80 border border-indigo-200 rounded-2xl text-xs text-indigo-950 flex items-start gap-3">
+                    <Zap className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold uppercase tracking-wider text-[10px] text-indigo-700 block mb-0.5">Automated Latency Diagnostic Analysis</span>
+                      <p className="leading-relaxed font-sans">{perfData.diagnosis}</p>
+                    </div>
+                  </div>
+
+                  {/* Summary Metric Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3.5 bg-zinc-50 rounded-2xl border border-zinc-200 text-center">
+                      <span className="text-[10px] uppercase font-bold text-zinc-400 block mb-1">Total Lookups</span>
+                      <span className="text-xl font-bold font-mono text-zinc-900">{perfData.totalLookupsTracked}</span>
+                    </div>
+
+                    <div className="p-3.5 bg-zinc-50 rounded-2xl border border-zinc-200 text-center">
+                      <div className="flex items-center justify-center gap-1 text-[10px] uppercase font-bold text-zinc-400 mb-1">
+                        <Database className="w-3 h-3 text-emerald-600" />
+                        <span>Avg DB Fetch</span>
+                      </div>
+                      <span className="text-xl font-bold font-mono text-emerald-700">{perfData.avgDbLatencyMs}ms</span>
+                      <span className="text-[9px] text-zinc-400 block font-mono">({perfData.avgDbPercentage}%)</span>
+                    </div>
+
+                    <div className="p-3.5 bg-zinc-50 rounded-2xl border border-zinc-200 text-center">
+                      <div className="flex items-center justify-center gap-1 text-[10px] uppercase font-bold text-zinc-400 mb-1">
+                        <Cpu className="w-3 h-3 text-purple-600" />
+                        <span>Avg Join Logic</span>
+                      </div>
+                      <span className="text-xl font-bold font-mono text-purple-700">{perfData.avgJoinLatencyMs}ms</span>
+                      <span className="text-[9px] text-zinc-400 block font-mono">({perfData.avgJoinPercentage}%)</span>
+                    </div>
+
+                    <div className="p-3.5 bg-zinc-50 rounded-2xl border border-zinc-200 text-center">
+                      <div className="flex items-center justify-center gap-1 text-[10px] uppercase font-bold text-zinc-400 mb-1">
+                        <Clock className="w-3 h-3 text-blue-600" />
+                        <span>Avg Total Time</span>
+                      </div>
+                      <span className="text-xl font-bold font-mono text-blue-700">{perfData.avgTotalLatencyMs}ms</span>
+                    </div>
+                  </div>
+
+                  {/* Recent Lookup Traces Table */}
+                  <div>
+                    <span className="text-xs font-bold text-zinc-800 uppercase tracking-wider block mb-2">
+                      Recent API Lookup Traces
+                    </span>
+                    <div className="border border-zinc-200 rounded-2xl overflow-hidden">
+                      <div className="max-h-56 overflow-y-auto">
+                        <table className="w-full text-left border-collapse text-[11px] font-mono">
+                          <thead className="bg-zinc-100 text-zinc-600 uppercase text-[9px] font-bold sticky top-0">
+                            <tr>
+                              <th className="px-3 py-2">Timestamp</th>
+                              <th className="px-3 py-2">Endpoint</th>
+                              <th className="px-3 py-2">Engine</th>
+                              <th className="px-3 py-2 text-right">DB Query</th>
+                              <th className="px-3 py-2 text-right">Join Logic</th>
+                              <th className="px-3 py-2 text-right">Total</th>
+                              <th className="px-3 py-2 text-center">Dept Match</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-200 bg-white">
+                            {(!perfData.recentTraces || perfData.recentTraces.length === 0) ? (
+                              <tr>
+                                <td colSpan={7} className="px-3 py-6 text-center text-zinc-400 font-sans italic">
+                                  No employee lookups recorded yet. Perform a search or refresh to generate live traces.
+                                </td>
+                              </tr>
+                            ) : (
+                              perfData.recentTraces.map((t: any) => (
+                                <tr key={t.id} className="hover:bg-zinc-50/60">
+                                  <td className="px-3 py-2 text-zinc-400">{t.timestamp?.split("T")[1]?.slice(0, 8)}</td>
+                                  <td className="px-3 py-2 font-bold text-zinc-800">{t.method} {t.endpoint}</td>
+                                  <td className="px-3 py-2">
+                                    <span className="px-1.5 py-0.5 rounded bg-zinc-100 border border-zinc-200 text-zinc-700 text-[10px] uppercase font-bold">
+                                      {t.dbType}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2 text-right text-emerald-700 font-bold">{t.dbLatencyMs}ms</td>
+                                  <td className="px-3 py-2 text-right text-purple-700 font-bold">{t.joinLatencyMs}ms</td>
+                                  <td className="px-3 py-2 text-right text-blue-700 font-bold">{t.totalLatencyMs}ms</td>
+                                  <td className="px-3 py-2 text-center">
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                      t.unmatchedDepartments > 0 
+                                        ? "bg-amber-100 text-amber-800 border border-amber-300"
+                                        : "bg-teal-100 text-teal-800 border border-teal-300"
+                                    }`}>
+                                      {t.matchedDepartments}/{t.recordsProcessed}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8 text-zinc-400 font-sans text-xs">
+                  Click the refresh button to retrieve performance telemetry.
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-zinc-200 bg-zinc-50 flex items-center justify-between">
+              <span className="text-[10px] text-zinc-500 font-mono">
+                Telemetry headers active on /api/admin/people, /api/auth/me & /api/manager/employees
+              </span>
+              <button
+                type="button"
+                onClick={() => setPerfModalOpen(false)}
+                className="px-4 py-2 text-xs font-bold text-zinc-700 bg-white border border-zinc-250 hover:bg-zinc-100 rounded-xl shadow-2xs cursor-pointer"
+              >
+                Close Telemetry
+              </button>
+            </div>
           </div>
         </div>
       )}

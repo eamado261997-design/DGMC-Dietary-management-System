@@ -12,7 +12,7 @@ export const CreateUserSchema = z.object({
   is_active: z.boolean().optional().default(true),
   employee_no: z.string().max(50).optional().or(z.literal("")),
   position: z.string().max(100).optional().or(z.literal("")),
-  department_id: z.number().optional(),
+  department_id: z.number().optional().nullable(),
   department_ids: z.array(z.number()).optional(),
   managed_department_id: z.number().optional().nullable(),
   hire_date: z.string().max(30).optional().or(z.literal("")),
