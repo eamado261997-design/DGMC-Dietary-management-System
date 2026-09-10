@@ -98,18 +98,18 @@ export default function AuditTrail() {
 
       // Fetch users for filtering dropdown
       const allPeople = await apiFetch("/api/admin/people");
-      const systemStaff = allPeople
-        .filter((p: any) => ["admin", "manager", "cashier"].includes(p.role))
+      const systemStaff = (Array.isArray(allPeople) ? allPeople : [])
+        .filter((p: any) => p && ["admin", "manager", "cashier"].includes(p.role))
         .map((p: any) => ({
           id: p.id,
-          name: `${p.first_name} ${p.last_name}`,
+          name: `${p.first_name || ""} ${p.last_name || ""}`.trim(),
           role: p.role
         }));
       setSystemUsers(systemStaff);
 
       // Fetch departments for filtering
       const depts = await apiFetch("/api/departments");
-      setDepartments(depts);
+      setDepartments(Array.isArray(depts) ? depts : []);
     } catch (err: any) {
       setError(err.message || "Failed to retrieve auditable ledger files.");
     } finally {

@@ -2,6 +2,7 @@ import { jsonResponse, ApiResponse } from "../utils/apiUtils.js";
 import { readDatabase, writeDatabase } from "../db.js";
 import { isMysqlConnected, query, execute } from "../mysql.js";
 import { Person, Transaction } from "../../types.js";
+import { mapDatabaseError } from "../errors.js";
 
 const getSystemSettings = async () => {
   let settings: any[] = [];
@@ -523,9 +524,7 @@ export async function handleTransactionRoutes(
 
     return null;
   } catch (err: any) {
-    return jsonResponse(500, {
-      error: "An unexpected database exception occurred in transaction services.",
-      details: err?.message || String(err)
-    });
+    const appErr = mapDatabaseError(err);
+    return jsonResponse(appErr.statusCode, appErr.toJSON());
   }
 }

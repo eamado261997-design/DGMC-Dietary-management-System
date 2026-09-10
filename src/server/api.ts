@@ -14,7 +14,25 @@ import { MIN_PASSWORD_LENGTH } from "../constants/security.js";
 import { validatePasswordComplexity, DEFAULT_MIN_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH_LIMITS } from "../utils/password.js";
 import { Person, Department, Transaction, EmployeeSchedule, FreeMealLog, AuditLog, SystemSetting, LoginAttempt } from "../types.js";
 import { getSystemDiagnosticsData, clearCacheLayer, triggerDatabaseFailover, recoverDatabasePrimary } from "./services/diagnosticsService.js";
-import { LoginSchema, CreateUserSchema, ScanSchema } from "./schemas.js";
+import {
+  LoginSchema,
+  CreateUserSchema,
+  UpdateUserSchema,
+  ChangePasswordSchema,
+  ResetPasswordSchema,
+  DepartmentSchema,
+  UpdateDepartmentSchema,
+  EmployeeSchema,
+  ScheduleSchema,
+  ToggleScheduleSchema,
+  BatchScheduleItemSchema,
+  BatchScheduleSchema,
+  ScanSchema,
+  CashierProcessSchema,
+  DecryptFieldSchema,
+  SettingsUpdateSchema,
+  LogoUploadSchema
+} from "./schemas.js";
 import { z } from "zod";
 import { detectWafEvasion, sanitizeInputString, safeVal, validateSchema, SchemaFieldRule, schemas } from "./utils/securityUtils.js";
 import { cacheLayer } from "./cache.js";
@@ -28,6 +46,385 @@ import { handleDepartmentRoutes } from "./routes/departments.js";
 import { handleSettingsRoutes } from "./routes/settings.js";
 import { logger } from "./utils/logger.js";
 import { GoogleGenAI } from "@google/genai";
+import {
+  AppError,
+  DatabaseConstraintError,
+  DuplicateKeyError,
+  ForeignKeyViolationError,
+  NotNullConstraintError,
+  CheckConstraintError,
+  DataLengthConstraintError,
+  DatabaseLockError,
+  DatabaseConnectionError,
+  ValidationError,
+  AuthenticationError,
+  AuthorizationError,
+  NotFoundError,
+  ConflictError,
+  mapDatabaseError
+} from "./errors.js";
+
+export {
+  AppError,
+  DatabaseConstraintError,
+  DuplicateKeyError,
+  ForeignKeyViolationError,
+  NotNullConstraintError,
+  CheckConstraintError,
+  DataLengthConstraintError,
+  DatabaseLockError,
+  DatabaseConnectionError,
+  ValidationError,
+  AuthenticationError,
+  AuthorizationError,
+  NotFoundError,
+  ConflictError,
+  mapDatabaseError
+};
+
+export type UserRole = "admin" | "dietary_admin" | "manager" | "cashier" | "employee";
+
+export interface AuthorizationGuardResult {
+  authorized: boolean;
+  statusCode: number;
+  code?: string;
+  error?: string;
+  requiredRoles?: UserRole[];
+  path?: string;
+  userRole?: string;
+}
+
+/**
+ * Authorization guard: verifies the user's role from the session/token against
+ * the requested API endpoint path and HTTP method. Rejects with 401 Unauthorized
+ * if unauthenticated or 403 Forbidden if the user lacks the required privileges.
+ */
+export function checkEndpointAuthorization(
+  method: string,
+  requestPath: string,
+  user: Person | null
+): AuthorizationGuardResult {
+  const normalizedMethod = (method || "GET").toUpperCase();
+  const normalizedPath = (requestPath || "/").split("?")[0].replace(/\/+/g, "/");
+
+  // 1. Public Endpoints (No authentication required)
+  const isPublicEndpoint =
+    normalizedPath === "/api/health" ||
+    normalizedPath.startsWith("/api/health/") ||
+    normalizedPath === "/api/public-stats" ||
+    normalizedPath === "/api/docs" ||
+    normalizedPath === "/api/auth/login" ||
+    normalizedPath === "/api/auth/refresh";
+
+  if (isPublicEndpoint) {
+    return { authorized: true, statusCode: 200 };
+  }
+
+  // Public settings read fallback (allows unauthenticated UI to fetch hospital branding/support numbers)
+  if (normalizedPath === "/api/settings" && normalizedMethod === "GET" && !user) {
+    return { authorized: true, statusCode: 200 };
+  }
+
+  // 2. Authentication Check for All Protected Endpoints
+  if (!user) {
+    return {
+      authorized: false,
+      statusCode: 401,
+      code: "UNAUTHORIZED",
+      error: "Authentication required. Please provide a valid Bearer token.",
+      path: normalizedPath,
+      userRole: "unauthenticated"
+    };
+  }
+
+  const role = user.role as UserRole;
+
+  // 3. Super Admin Only Endpoints (Diagnostics, System Health, Performance Benchmarks, Failover)
+  const isSuperAdminOnlyPath =
+    normalizedPath === "/api/admin/sys-health" ||
+    normalizedPath === "/api/admin/sys-perf" ||
+    normalizedPath === "/api/admin/security-matrix-verify" ||
+    normalizedPath.startsWith("/api/admin/sys-health/");
+
+  if (isSuperAdminOnlyPath) {
+    if (role !== "admin") {
+      return {
+        authorized: false,
+        statusCode: 403,
+        code: "FORBIDDEN",
+        error: `Access Denied: Super Admin privilege required to access system diagnostics at '${normalizedPath}'.`,
+        path: normalizedPath,
+        userRole: role,
+        requiredRoles: ["admin"]
+      };
+    }
+    return { authorized: true, statusCode: 200 };
+  }
+
+  // 4. AI Insights Endpoint (Accessible by admin, dietary_admin, and manager)
+  if (normalizedPath === "/api/admin/ai-insights") {
+    const allowedRoles: UserRole[] = ["admin", "dietary_admin", "manager"];
+    if (!allowedRoles.includes(role)) {
+      return {
+        authorized: false,
+        statusCode: 403,
+        code: "FORBIDDEN",
+        error: `Access Denied: Role '${role}' is not authorized to access AI insights.`,
+        path: normalizedPath,
+        userRole: role,
+        requiredRoles: allowedRoles
+      };
+    }
+    return { authorized: true, statusCode: 200 };
+  }
+
+  // 5. General Admin Endpoints (/api/admin/* and /api/audit-logs/*)
+  if (normalizedPath.startsWith("/api/admin/") || normalizedPath.startsWith("/api/audit-logs")) {
+    const allowedRoles: UserRole[] = ["admin", "dietary_admin"];
+    if (!allowedRoles.includes(role)) {
+      return {
+        authorized: false,
+        statusCode: 403,
+        code: "FORBIDDEN",
+        error: `Access Denied: Role '${role}' is not authorized to access administrative route '${normalizedPath}'.`,
+        path: normalizedPath,
+        userRole: role,
+        requiredRoles: allowedRoles
+      };
+    }
+    return { authorized: true, statusCode: 200 };
+  }
+
+  // 6. Manager Endpoints (/api/manager/*)
+  if (normalizedPath.startsWith("/api/manager/")) {
+    const allowedRoles: UserRole[] = ["manager", "admin"];
+    if (!allowedRoles.includes(role)) {
+      return {
+        authorized: false,
+        statusCode: 403,
+        code: "FORBIDDEN",
+        error: `Access Denied: Role '${role}' is not authorized to access management route '${normalizedPath}'.`,
+        path: normalizedPath,
+        userRole: role,
+        requiredRoles: allowedRoles
+      };
+    }
+    return { authorized: true, statusCode: 200 };
+  }
+
+  // 7. Cashier Endpoints (/api/cashier/*)
+  if (normalizedPath.startsWith("/api/cashier/")) {
+    const allowedRoles: UserRole[] = ["cashier", "admin"];
+    if (!allowedRoles.includes(role)) {
+      return {
+        authorized: false,
+        statusCode: 403,
+        code: "FORBIDDEN",
+        error: `Access Denied: Role '${role}' is not authorized to access cashier route '${normalizedPath}'.`,
+        path: normalizedPath,
+        userRole: role,
+        requiredRoles: allowedRoles
+      };
+    }
+    return { authorized: true, statusCode: 200 };
+  }
+
+  // 8. Department Management Permissions
+  if (normalizedPath.startsWith("/api/departments") && normalizedMethod !== "GET") {
+    const allowedRoles: UserRole[] = ["admin", "dietary_admin"];
+    if (!allowedRoles.includes(role)) {
+      return {
+        authorized: false,
+        statusCode: 403,
+        code: "FORBIDDEN",
+        error: `Access Denied: Role '${role}' is not authorized to modify departments.`,
+        path: normalizedPath,
+        userRole: role,
+        requiredRoles: allowedRoles
+      };
+    }
+  }
+
+  // 9. System Settings Modification Permissions
+  if (normalizedPath.startsWith("/api/settings") && normalizedMethod !== "GET") {
+    const allowedRoles: UserRole[] = ["admin", "dietary_admin"];
+    if (!allowedRoles.includes(role)) {
+      return {
+        authorized: false,
+        statusCode: 403,
+        code: "FORBIDDEN",
+        error: `Access Denied: Role '${role}' is not authorized to modify system settings.`,
+        path: normalizedPath,
+        userRole: role,
+        requiredRoles: allowedRoles
+      };
+    }
+  }
+
+  // 10. Employee / Self-Service Endpoints (/api/employee/*)
+  if (normalizedPath.startsWith("/api/employee/")) {
+    const allowedRoles: UserRole[] = ["employee", "manager", "cashier", "dietary_admin", "admin"];
+    if (!allowedRoles.includes(role)) {
+      return {
+        authorized: false,
+        statusCode: 403,
+        code: "FORBIDDEN",
+        error: `Access Denied: Role '${role}' is not authorized to access employee portal routes.`,
+        path: normalizedPath,
+        userRole: role,
+        requiredRoles: allowedRoles
+      };
+    }
+  }
+
+  return { authorized: true, statusCode: 200 };
+}
+
+/**
+ * Registry of endpoint-specific request body schemas.
+ * Maps HTTP method and route patterns to Zod schemas or field validation rules.
+ */
+export const endpointSchemas: Record<string, z.ZodType<any> | Record<string, SchemaFieldRule>> = {
+  "POST:/api/auth/login": LoginSchema,
+  "POST:/api/auth/change-password": ChangePasswordSchema,
+  "POST:/api/departments": DepartmentSchema,
+  "PUT:/api/departments/:id": UpdateDepartmentSchema,
+  "POST:/api/admin/people": CreateUserSchema,
+  "PUT:/api/admin/people/:id": UpdateUserSchema,
+  "POST:/api/admin/people/:id/reset-password": ResetPasswordSchema,
+  "POST:/api/admin/decrypt-field": DecryptFieldSchema,
+  "POST:/api/manager/toggle-schedule": ToggleScheduleSchema,
+  "POST:/api/manager/batch-schedules": BatchScheduleSchema,
+  "POST:/api/cashier/scan": ScanSchema,
+  "POST:/api/cashier/process": CashierProcessSchema,
+  "PUT:/api/settings": SettingsUpdateSchema,
+  "POST:/api/settings/logo": LogoUploadSchema
+};
+
+/**
+ * Matches an incoming request method and path to its corresponding schema,
+ * supporting both exact and parameterized path matching (e.g., :id).
+ */
+export function findEndpointSchema(
+  method: string,
+  path: string
+): z.ZodType<any> | Record<string, SchemaFieldRule> | null {
+  const directKey = `${method}:${path}`;
+  if (endpointSchemas[directKey]) {
+    return endpointSchemas[directKey];
+  }
+  if (schemas[directKey]) {
+    return schemas[directKey];
+  }
+
+  // Check parameterized route patterns
+  for (const [key, schema] of Object.entries(endpointSchemas)) {
+    const [m, routePattern] = key.split(":");
+    if (m !== method) continue;
+    if (routePattern.includes(":")) {
+      const regex = new RegExp("^" + routePattern.replace(/:[a-zA-Z0-9_]+/g, "[^/]+") + "$");
+      if (regex.test(path)) {
+        return schema;
+      }
+    }
+  }
+
+  for (const [key, schema] of Object.entries(schemas)) {
+    const [m, routePattern] = key.split(":");
+    if (m !== method) continue;
+    if (routePattern.includes(":")) {
+      const regex = new RegExp("^" + routePattern.replace(/:[a-zA-Z0-9_]+/g, "[^/]+") + "$");
+      if (regex.test(path)) {
+        return schema;
+      }
+    }
+  }
+
+  return null;
+}
+
+export interface ValidationResult<T = any> {
+  ok: boolean;
+  data?: T;
+  error?: string;
+  field?: string;
+  details?: any;
+}
+
+/**
+ * Schema validation helper: verifies that all required fields are present and properly typed
+ * in API request bodies before passing them to the database service layer.
+ * 
+ * Supports both Zod schemas and declarative field rules with automatic sanitization.
+ */
+export function validateRequestBody<T = any>(
+  body: any,
+  schema: z.ZodType<T> | Record<string, SchemaFieldRule>,
+  options: { allowExtraKeys?: boolean } = {}
+): ValidationResult<T> {
+  if (body === undefined || body === null) {
+    return { ok: false, error: "Request payload is missing or empty" };
+  }
+
+  // 1. Zod Schema Validation
+  if (schema && typeof (schema as any).safeParse === "function") {
+    const result = (schema as z.ZodType<T>).safeParse(body);
+    if (!result.success) {
+      const firstIssue = result.error.issues[0];
+      const fieldPath = firstIssue?.path && firstIssue.path.length > 0 ? firstIssue.path.join(".") : undefined;
+      const errorMsg = firstIssue?.message || "Invalid request payload format";
+      return {
+        ok: false,
+        error: fieldPath ? `${fieldPath}: ${errorMsg}` : errorMsg,
+        field: fieldPath,
+        details: result.error.issues
+      };
+    }
+    return { ok: true, data: result.data };
+  }
+
+  // 2. Rule Dictionary Validation
+  if (typeof schema === "object") {
+    const result = validateSchema(body, schema as Record<string, SchemaFieldRule>, options.allowExtraKeys ?? true);
+    if (!result.ok) {
+      return { ok: false, error: result.error };
+    }
+    return { ok: true, data: result.sanitized };
+  }
+
+  return { ok: true, data: body };
+}
+
+/**
+ * requestValidator helper: takes a schema object and the request body, verifying required fields
+ * and types before passing data to services. Returns 400 Bad Request error response if validation fails.
+ */
+export function requestValidator<T = any>(
+  schema: z.ZodType<T> | Record<string, SchemaFieldRule>,
+  body: any,
+  options: { allowExtraKeys?: boolean } = {}
+): { ok: true; data: T } | { ok: false; errorResponse: ApiResponse; error: string; field?: string; details?: any } {
+  const result = validateRequestBody<T>(body, schema, options);
+  if (!result.ok) {
+    const errorResponse = jsonResponse(400, {
+      success: false,
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+      error: result.error || "Bad Request: validation failed",
+      field: result.field,
+      details: result.details
+    });
+    return {
+      ok: false,
+      errorResponse,
+      error: result.error || "Bad Request: validation failed",
+      field: result.field,
+      details: result.details
+    };
+  }
+  return { ok: true, data: result.data as T };
+}
+
 
 const diagnosticsController = new DiagnosticsController(() => benchmarkLogs);
 
@@ -59,14 +456,20 @@ export async function handleApiRequest(
       }
       return response;
     } catch (err: any) {
+      // Map database constraints and exceptions to human-readable standard AppErrors
+      const appError = mapDatabaseError(err);
       const normalizedPath = urlPath.split("?")[0].replace(/\/+/g, "/");
       const dbLatency = dbLatencyTracker.getStore()?.totalDbLatency || 0;
-      const errMsg = err?.message || String(err);
+      const errMsg = appError.message;
       const errStack = err?.stack || "";
       
-      logger.error(`[API Server Exception] [${method} ${normalizedPath}]: ${errMsg}`, {
+      logger.error(`[API Server Exception] [${method} ${normalizedPath}] [${appError.code} ${appError.statusCode}]: ${errMsg}`, {
         method,
         path: normalizedPath,
+        code: appError.code,
+        statusCode: appError.statusCode,
+        field: appError.field,
+        details: appError.details,
         error: errMsg,
         stack: errStack
       });
@@ -85,14 +488,14 @@ export async function handleApiRequest(
           method,
           normalizedPath,
           Date.now() - startTime,
-          500,
-          "127.0.0.1",
+          appError.statusCode,
+          String(headers["x-forwarded-for"] || headers["x-real-ip"] || "127.0.0.1"),
           dbLatency,
           errMsg,
           errStack
         );
       }
-      throw err;
+      return jsonResponse(appError.statusCode, appError.toJSON());
     }
   });
 }
@@ -223,30 +626,39 @@ async function _handleApiRequest(
     }
   }
 
-  let schemaKey = `${method}:${path}`;
-  const activeSchema = schemas[schemaKey];
+  // Resolve endpoint schema (supporting Zod and declarative field rules with parameterized path support)
+  const activeSchema = findEndpointSchema(method, path);
   let body = rawBodyVal;
 
-  if (activeSchema) {
-    const valRes = validateSchema(rawBodyVal, activeSchema);
+  if (activeSchema && ["POST", "PUT", "PATCH"].includes(method)) {
+    const valRes = validateRequestBody(rawBodyVal, activeSchema);
     if (!valRes.ok) {
-      return jsonResponse(400, { success: false, error: valRes.error });
+      return jsonResponse(400, {
+        success: false,
+        statusCode: 400,
+        code: "VALIDATION_ERROR",
+        error: valRes.error,
+        field: valRes.field,
+        details: valRes.details
+      });
     }
-    body = valRes.sanitized;
+    body = valRes.data;
 
-    if (schemaKey === "POST:/api/manager/batch-schedules" && Array.isArray(body.updates)) {
+    // Deep validation for batch schedules
+    if (path === "/api/manager/batch-schedules" && method === "POST" && Array.isArray(body?.updates)) {
       for (let i = 0; i < body.updates.length; i++) {
         const item = body.updates[i];
-        const itemRes = validateSchema(item, {
-          person_id: { type: "number", required: true },
-          work_date: { type: "string", required: true },
-          shift_type: { type: "string", required: false, allowedValues: ["day", "night"] },
-          action: { type: "string", required: true, allowedValues: ["add", "update", "remove"] }
-        }, false);
+        const itemRes = validateRequestBody(item, BatchScheduleItemSchema);
         if (!itemRes.ok) {
-          return jsonResponse(400, { success: false, error: `Schedule validation failure at index ${i}: ${itemRes.error}` });
+          return jsonResponse(400, {
+            success: false,
+            statusCode: 400,
+            code: "VALIDATION_ERROR",
+            error: `Schedule validation failure at index ${i}: ${itemRes.error}`,
+            field: `updates.${i}.${itemRes.field || ""}`
+          });
         }
-        body.updates[i] = itemRes.sanitized;
+        body.updates[i] = itemRes.data;
       }
     }
   }
@@ -283,105 +695,17 @@ async function _handleApiRequest(
     return roles.includes(authUser.role);
   };
 
-  /**
-   * Authorization guard utility: validates user roles against requested API endpoint paths.
-   * Proactively prevents employees and unauthorized roles from reaching administrative or management routes.
-   */
-  const validateEndpointAuthorization = (requestPath: string, user: Person | null): { authorized: boolean; statusCode: number; error: string } => {
-    const isPublicEndpoint = 
-      requestPath === "/api/health" ||
-      requestPath.startsWith("/api/health/") ||
-      requestPath === "/api/public-stats" ||
-      requestPath === "/api/auth/login" ||
-      requestPath === "/api/auth/refresh";
-
-    if (isPublicEndpoint) {
-      return { authorized: true, statusCode: 200, error: "" };
-    }
-
-    // Public settings read fallback
-    if (requestPath === "/api/settings" && method === "GET" && !user) {
-      return { authorized: true, statusCode: 200, error: "" };
-    }
-
-    // All other endpoints require an authenticated user
-    if (!user) {
-      return {
-        authorized: false,
-        statusCode: 401,
-        error: "Authentication required. Please provide a valid Bearer token."
-      };
-    }
-
-    const role = user.role;
-
-    // 1. Admin endpoints (/api/admin/*)
-    if (requestPath.startsWith("/api/admin/")) {
-      const isAllowedAdminRole = role === "admin" || role === "dietary_admin" || (requestPath === "/api/admin/ai-insights" && role === "manager");
-      if (!isAllowedAdminRole) {
-        return {
-          authorized: false,
-          statusCode: 403,
-          error: `Access Denied: Role '${role}' is not authorized to access administrative routes.`
-        };
-      }
-    }
-
-    // 2. Manager endpoints (/api/manager/*)
-    if (requestPath.startsWith("/api/manager/")) {
-      const isAllowedManagerRole = role === "manager" || role === "admin";
-      if (!isAllowedManagerRole) {
-        return {
-          authorized: false,
-          statusCode: 403,
-          error: `Access Denied: Role '${role}' is not authorized to access management routes.`
-        };
-      }
-    }
-
-    // 3. Cashier endpoints (/api/cashier/*)
-    if (requestPath.startsWith("/api/cashier/")) {
-      const isAllowedCashierRole = role === "cashier" || role === "admin";
-      if (!isAllowedCashierRole) {
-        return {
-          authorized: false,
-          statusCode: 403,
-          error: `Access Denied: Role '${role}' is not authorized to access cashier routes.`
-        };
-      }
-    }
-
-    // 4. Employee restricted modification of system settings or departments
-    if (requestPath.startsWith("/api/departments") && method !== "GET") {
-      if (role !== "admin" && role !== "dietary_admin") {
-        return {
-          authorized: false,
-          statusCode: 403,
-          error: `Access Denied: Role '${role}' is not authorized to modify departments.`
-        };
-      }
-    }
-
-    if (requestPath.startsWith("/api/settings") && method !== "GET") {
-      if (role !== "admin" && role !== "dietary_admin") {
-        return {
-          authorized: false,
-          statusCode: 403,
-          error: `Access Denied: Role '${role}' is not authorized to modify system settings.`
-        };
-      }
-    }
-
-    return { authorized: true, statusCode: 200, error: "" };
-  };
-
-  // Evaluate authorization guard before invoking domain route handlers
-  const authGuardCheck = validateEndpointAuthorization(path, authUser);
+  // Evaluate role-based endpoint authorization guard before passing request to domain handlers
+  const authGuardCheck = checkEndpointAuthorization(method, path, authUser);
   if (!authGuardCheck.authorized) {
     return jsonResponse(authGuardCheck.statusCode, {
+      success: false,
+      statusCode: authGuardCheck.statusCode,
+      code: authGuardCheck.code || (authGuardCheck.statusCode === 401 ? "UNAUTHORIZED" : "FORBIDDEN"),
       error: authGuardCheck.error,
       path,
-      userRole: authUser?.role || "unauthenticated"
+      userRole: authUser?.role || "unauthenticated",
+      requiredRoles: authGuardCheck.requiredRoles
     });
   }
 

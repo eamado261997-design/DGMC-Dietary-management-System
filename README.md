@@ -5,6 +5,10 @@ A high-performance, resilient, and enterprise-grade full-stack dietary managemen
 This platform streamlines employee meal shift tracking, cafeteria QR code voucher scanning, real-time synchronization, and corporate financial reporting.
 
 ## 🆕 Recent Enhancements
+- **Role-Based Endpoint Authorization Guard:** Implemented fine-grained endpoint protection in `src/server/api.ts` (`checkEndpointAuthorization`), validating session roles (`admin`, `dietary_admin`, `manager`, `cashier`, `employee`) and rejecting unauthorized access attempts with structured `403 Forbidden` responses.
+- **Request Body & Schema Validation Pipeline:** Added `requestValidator` and `validateRequestBody` helpers supporting both Zod schemas and declarative field rules to ensure payload data integrity before reaching database and service layers.
+- **Database Constraint Error Mapping:** Integrated `mapDatabaseError` to translate database constraint violations (MySQL/SQLite unique key violations, foreign key conflicts, not-null constraints) into human-readable HTTP `400 Bad Request` and `409 Conflict` error messages.
+- **Production Sanitation & Cleanliness:** Conducted a comprehensive audit purging extraneous diagnostic statements across the codebase while preserving structured error handlers and telemetry.
 - **Predictive Inventory Forecasting:** Integrated a structural placeholder for "Itemized Raw Food & Ingredient Requisition List (7-Day Cycle)" within the Admin Dietary Dashboard to prepare for upcoming predictive inventory analytics.
 - **Currency Localization & Compliance:** Standardized all financial data displays across the Dietary Dashboard and Cashier modules, replacing the generic dollar ($) symbol with the Philippine Peso (₱) for accurate local institutional financial reporting.
 - **System Stability:** Optimized build and production deployment scripts for the server-side environment.
@@ -13,14 +17,18 @@ This platform streamlines employee meal shift tracking, cafeteria QR code vouche
 
 ## 📋 Table of Contents
 1. [System Specifications & Architecture](#-system-specifications--architecture)
-2. [Security Features & Guardrails](#-security-features--guardrails)
-3. [Scopes and Limitations](#-scopes-and-limitations)
-4. [How to Set Up & Run Locally](#-how-to-set-up--run-locally)
-5. [Database Setup & Persistence Options](#-database-setup--persistence-options)
-6. [Resilience & Power-Failure Self-Healing](#-resilience--power-failure-self-healing)
-7. [Key Operational Workflows](#-key-operational-workflows)
-8. [Multi-Role User Portals & Operational Manual](#-multi-role-user-portals--operational-manual)
-9. [Key Directories](#-key-directories)
+2. [Required Environment Variables](#-required-environment-variables)
+3. [Local Setup with Docker & MySQL](#-local-setup-with-docker--mysql)
+4. [Role-Based Access Control (RBAC) Guidelines](#-role-based-access-control-rbac-guidelines)
+5. [Security Features & Guardrails](#-security-features--guardrails)
+6. [Scopes and Limitations](#-scopes-and-limitations)
+7. [How to Set Up & Run Locally](#-how-to-set-up--run-locally)
+8. [Key Database Constraints & Error Mapping](#-key-database-constraints--error-mapping)
+9. [Database Setup & Persistence Options](#-database-setup--persistence-options)
+10. [Resilience & Power-Failure Self-Healing](#-resilience--power-failure-self-healing)
+11. [Key Operational Workflows](#-key-operational-workflows)
+12. [Multi-Role User Portals & Operational Manual](#-multi-role-user-portals--operational-manual)
+13. [Key Directories](#-key-directories)
 
 ---
 
@@ -46,6 +54,91 @@ The DGMC Dietary Management System is designed with a lightweight, robust, and f
 
 ---
 
+## 🔑 Required Environment Variables
+
+To run the system with external services or durable MySQL persistence, configure your `.env` file based on `.env.example`.
+
+| Variable Name | Description | Default / Example | Required? |
+| :--- | :--- | :--- | :--- |
+| `GEMINI_API_KEY` | Server-side API key for Google Gemini AI integrations (AI dietary insights & inventory forecasting). | `"MY_GEMINI_API_KEY"` | Optional (Enables AI insights) |
+| `APP_URL` | Base URL where the applet is hosted and accessed on the network. | `"http://localhost:3000"` | Recommended |
+| `MYSQL_HOST` | Host address of the MySQL 8.0 database server. If absent, falls back to local `db.json`. | `"127.0.0.1"` | Optional (Enables MySQL mode) |
+| `MYSQL_PORT` | Port number of the MySQL server (matches Docker Compose mapping). | `3311` | Required if MySQL is used |
+| `MYSQL_USER` | MySQL database username with privileges on the target database. | `"dgmc_user"` | Required if MySQL is used |
+| `MYSQL_PASSWORD` | Secure password for the MySQL user account. | `"dgmc_password"` | Required if MySQL is used |
+| `MYSQL_DATABASE` | Target MySQL database schema name. | `"dgmc_meals"` | Required if MySQL is used |
+| `REDIS_URL` / `REDIS_HOST` | Redis connection parameters for cluster-aware distributed rate limiting. | `127.0.0.1:6379` | Optional (Falls back to memory) |
+
+---
+
+## 🐳 Local Setup with Docker & MySQL
+
+For multi-user testing and durable production storage, you can launch a containerized MySQL 8.0 database instantly using Docker Compose.
+
+### Step 1: Launch the MySQL Container
+Ensure Docker Desktop is running on your host machine, then execute:
+```bash
+docker-compose up -d
+```
+*   This spins up a container named `dgmc_mysql` running MySQL 8.0 on port **3311** (mapped to container port `3306`), creating persistent Docker data volumes (`mysql_data`).
+
+### Step 2: Configure Environment Variables
+Create your local `.env` file in the project root by copying `.env.example`:
+```bash
+cp .env.example .env
+```
+Ensure your `.env` contains the matching connection settings:
+```env
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3311
+MYSQL_USER=dgmc_user
+MYSQL_PASSWORD=dgmc_password
+MYSQL_DATABASE=dgmc_meals
+```
+
+### Step 3: Install Dependencies and Start the Application
+```bash
+npm install
+npm run dev
+```
+*   Upon startup, the Express backend automatically reads `.env`, connects to the MySQL container, verifies tables, and bootstraps the relational schema.
+
+---
+
+## 🛡️ Role-Based Access Control (RBAC) Guidelines
+
+The DGMC Dietary Management System enforces strict, centralized role-based access control (RBAC) on all API endpoints via `checkEndpointAuthorization` in `src/server/api.ts`. 
+
+### Defined System Roles
+1.  **`admin` (System Administrator):** Full privileges across all routes, system diagnostics, configuration settings, security verification matrix, and user roster management.
+2.  **`dietary_admin` (Dietary Administrator):** Administrative privileges for meal planning, nutritional policies, department oversight, and inventory forecasting.
+3.  **`manager` (Department Manager):** Oversight of departmental staff, schedule creation, and shift assignments. Access to department analytics and AI dietary insights.
+4.  **`cashier` (Cafeteria Cashier):** Access to cashier station workflows, badge scanning, offline synchronization queues, and meal transaction processing.
+5.  **`employee` (Hospital Staff / Self-Service):** Access to personal profile, QR badge generation, personal shift schedules, and historical meal entitlement logs.
+
+### Authorization Guard Rules Matrix
+*   **Public Endpoints:** `/api/health`, `/api/public-stats`, `/api/docs`, `/api/auth/login`, and `/api/auth/refresh` are publicly accessible without authentication.
+*   **Super Admin Diagnostics:** Endpoints under `/api/admin/sys-*`, performance benchmarks, and security matrix verification require the `admin` role exclusively (`403 Forbidden` if attempted by other roles).
+*   **AI Insights & Analytics:** `/api/admin/ai-insights` is restricted to `admin`, `dietary_admin`, and `manager`.
+*   **General Administration & Audit Logs:** `/api/admin/*` and `/api/audit-logs/*` require `admin` or `dietary_admin`.
+*   **Management Routes:** `/api/manager/*` require `manager` or `admin`.
+*   **Cashier Routes:** `/api/cashier/*` require `cashier` or `admin`.
+*   **Settings & Department Mutations:** `POST`, `PUT`, and `DELETE` requests on `/api/departments` and `/api/settings` are restricted to `admin` and `dietary_admin`.
+*   **Unauthorized Response Format:** Any violation returns a standardized JSON response:
+    ```json
+    {
+      "success": false,
+      "statusCode": 403,
+      "code": "FORBIDDEN",
+      "error": "Access Denied: Role 'employee' is not authorized to access administrative routes.",
+      "path": "/api/admin/people",
+      "userRole": "employee",
+      "requiredRoles": ["admin", "dietary_admin"]
+    }
+    ```
+
+---
+
 ## 🔒 Security Features & Guardrails
 
 Security and data integrity are central to healthcare software. The system implements sever-side security guardrails:
@@ -63,7 +156,16 @@ Security and data integrity are central to healthcare software. The system imple
     *   Gracefully falls back to high-performance local memory tracking if Redis connection is absent or offline.
 3.  **Cryptographic Meal Vouchers:**
     *   Employee QR codes map to base64 cryptographically formatted payload tokens containing person IDs and structural bounds. This completely prevents local employee spoofing, badge cloning, or unauthorized ticket generation.
-4.  **Administrative Compliance & Security Audit Trail:**
+4.  **Role-Based Endpoint Authorization Guard (`checkEndpointAuthorization`):**
+    *   Enforces least-privilege access control on all API endpoints.
+    *   Restricts administrative diagnostics, security verification, and performance benchmarks to `admin`.
+    *   Restricts AI dietary insights to `admin`, `dietary_admin`, and `manager`.
+    *   Limits `/api/manager/*` and `/api/cashier/*` domains strictly to authorized personnel roles.
+    *   Rejects unauthorized attempts with structured `403 Forbidden` responses.
+5.  **Strict Request Body & Schema Validation (`requestValidator`):**
+    *   All write/mutation endpoints validate payload schemas (supporting both Zod schemas and declarative field dictionaries) before reaching domain controllers or database services.
+    *   Interception yields structured `400 Bad Request` (`VALIDATION_ERROR`) with clear field indicators and issue details.
+6.  **Administrative Compliance & Security Audit Trail:**
     *   Every security and configuration action triggers an automatic, immutable server-side log in the database.
     *   **User/Roster Operations:** Creation and updating of user accounts logs `USER_CREATE` and `EMPLOYEE_CREATE` / `EMPLOYEE_UPDATE`.
     *   **Role Escalations & Policy Enforcement:** Modifying a user's role on their profile automatically records `ROLE_CHANGE` denoting the old role and newly assigned role.
@@ -167,7 +269,26 @@ For local servers, compiling the client and bundling server resources guarantees
 
 ---
 
-## 🗄️ Database Setup & Persistence Options
+## 🗄️ Key Database Constraints & Error Mapping
+
+To guarantee absolute data integrity, the DGMC Dietary Management System enforces robust database constraints at both the schema level (MySQL / SQLite) and the application layer (`src/server/db.ts` and `src/server/api.ts`).
+
+### 1. Relational Constraints
+*   **Primary Keys:** Every entity (`users`, `departments`, `schedules`, `transactions`, `audit_logs`) has a unique auto-incrementing or UUID primary key.
+*   **Foreign Key Integrity:** Enforces relational boundaries across tables (e.g., `transactions` and `schedules` reference valid `users(id)` and `departments(id)`). Deleting a department or user with active dependencies triggers relational protection.
+*   **Unique Constraints:** Enforces uniqueness on critical identifiers such as employee usernames, emails, and badge tokens to prevent duplicate accounts.
+*   **Not Null Constraints:** Mandatory fields (e.g., employee name, role, timestamps, transaction amounts) forbid `NULL` values at the schema level.
+*   **Check Constraints:** Restricts column values to allowed enumerations (e.g., user roles limited to `admin`, `dietary_admin`, `manager`, `cashier`, `employee`; meal types limited to `breakfast`, `lunch`, `dinner`, `night_snack`).
+
+### 2. Centralized Database Error Mapping (`mapDatabaseError`)
+When database operations encounter constraint violations, raw database exceptions are intercepted and translated into human-readable HTTP error responses:
+*   **Duplicate Entry (`ER_DUP_ENTRY` / `SQLITE_CONSTRAINT_UNIQUE`):** Mapped to **HTTP 409 Conflict** with an explanatory message (e.g., *"A record with this unique identifier already exists"*).
+*   **Foreign Key Deletion Violation (MySQL Error `1451`):** Mapped to **HTTP 409 Conflict** (e.g., *"Cannot delete or update a parent row: a foreign key constraint fails"*).
+*   **Foreign Key Missing Parent Violation (MySQL Error `1452`):** Mapped to **HTTP 400 Bad Request** (e.g., *"Cannot add or update a child row: a foreign key constraint fails"`).
+*   **NOT NULL Constraint Violation:** Mapped to **HTTP 400 Bad Request** identifying the missing required field.
+*   **CHECK Constraint Violation:** Mapped to **HTTP 400 Bad Request** indicating invalid field values or out-of-range parameters.
+
+---
 
 ### 🆕 Clean Slate (Production Ready)
 The system starts with a **Clean Slate**. All mock data (departments, employees, schedules) has been removed to allow hospital IT to populate the system via the Admin Settings.

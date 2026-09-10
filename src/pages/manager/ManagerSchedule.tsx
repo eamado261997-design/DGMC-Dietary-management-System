@@ -90,9 +90,9 @@ export default function ManagerSchedule() {
       
       // Initialize draft map with existing values
       const initialMap: ScheduleMap = {};
-      staffList.forEach((e: Person) => {
+      (Array.isArray(staffList) ? staffList : []).forEach((e: Person) => {
         normalizedSchedules.forEach((s: EmployeeSchedule) => {
-          if (s.person_id === e.id) {
+          if (s && e && s.person_id === e.id) {
             initialMap[`${e.id}_${s.work_date}`] = s.shift_type;
           }
         });

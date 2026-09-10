@@ -10,7 +10,7 @@ import { rateLimit } from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
 import { cacheLayer } from './src/server/cache.ts';
 import { logger } from './src/server/utils/logger.ts';
-import { handleApiRequest } from './src/server/api.ts';
+import { handleApiRequest, mapDatabaseError } from './src/server/api.ts';
 import { loadAndInitDatabase } from './src/server/db.ts';
 import { checkMysqlHealth, getPoolStats, isMysqlConnected, getMysqlPool } from './src/server/mysql.ts';
 import { isSqliteConnected } from './src/server/sqlite.ts';
@@ -318,18 +318,18 @@ async function startServer() {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.status(result.status).json(result.body);
     } catch (err: any) {
-      const errMsg = err?.message || 'Internal Server Error';
+      const appErr = mapDatabaseError(err);
+      const errMsg = appErr.message;
       const errStack = err?.stack || '';
-      logger.error(`[API Server Endpoint Failure] [${req.method} ${req.path}]: ${errMsg}`, {
+      logger.error(`[API Server Endpoint Failure] [${req.method} ${req.path}] [${appErr.code} ${appErr.statusCode}]: ${errMsg}`, {
         method: req.method,
         path: req.path,
+        code: appErr.code,
+        statusCode: appErr.statusCode,
         error: errMsg,
         stack: errStack
       });
-      res.status(500).json({
-        error: errMsg,
-        stack: process.env.NODE_ENV !== 'production' ? errStack : undefined
-      });
+      res.status(appErr.statusCode).json(appErr.toJSON());
     }
   });
 
