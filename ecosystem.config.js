@@ -3,11 +3,11 @@ module.exports = {
     {
       name: "dgmc-hospital-app",
       script: "./dist/server.cjs",
-      instances: "max",
-      exec_mode: "cluster",
+      instances: 1,
+      exec_mode: "fork",
       wait_ready: true,
       listen_timeout: 30000,
-      kill_timeout: 4000,
+      kill_timeout: 5000,
       env: {
         NODE_ENV: "production",
         PORT: 3000,
@@ -35,8 +35,8 @@ module.exports = {
       restart_delay: 5000,
       // Health check configuration
       cron_restart: "0 0 * * *",
-      // Graceful shutdown with 4s timeout
-      kill_timeout: 4000,
+      // Graceful shutdown
+      kill_timeout: 8000,
       // For Docker: wait for containers to be ready
       delay_between_restart: 8000
     }

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext.js";
+import dgmcLogoAsset from "../assets/dgmc-logo.png";
 
 interface DGMCLogoProps {
   variant?: "full" | "white" | "compact" | "icon";
@@ -26,7 +27,7 @@ export default function DGMCLogo({ variant = "full", className = "", height }: D
     // AuthProvider not loaded yet
   }
 
-  const logoSrc = branding.companyLogoUrl ? branding.companyLogoUrl : "/assets/dgmc-logo.png?v=3";
+  const logoSrc = branding.companyLogoUrl || dgmcLogoAsset;
 
   const handleImageError = () => {
     setImgError(true);

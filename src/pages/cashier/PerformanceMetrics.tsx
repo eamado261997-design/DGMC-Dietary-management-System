@@ -40,7 +40,7 @@ interface PerformanceMetricsProps {
 export default function PerformanceMetrics({ scans, hourlyData }: PerformanceMetricsProps) {
   const [activeChartTab, setActiveChartTab] = useState<"volume" | "latency">("volume");
 
-  // Calculate stats from the total scans (including historical base + live scans)
+  // These timings represent this browser session only; transaction history has no stored latency.
   const totalScans = scans.length;
   const successfulScans = scans.filter(s => s.success).length;
   const averageLatency = totalScans > 0 
@@ -95,14 +95,14 @@ export default function PerformanceMetrics({ scans, hourlyData }: PerformanceMet
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Successful Scans Today</span>
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Successful Scans This Session</span>
             <div className="flex items-baseline gap-2 mt-1">
               <h4 className="text-2xl font-black text-zinc-900">{successfulScans}</h4>
               <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                100% Verified
+                {successRate}% Verified
               </span>
             </div>
-            <p className="text-[10px] text-zinc-400 mt-1">Total throughput on terminal</p>
+            <p className="text-[10px] text-zinc-400 mt-1">Live eligibility checks in this browser session</p>
           </div>
         </div>
 
@@ -125,7 +125,7 @@ export default function PerformanceMetrics({ scans, hourlyData }: PerformanceMet
                 {averageLatency <= 150 ? "Excellent" : averageLatency <= 250 ? "Optimal" : "Slow"}
               </span>
             </div>
-            <p className="text-[10px] text-zinc-400 mt-1">Full API request-response roundtrip</p>
+            <p className="text-[10px] text-zinc-400 mt-1">Live API request-response roundtrip</p>
           </div>
         </div>
 
@@ -142,7 +142,7 @@ export default function PerformanceMetrics({ scans, hourlyData }: PerformanceMet
                 {ratingStatus.rating}
               </span>
             </div>
-            <p className="text-[10px] text-zinc-400 mt-1">Voucher eligibility accuracy score</p>
+            <p className="text-[10px] text-zinc-400 mt-1">Live session eligibility result rate</p>
           </div>
         </div>
 
@@ -155,7 +155,7 @@ export default function PerformanceMetrics({ scans, hourlyData }: PerformanceMet
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="text-left">
             <h4 className="text-xs font-bold text-zinc-900">Scanner Efficiency Metrics (Hourly Log)</h4>
-            <p className="text-[11px] text-zinc-500">Hourly throughput load and database lookup latencies</p>
+            <p className="text-[11px] text-zinc-500">Completed transaction volume; latency appears only for live session scans</p>
           </div>
           <div className="flex bg-zinc-200/60 p-1 rounded-xl">
             <button

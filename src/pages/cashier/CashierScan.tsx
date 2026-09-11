@@ -38,30 +38,9 @@ export default function CashierScan() {
   const [recentTxs, setRecentTxs] = useState<any[]>([]);
   const [feedbackModalData, setFeedbackModalData] = useState<any | null>(null);
 
-  // Performance Diagnostics Seeds & States
-  const [scans, setScans] = useState<ScanEvent[]>(() => [
-    { id: "scan-seed-1", timestamp: "08:15:22", success: true, responseTime: 115 },
-    { id: "scan-seed-2", timestamp: "08:42:05", success: true, responseTime: 128 },
-    { id: "scan-seed-3", timestamp: "09:05:11", success: true, responseTime: 142 },
-    { id: "scan-seed-4", timestamp: "09:22:50", success: true, responseTime: 135 },
-    { id: "scan-seed-5", timestamp: "10:11:03", success: false, responseTime: 148 },
-    { id: "scan-seed-6", timestamp: "11:02:44", success: true, responseTime: 122 },
-    { id: "scan-seed-7", timestamp: "11:35:19", success: true, responseTime: 130 },
-    { id: "scan-seed-8", timestamp: "12:15:33", success: true, responseTime: 118 },
-    { id: "scan-seed-9", timestamp: "12:50:02", success: true, responseTime: 125 },
-    { id: "scan-seed-10", timestamp: "13:21:55", success: true, responseTime: 139 },
-    { id: "scan-seed-11", timestamp: "14:05:10", success: true, responseTime: 132 },
-  ]);
-
-  const [hourlyData, setHourlyData] = useState<HourlyData[]>(() => [
-    { hour: "08:00", scans: 12, avgResponseTime: 121 },
-    { hour: "09:00", scans: 25, avgResponseTime: 138 },
-    { hour: "10:00", scans: 8, avgResponseTime: 145 },
-    { hour: "11:00", scans: 34, avgResponseTime: 126 },
-    { hour: "12:00", scans: 48, avgResponseTime: 120 },
-    { hour: "13:00", scans: 18, avgResponseTime: 132 },
-    { hour: "14:00", scans: 14, avgResponseTime: 129 },
-  ]);
+  // Performance diagnostics contain only real server transactions and live session timings.
+  const [scans, setScans] = useState<ScanEvent[]>([]);
+  const [hourlyData, setHourlyData] = useState<HourlyData[]>([]);
 
   const addScanMetric = (success: boolean, responseTime: number) => {
     const now = new Date();
@@ -180,11 +159,26 @@ export default function CashierScan() {
   };
 
   useEffect(() => {
-    // Fetch today's transactions to populate the simulation badge list dynamically
+    // Fetch today's completed transactions for the terminal's actual throughput history.
     apiFetch("/api/cashier/transactions")
       .then((data: any) => {
         if (Array.isArray(data)) {
           setRecentTxs(data);
+          const hourly = new Map<string, number>();
+          data.forEach((transaction: any) => {
+            if (transaction.status !== "completed") return;
+            const time = transaction.meal_time || transaction.created_at?.split("T")[1];
+            const hour = time?.slice(0, 2);
+            if (hour && /^\d{2}$/.test(hour)) {
+              const label = `${hour}:00`;
+              hourly.set(label, (hourly.get(label) || 0) + 1);
+            }
+          });
+          setHourlyData(Array.from(hourly.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([hour, count]) => ({
+            hour,
+            scans: count,
+            avgResponseTime: 0
+          })));
         }
       })
       .catch(() => {});

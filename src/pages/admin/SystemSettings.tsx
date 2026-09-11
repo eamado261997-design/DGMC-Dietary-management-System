@@ -637,7 +637,7 @@ export default function SystemSettings() {
                     {/* Official Logo Display */}
                     <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 flex items-center justify-center mx-auto overflow-hidden">
                       <img
-                        src="/assets/dgmc-logo.png?v=3"
+                        src="/src/assets/dgmc-logo.png?v=3"
                         alt="Divine Grace Medical Center Logo"
                         className="max-h-28 max-w-full object-contain"
                         referrerPolicy="no-referrer"

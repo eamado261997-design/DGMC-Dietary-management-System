@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import { DatabaseSchema } from "./db.js";
 import { encryptPerson, decryptPerson, decryptAny, encryptDeterministic } from "./encryption.js";
 import { dbLatencyTracker } from "./utils/apiUtils.js";
+import { logger } from "./utils/logger.js";
 
 dotenv.config();
 
@@ -204,6 +205,8 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
     await adminConnection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
     await adminConnection.end();
 
+    logger.info('[MySQL] Creating connection pool', { host, port, database: dbName });
+
     // 2. Build full application connection Pool
     dbPool = mysql.createPool({
       host,
@@ -221,6 +224,7 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
     });
 
     isMysqlActive = true;
+    logger.info('[MySQL] Connection pool created and marked active', { host, port, database: dbName });
 
     // 3. Auto-Create target tables (DDL operations)
 
@@ -238,20 +242,20 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
       CREATE TABLE IF NOT EXISTS people (
         id INT PRIMARY KEY,
         username VARCHAR(50) NOT NULL UNIQUE,
-        password VARCHAR(255) NOT NULL,
+        password LONGTEXT NOT NULL,
         role VARCHAR(20) NOT NULL,
-        first_name VARCHAR(55) NOT NULL,
-        last_name VARCHAR(55) NOT NULL,
-        email VARCHAR(100),
-        phone VARCHAR(20),
+        first_name LONGTEXT NOT NULL,
+        last_name LONGTEXT NOT NULL,
+        email VARCHAR(500),
+        phone VARCHAR(500),
         is_active TINYINT(1) NOT NULL DEFAULT 1,
         last_login VARCHAR(50),
         created_at VARCHAR(50) NOT NULL,
         updated_at VARCHAR(50) NOT NULL,
-        employee_no VARCHAR(20) UNIQUE,
-        position VARCHAR(100),
+        employee_no VARCHAR(500) UNIQUE,
+        position VARCHAR(500),
         department_id INT,
-        qr_code VARCHAR(255) UNIQUE,
+        qr_code VARCHAR(500) UNIQUE,
         employee_status VARCHAR(20) DEFAULT 'active',
         hire_date VARCHAR(10),
         managed_department_id INT
@@ -389,6 +393,13 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
     lastErrorTimestamp = new Date().toISOString();
     isMysqlActive = false;
     dbPool = null;
+    try {
+      logger.error('[MySQL] initializeMysql failed', { message: _error?.message, stack: _error?.stack });
+    } catch (logErr) {
+      // swallow logging errors to avoid recursive failures
+      // eslint-disable-next-line no-console
+      console.error('[MySQL] initializeMysql failed:', _error);
+    }
     return null;
   }
 }
