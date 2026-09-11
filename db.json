@@ -2,456 +2,163 @@
   "departments": [
     {
       "id": 1,
-      "name": "Nursing Department",
-      "created_at": "2026-08-12T11:17:13.113Z"
+      "name": "ICT Department",
+      "created_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 2,
-      "name": "ICT",
-      "created_at": "2026-09-10T05:05:12.725Z"
+      "name": "Nursing Department",
+      "created_at": "2026-09-10T13:28:28.673Z"
+    },
+    {
+      "id": 3,
+      "name": "Emergency Department",
+      "created_at": "2026-09-10T13:28:28.673Z"
+    },
+    {
+      "id": 4,
+      "name": "Pharmacy",
+      "created_at": "2026-09-10T13:28:28.673Z"
+    },
+    {
+      "id": 5,
+      "name": "Laboratory",
+      "created_at": "2026-09-10T13:28:28.673Z"
     }
   ],
   "people": [
     {
       "id": 1,
       "username": "admin",
-      "password": "enc_det:d301c26129383a90c4c93052:f6f1185a619c1e75c56177574fd50568e7a73a2952815e7a683f1c29b7c39f4f3556da29a7e988058d7a1daaa6301f7db7b2eddd8b4fc270fc5d37751c356aa304d74ae6a869af2be53933840b6d81afca33987f5ecd2407f24ac9abdabd2d9af7a667ba37124ff72e55ac9dad4bf778827df287c34a31977cdd4678c1791d678170be93f02ddb986c548381b8deac9393452fb1940b384a6975aeb072d5d6c0035c23587baef880a6cdc5dcc66a:33680d2e27a83aee8491c8a0695a811f",
+      "password": "enc_det:80856e2fd9d72bf3cb9767e5:90f70a7ac2a5a8cff1a27b1540dfa4effedb6bbe83007cfb92db6b1fb85cfbf7762c3b18a446da80f64f7a06527b601712e55d5e7cff066c74dd27f764b8b567f06201ece983ae08f822c334908cc7545d1ca3e1918f408bb3570ccf40266ee166bb6aa2c7e9fe5cce8c0b7cbc58e87690d510df85b5210641d07240605d517f78835ff33f4c4eccf89e5011027b8cbdd7131fb80c87a145f2127b88130fa5b0241099d56078f7b18bbbee2e4b42:419de6b6605a603cb699c5e28106de77",
       "role": "admin",
       "first_name": "enc_det:68f3cca718fecb844a667e3e:8605750a2a70:28e406ba282ff49a890b75e9f383eeda",
       "last_name": "enc_det:d3dcc4c0b42dd8e4c59a0022:0b75e721e0408a23636afa44be:d4e2fe3a44940cfe1af8c62bfbf5b9b5",
       "email": "enc_det:a73109318222e2a5aa6acebf:4c73bff4838ceec9e8ce2680468c15675d:d09d4a549b2a7f3e120fe862dfb31ac6",
       "is_active": true,
-      "last_login": "2026-09-11T04:32:19.378Z",
-      "created_at": "2026-06-30T21:40:00.000Z",
-      "updated_at": "2026-06-30T21:40:00.000Z",
+      "last_login": null,
+      "created_at": "2026-09-10T13:28:28.673Z",
+      "updated_at": "2026-09-10T13:28:28.673Z",
+      "department_id": 1,
       "employee_status": "active"
     },
     {
       "id": 99,
       "username": "dietary_admin",
-      "password": "enc_det:47c8de3353bbe9fb56b1e4cd:37cf02b8d2b022e4b0f93d58247633edaebafd055b05922dd8268ae52b1ac9d4909ccd6473d66bc78b61706e9834886f446718bb6da9b319d666603bf0b94e2f222a1cc9eba7277a0e5fdf549dd736098d6625bbfd65d5f83326e4687304b1bfdb9bccea68784cd44c89cbf2ab31bfc6a3a957923889b3d61849fc7a90e5cc42b5d6767dea12ae5b4027e886b8d3250f5a8df4c628d553f24ed33c5e5c26676a1a5ae0320c9a473e13327bd9aee3:ac45787f09c57412d563c4cc37b13dfd",
+      "password": "enc_det:be196770edc58d2d365166df:a38bd148f27f4e1291d4cdb8697a9b5dfe58b38ef1fb7fb2364121fadeb5da0d127f86372a6e9d4ed9003334ddf7dac85dae99db30ba726b923eff6777fd10a987f017d047cdd4b996cec54677c71dd3465ad4915f5c95f9873793c766ea25e6f08d4bdf7410dd31f375aba7911b7d0459c6927848adf05db61ee72179cd03c6a7d1b4f00d1b85d4e7344338cddff007d3602efa7d3fbd870a683502e1e63740bde712c5ddf5d623c6092942b6a2:fd19ff2e3ea5d14c61df3f76a3eae259",
       "role": "dietary_admin",
       "first_name": "enc_det:5bff7477599904dbb79191fd:ca9d9ba42fd3b2:68f6563a7fdcf569091c37fdcb7278fc",
       "last_name": "enc_det:d3dcc4c0b42dd8e4c59a0022:0b75e721e0408a23636afa44be:d4e2fe3a44940cfe1af8c62bfbf5b9b5",
       "email": "enc_det:17f627d9ea11e721a04271d4:be2579955020c214b04f6111bbefd9b64bd37922342d:2e7cb534c8fb20b82cda9dec7b322531",
       "is_active": true,
-      "last_login": "2026-08-10T20:28:35.376Z",
-      "created_at": "2026-08-10T03:14:35.416Z",
-      "updated_at": "2026-08-10T03:14:35.416Z",
+      "last_login": null,
+      "created_at": "2026-09-10T13:28:28.673Z",
+      "updated_at": "2026-09-10T13:28:28.673Z",
+      "department_id": 1,
       "employee_status": "active"
-    },
-    {
-      "id": 100,
-      "username": "Nurse_dept",
-      "password": "enc_det:e761d0667a75f31add6fe7cd:e108887bd2f8594f7148ab05bdd802c72b02ec649071e76b1a79189672c3d81f3fe950aea2d51d15b720f5aea4ec589870cc8bd7ad0418d88204bccc30dc7191db49a45c31d55eb7df526e3bbf33c868b76187ea9ac91abbd72366c30b0fedcf702176e9a3cc1ae1aaf84ddc2b8beef17d54922501a4910a429dc2b77d6b1fe91a50e2b00d5250fb42582d8f338ff8f94f7c8c4fbf22ad3def4d9454e61a9206b7f855e213e1d2992105f41b5f16:5b5575eb98507ab43c3c2953ad978c23",
-      "role": "manager",
-      "first_name": "enc_det:1752f6c2ae9c2b33666d7e16:48d73f38aa:7827cef9814e6a2cc79baeaa0aec1b92",
-      "last_name": "enc_det:ecaefc6b892d1a71a9238c35:02a851097552484866ad:64f1c123e03785ad7ce3481df1cdc14e",
-      "is_active": true,
-      "last_login": "2026-08-12T11:27:08.989Z",
-      "created_at": "2026-08-12T11:24:26.296Z",
-      "updated_at": "2026-08-12T11:24:26.296Z",
-      "employee_no": "enc_det:13cfe916e903f2063f524f0c:3571dbb5fc1c0a:002c1e1eb6b08fa7c394c7f75298870a",
-      "department_id": 1,
-      "qr_code": "enc_det:13cfe916e903f2063f524f0c:3571dbb5fc1c0a:002c1e1eb6b08fa7c394c7f75298870a",
-      "employee_status": "active",
-      "hire_date": "2026-08-12",
-      "managed_department_id": 1
-    },
-    {
-      "id": 101,
-      "username": "Emp-001",
-      "password": "enc_det:597763aaf9fa0907d2c0b2d9:c1a48039528ab5feb5c30f77aed0313ff9a6fc4a4bd7faf11fde4846afc700b4e0a22b80c88fc1b5c0f3a0a6d6e281a9f3554f8060272adaac0bd24bf088b6c74f134a4503781cb00656c60febf497e0d3ed3bb55417eaf72b334b1175e194eb2980dad1263445e853274f58062200970f4aaac5096b1dcc5b558b4d51b4a041b65e01906802faa39be0c5bc80b5bf504c2080559b0a7e798dc4392566afe44866e622ac8d561454146d887c44f3:fc71c5d9a680e954d88936ac31630c46",
-      "role": "employee",
-      "first_name": "enc_det:a953db18cea29650f391b5ca:574f27:44439c3e6bde0448a4c43614008a79d4",
-      "last_name": "enc_det:65bcd2479b9362e51233aceb:89e00a4f81:a7def55a7287dc9d9cb6d72567924de2",
-      "is_active": true,
-      "last_login": null,
-      "created_at": "2026-08-12T11:25:45.581Z",
-      "updated_at": "2026-08-12T11:25:45.581Z",
-      "employee_no": "enc_det:af7bcea384a28f01bb0f47fe:c51f519eee7c49:1c5cbf869755e401cea416fda321888d",
-      "position": "Resident Nurse",
-      "department_id": 1,
-      "qr_code": "enc_det:af7bcea384a28f01bb0f47fe:c51f519eee7c49:1c5cbf869755e401cea416fda321888d",
-      "employee_status": "active",
-      "hire_date": "2026-08-12"
-    },
-    {
-      "id": 102,
-      "username": "ICT_manager",
-      "password": "enc_det:43b89a4c0dec972a2c57f2e6:629a04a7cd1b0603cb24324a1502ab25fc1eca498d0a985e5841bc6914b42717d36ef47e6bd7531367073bb5cbbb190008b3a3129a9c663a7eb660549aef0931efbc18fcef1983f3a0138d8527141b387f529c1a707955693eab43c9f3383c918918ed27a4403d3ad4fa406333d83da5c8fca05c7710f4a44c244b5c9f5273ac37c2be7088af7aa4758c81fd92619d949735ace99574a9b6db326508d11768447e2858dcfd5d9434827c209b029c:87cde4b68ed109fab1976fbd37cc17ec",
-      "role": "manager",
-      "first_name": "enc_det:310e954077c0656d1e540e63:59222d:e247a31ea4d29c7ced59f51f31ef1a79",
-      "last_name": "enc_det:887546c72d098450955ada16:e9c34a57:d4816cfa55c603322adf5481a70988a6",
-      "is_active": true,
-      "last_login": null,
-      "created_at": "2026-09-10T05:06:02.864Z",
-      "updated_at": "2026-09-10T05:06:02.864Z",
-      "employee_no": "enc_det:3f048b998ffc239e618ffe57:db51250c59ecdd:071aa797ff0b46a524f4c9426c31c85b",
-      "department_id": 2,
-      "qr_code": "enc_det:3f048b998ffc239e618ffe57:db51250c59ecdd:071aa797ff0b46a524f4c9426c31c85b",
-      "employee_status": "active",
-      "hire_date": "2026-09-10",
-      "managed_department_id": 2
-    },
-    {
-      "id": 103,
-      "username": "emp123456",
-      "password": "enc_det:916ea9ea6739c035fdfc81c8:6dd8cb843b97938cc37c7cc561805c1b2fbedc9d9ba96033d6d172697e7d8af47b9d2d2683d959a0f6e8c7c5c14b1d142f6aad9c6152189b85e482e68c9bb020402c2095c3100d30ab8ca538f26ba486b3c633ae84e207a537a74106520f15a29d98cab65b7eae641c78c288dc6f15f35f376fb3f0a19980e2c4e6c570af93ccfc887a6ecf8c9723ce791eb6ef84ee9420020e4e67b15d18e7114a42ad7c343324be27a6f6896fd0be7af0906699:4cce2fb36b51a43e97b1c58c7c826586",
-      "role": "employee",
-      "first_name": "enc_det:632bf1636bc82f9db72e959d:bc68e14354:0331ab8df1c324138ea1d45b0fa9915e",
-      "last_name": "enc_det:f0abf48028e5b9b5ddd7cea9:58fd78a6688bdd22:88b9372b29c101b7b56ad4a722b8e72c",
-      "is_active": true,
-      "last_login": "2026-09-10T09:55:48.323Z",
-      "created_at": "2026-09-10T05:07:01.039Z",
-      "updated_at": "2026-09-10T05:07:01.039Z",
-      "employee_no": "enc_det:90d9ddddb8f43eb8347f355e:7178c032f091:004fced5698141458780e2910f127a46",
-      "position": "ICT Assistant",
-      "department_id": 2,
-      "qr_code": "enc_det:90d9ddddb8f43eb8347f355e:7178c032f091:004fced5698141458780e2910f127a46",
-      "employee_status": "active",
-      "hire_date": "2026-09-10"
-    },
-    {
-      "id": 104,
-      "username": "rediswan",
-      "password": "enc_det:ad75cd7d0a1965d61f0b0d46:ebcf87710ab60a1c6336204362634ee42b8113bf32ead76163a021694c586e7792b81611210ea4004d512ed48cc7e6eec5ef2eabc3d732d5f0da845917c7867324abf7183874a05705007ac0964ca631cb56e7b8f02cfa1acc4efcdca7968363b313ed5672934a06b239268a5bf99e8d528fc56618b1312149c8e56ddf420a73851286e9ac14c88555000876bca9d961a1d1cc7eaf5f1a41a24dfd3478ee49b6fe49261847b94d6525c64ad48555:91e04a7c6c27471ba6f1fc3f7b75f594",
-      "role": "cashier",
-      "first_name": "enc_det:f1645b309a94577b51e08037:8e79f94e:a5dedf537a6efdd8221bb690b0825b1e",
-      "last_name": "enc_det:cb81ff07abc0c7da48cd0157:485cda:6740d146b081fc70af453cfff3dfbc23",
-      "is_active": true,
-      "last_login": "2026-09-10T11:57:00.761Z",
-      "created_at": "2026-09-10T05:09:16.879Z",
-      "updated_at": "2026-09-10T11:51:32.773Z",
-      "employee_no": "enc_det:4f9c428ce8d9103520f037b0:77d8948259de60:f4989c08901d82dda9d36e583a475cb2",
-      "qr_code": "enc_det:4f9c428ce8d9103520f037b0:77d8948259de60:f4989c08901d82dda9d36e583a475cb2",
-      "employee_status": "active",
-      "hire_date": "2026-09-10"
     }
   ],
-  "employee_schedules": [
-    {
-      "id": 1,
-      "person_id": 101,
-      "work_date": "2026-08-12",
-      "shift_type": "night",
-      "created_by": 100,
-      "created_at": "2026-08-12T11:27:38.074Z"
-    },
-    {
-      "id": 2,
-      "person_id": 101,
-      "work_date": "2026-08-13",
-      "shift_type": "day",
-      "created_by": 100,
-      "created_at": "2026-08-12T11:27:38.074Z"
-    }
-  ],
-  "transactions": [
-    {
-      "id": 1,
-      "person_id": 103,
-      "cashier_person_id": 104,
-      "meal_date": "2026-09-10",
-      "meal_time": "13:13:34",
-      "is_free": false,
-      "meal_amount": 150,
-      "status": "cancelled",
-      "meal_type": "paid",
-      "created_at": "2026-09-10T05:13:34.372Z"
-    },
-    {
-      "id": 2,
-      "person_id": 103,
-      "cashier_person_id": 104,
-      "meal_date": "2026-09-10",
-      "meal_time": "13:14:13",
-      "is_free": false,
-      "meal_amount": 150,
-      "status": "completed",
-      "meal_type": "paid",
-      "created_at": "2026-09-10T05:14:13.150Z"
-    },
-    {
-      "id": 3,
-      "person_id": 103,
-      "cashier_person_id": 104,
-      "meal_date": "2026-09-10",
-      "meal_time": "19:58:21",
-      "is_free": false,
-      "meal_amount": 350,
-      "status": "completed",
-      "meal_type": "paid",
-      "created_at": "2026-09-10T11:58:21.291Z"
-    }
-  ],
+  "employee_schedules": [],
+  "transactions": [],
   "free_meal_log": [],
   "system_settings": [
     {
       "id": 1,
       "setting_key": "shift_day_start",
       "setting_value": "11:00",
-      "updated_at": "2026-06-30T21:40:00.000Z"
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 2,
       "setting_key": "shift_day_end",
       "setting_value": "14:00",
-      "updated_at": "2026-06-30T21:40:00.000Z"
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 3,
       "setting_key": "shift_night_start",
-      "setting_value": "23:00",
-      "updated_at": "2026-06-30T21:40:00.000Z"
+      "setting_value": "22:00",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 4,
       "setting_key": "shift_night_end",
-      "setting_value": "02:00",
-      "updated_at": "2026-06-30T21:40:00.000Z"
+      "setting_value": "06:00",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 5,
       "setting_key": "meal_price",
       "setting_value": "150.00",
-      "updated_at": "2026-06-30T21:40:00.000Z"
-    }
-  ],
-  "audit_logs": [
-    {
-      "id": 1,
-      "user_id": 1,
-      "action": "DEPARTMENT_CREATE",
-      "entity_type": "departments",
-      "entity_id": "2",
-      "old_value": null,
-      "new_value": "{\"id\":2,\"name\":\"ICT\",\"created_at\":\"2026-09-10T05:05:12.725Z\"}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T05:05:12.745Z"
-    },
-    {
-      "id": 2,
-      "user_id": 1,
-      "action": "EMPLOYEE_CREATE",
-      "entity_type": "people",
-      "entity_id": "102",
-      "old_value": null,
-      "new_value": "{\"id\":102,\"username\":\"ICT_manager\",\"role\":\"manager\",\"first_name\":\"ICT\",\"last_name\":\"Dept\",\"email\":null,\"phone\":null,\"is_active\":1,\"last_login\":null,\"created_at\":\"2026-09-10T05:06:02.864Z\",\"updated_at\":\"2026-09-10T05:06:02.864Z\",\"employee_no\":\"EMP4912\",\"position\":null,\"department_id\":2,\"qr_code\":\"EMP4912\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":2}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T05:06:02.927Z"
-    },
-    {
-      "id": 3,
-      "user_id": 1,
-      "action": "EMPLOYEE_CREATE",
-      "entity_type": "people",
-      "entity_id": "103",
-      "old_value": null,
-      "new_value": "{\"id\":103,\"username\":\"emp123456\",\"role\":\"employee\",\"first_name\":\"Grant\",\"last_name\":\"mantilla\",\"email\":null,\"phone\":null,\"is_active\":1,\"last_login\":null,\"created_at\":\"2026-09-10T05:07:01.039Z\",\"updated_at\":\"2026-09-10T05:07:01.039Z\",\"employee_no\":\"123456\",\"position\":\"ICT Assistant\",\"department_id\":2,\"qr_code\":\"123456\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":null}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T05:07:01.081Z"
-    },
-    {
-      "id": 4,
-      "user_id": 1,
-      "action": "EMPLOYEE_CREATE",
-      "entity_type": "people",
-      "entity_id": "104",
-      "old_value": null,
-      "new_value": "{\"id\":104,\"username\":\"rediswan\",\"role\":\"cashier\",\"first_name\":\"cash\",\"last_name\":\"ier\",\"email\":null,\"phone\":null,\"is_active\":1,\"last_login\":null,\"created_at\":\"2026-09-10T05:09:16.879Z\",\"updated_at\":\"2026-09-10T05:09:16.879Z\",\"employee_no\":\"EMP4323\",\"position\":null,\"department_id\":null,\"qr_code\":\"EMP4323\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":null}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T05:09:16.936Z"
-    },
-    {
-      "id": 5,
-      "user_id": 104,
-      "action": "MEAL_SCAN_PAID",
-      "entity_type": "transactions",
-      "entity_id": "1",
-      "old_value": null,
-      "new_value": "{\"id\":1,\"person_id\":103,\"employee_name\":\"Grant mantilla\",\"employee_no\":\"123456\",\"department_name\":\"ICT\",\"meal_date\":\"2026-09-10\",\"meal_time\":\"13:13:34\",\"is_free\":false,\"meal_amount\":150,\"status\":\"completed\",\"meal_type\":\"paid\",\"cashier_name\":\"cash ier\"}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T05:13:34.398Z"
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 6,
-      "user_id": 104,
-      "action": "TRANSACTION_VOID",
-      "entity_type": "transactions",
-      "entity_id": "1",
-      "old_value": "{\"id\":1,\"person_id\":103,\"cashier_person_id\":104,\"meal_date\":\"2026-09-10\",\"meal_time\":\"13:13:34\",\"is_free\":0,\"meal_amount\":\"150.00\",\"status\":\"completed\",\"meal_type\":\"paid\",\"created_at\":\"2026-09-10T05:13:34.372Z\"}",
-      "new_value": "{\"id\":1,\"person_id\":103,\"cashier_person_id\":104,\"meal_date\":\"2026-09-10\",\"meal_time\":\"13:13:34\",\"is_free\":0,\"meal_amount\":\"150.00\",\"status\":\"cancelled\",\"meal_type\":\"paid\",\"created_at\":\"2026-09-10T05:13:34.372Z\"}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T05:14:04.767Z"
+      "setting_key": "schedule_cutoff_days",
+      "setting_value": "3",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 7,
-      "user_id": 104,
-      "action": "MEAL_SCAN_PAID",
-      "entity_type": "transactions",
-      "entity_id": "2",
-      "old_value": null,
-      "new_value": "{\"id\":2,\"person_id\":103,\"employee_name\":\"Grant mantilla\",\"employee_no\":\"123456\",\"department_name\":\"ICT\",\"meal_date\":\"2026-09-10\",\"meal_time\":\"13:14:13\",\"is_free\":false,\"meal_amount\":150,\"status\":\"completed\",\"meal_type\":\"paid\",\"cashier_name\":\"cash ier\"}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T05:14:13.170Z"
+      "setting_key": "max_login_attempts",
+      "setting_value": "5",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 8,
-      "user_id": 1,
-      "action": "EMPLOYEE_UPDATE",
-      "entity_type": "people",
-      "entity_id": "104",
-      "old_value": "{\"id\":104,\"username\":\"rediswan\",\"role\":\"cashier\",\"first_name\":\"cash\",\"last_name\":\"ier\",\"email\":null,\"phone\":null,\"is_active\":1,\"last_login\":\"2026-09-10T05:17:05.852Z\",\"created_at\":\"2026-09-10T05:09:16.879Z\",\"updated_at\":\"2026-09-10T05:09:16.879Z\",\"employee_no\":\"EMP4323\",\"position\":null,\"department_id\":null,\"qr_code\":\"EMP4323\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":null}",
-      "new_value": "{\"id\":104,\"username\":\"rediswan\",\"role\":\"cashier\",\"first_name\":\"cash\",\"last_name\":\"ier\",\"email\":null,\"phone\":null,\"is_active\":true,\"last_login\":\"2026-09-10T05:17:05.852Z\",\"created_at\":\"2026-09-10T05:09:16.879Z\",\"updated_at\":\"2026-09-10T11:51:32.773Z\",\"employee_no\":\"EMP4323\",\"position\":null,\"department_id\":null,\"qr_code\":\"EMP4323\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":null}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T11:51:32.820Z"
+      "setting_key": "lockout_duration_minutes",
+      "setting_value": "15",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 9,
-      "user_id": 104,
-      "action": "MEAL_SCAN_PAID",
-      "entity_type": "transactions",
-      "entity_id": "3",
-      "old_value": null,
-      "new_value": "{\"id\":3,\"person_id\":103,\"employee_name\":\"Grant mantilla\",\"employee_no\":\"123456\",\"meal_date\":\"2026-09-10\",\"meal_time\":\"19:58:21\",\"is_free\":false,\"meal_amount\":350,\"status\":\"completed\",\"meal_type\":\"paid\"}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T11:58:21.319Z"
-    }
-  ],
-  "login_attempts": [
-    {
-      "id": 1,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T04:42:11.588Z",
-      "success": true
-    },
-    {
-      "id": 2,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T04:43:20.470Z",
-      "success": true
-    },
-    {
-      "id": 3,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T04:47:30.252Z",
-      "success": true
-    },
-    {
-      "id": 4,
-      "username": "rediswan",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T05:12:15.507Z",
-      "success": true
-    },
-    {
-      "id": 5,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T05:13:06.338Z",
-      "success": true
-    },
-    {
-      "id": 6,
-      "username": "rediswan",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T05:13:26.790Z",
-      "success": true
-    },
-    {
-      "id": 7,
-      "username": "rediswan",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T05:17:05.852Z",
-      "success": true
-    },
-    {
-      "id": 8,
-      "username": "emp123456",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T05:20:28.053Z",
-      "success": true
-    },
-    {
-      "id": 9,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T09:54:42.605Z",
-      "success": true
+      "setting_key": "min_password_length",
+      "setting_value": "6",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 10,
-      "username": "EMP654321",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T09:55:22.116Z",
-      "success": false
+      "setting_key": "company_name",
+      "setting_value": "Divine Grace Medical Center",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 11,
-      "username": "EMP123456",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T09:55:35.920Z",
-      "success": false
+      "setting_key": "company_tagline",
+      "setting_value": "Compassionate Care, Exceptional Service",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 12,
-      "username": "EMP123456",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T09:55:48.323Z",
-      "success": true
+      "setting_key": "company_logo_url",
+      "setting_value": "",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 13,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T11:49:35.848Z",
-      "success": true
+      "setting_key": "currency_symbol",
+      "setting_value": "₱",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 14,
-      "username": "rediswan",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T11:50:21.936Z",
-      "success": false
+      "setting_key": "free_meal_limit_daily",
+      "setting_value": "1",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 15,
-      "username": "rediswan",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T11:50:28.580Z",
-      "success": false
+      "setting_key": "audit_log_retention_days",
+      "setting_value": "30",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 16,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T11:50:40.108Z",
-      "success": true
-    },
-    {
-      "id": 17,
-      "username": "rediswan",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T11:51:39.342Z",
-      "success": true
-    },
-    {
-      "id": 18,
-      "username": "rediswan",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T11:57:00.761Z",
-      "success": true
-    },
-    {
-      "id": 19,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "success": true,
-      "timestamp": "2026-09-11T04:32:19.378Z"
+      "setting_key": "it_support_phone",
+      "setting_value": "Medical arts Bldg. 5th floor/ICT dept. / 2568",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     }
-  ]
+  ],
+  "audit_logs": [],
+  "login_attempts": []
 }
