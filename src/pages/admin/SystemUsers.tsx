@@ -103,7 +103,7 @@ export default function SystemUsers() {
     setModalOpen(true);
   };
 
-  const openEditModal = (u: Person) => {
+  const openEditModal = async (u: Person) => {
     setEditUser(u);
     setFirstName(u.first_name);
     setLastName(u.last_name);
@@ -114,6 +114,25 @@ export default function SystemUsers() {
     setIsActive(u.is_active);
     setError(null);
     setModalOpen(true);
+
+    if (u.first_name?.startsWith("enc:") || u.first_name?.startsWith("enc_det:") ||
+        u.last_name?.startsWith("enc:") || u.last_name?.startsWith("enc_det:")) {
+      try {
+        const res = await apiFetch("/api/admin/decrypt-field", {
+          method: "POST",
+          body: JSON.stringify({
+            fields: [
+              { field: "first_name", value: u.first_name },
+              { field: "last_name", value: u.last_name }
+            ]
+          })
+        });
+        if (res && res.decrypted) {
+          if (res.decrypted.first_name) setFirstName(res.decrypted.first_name);
+          if (res.decrypted.last_name) setLastName(res.decrypted.last_name);
+        }
+      } catch (_err) {}
+    }
   };
 
   const handleDelete = async (id: number) => {

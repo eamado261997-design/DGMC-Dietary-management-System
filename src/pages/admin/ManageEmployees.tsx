@@ -182,11 +182,15 @@ export default function ManageEmployees() {
     setFormEmpNo(p.employee_no && (p.employee_no.startsWith("enc:") || p.employee_no.startsWith("enc_det:")) ? "Decrypting..." : p.employee_no || "");
     setFormQrCode(p.qr_code && (p.qr_code.startsWith("enc:") || p.qr_code.startsWith("enc_det:")) ? "Decrypting..." : p.qr_code || "");
 
+    const decryptedFirstName = await decryptIfEncrypted(p.first_name);
+    const decryptedLastName = await decryptIfEncrypted(p.last_name);
     const decryptedEmail = await decryptIfEncrypted(p.email);
     const decryptedPhone = await decryptIfEncrypted(p.phone);
     const decryptedEmpNo = await decryptIfEncrypted(p.employee_no);
     const decryptedQrCode = await decryptIfEncrypted(p.qr_code);
 
+    setFormFirstName(decryptedFirstName);
+    setFormLastName(decryptedLastName);
     setFormEmail(decryptedEmail);
     setFormPhone(decryptedPhone);
     setFormEmpNo(decryptedEmpNo);

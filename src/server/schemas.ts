@@ -98,7 +98,13 @@ export const CashierProcessSchema = z.object({
 });
 
 export const DecryptFieldSchema = z.object({
-  ciphertext: z.string().min(1, "ciphertext is required")
+  ciphertext: z.string().optional(),
+  fields: z.array(z.object({
+    field: z.string(),
+    value: z.string().nullable().optional()
+  })).optional()
+}).refine(data => data.ciphertext !== undefined || (data.fields !== undefined && data.fields.length > 0), {
+  message: "Either ciphertext or fields is required"
 });
 
 export const SettingsUpdateSchema = z.object({

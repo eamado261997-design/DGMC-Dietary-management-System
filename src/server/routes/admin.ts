@@ -4,6 +4,7 @@ import { isMysqlConnected, query } from "../mysql.js";
 import { cacheLayer } from "../cache.js";
 import { Person } from "../../types.js";
 import { getEmployeePerfSummary } from "../utils/performanceTracker.js";
+import { decrypt } from "../encryption.js";
 
 export async function handleAdminRoutes(
   method: string,
@@ -14,6 +15,24 @@ export async function handleAdminRoutes(
   queryParams: any,
   requireRole: (roles: string[]) => boolean
 ): Promise<ApiResponse | null> {
+  // Field decryption utility for admin panel
+  if (path === "/api/admin/decrypt-field" && method === "POST") {
+    if (!authUser) return jsonResponse(401, { error: "Authentication required" });
+    if (!requireRole(["admin", "dietary_admin", "manager"])) return jsonResponse(403, { error: "Admin privilege required" });
+    const { ciphertext, fields } = body || {};
+    if (fields && Array.isArray(fields)) {
+      const decryptedMap: Record<string, string> = {};
+      for (const item of fields) {
+        if (item && item.field) {
+          decryptedMap[item.field] = decrypt(item.value || "");
+        }
+      }
+      return jsonResponse(200, { decrypted: decryptedMap });
+    }
+    const decrypted = decrypt(ciphertext);
+    return jsonResponse(200, { decrypted });
+  }
+
   // Employee Lookup Performance & Join Telemetry
   if (path === "/api/admin/employee-lookup-perf" && method === "GET") {
     if (!authUser) return jsonResponse(401, { error: "Authentication required" });

@@ -1,6 +1,7 @@
 import { jsonResponse, ApiResponse } from "../utils/apiUtils.js";
 import { readDatabase, writeDatabase, hashPassword } from "../db.js";
 import { isMysqlConnected, query, execute } from "../mysql.js";
+import { decryptPerson } from "../encryption.js";
 import { DEFAULT_MIN_PASSWORD_LENGTH } from "../../utils/password.js";
 import { validatePasswordComplexity } from "../../utils/password.js";
 import { Person } from "../../types.js";
@@ -414,7 +415,12 @@ export async function handleEmployeeRoutes(
         warnings
       });
 
-      return jsonResponse(200, rows, undefined, getPerfHeaders(metric));
+      const decryptedRows = rows.map(r => {
+        const dec = decryptPerson(r);
+        delete dec.password;
+        return dec;
+      });
+      return jsonResponse(200, decryptedRows, undefined, getPerfHeaders(metric));
     } else {
       const dbTimer = startTimer();
       const db = readDatabase();
@@ -434,7 +440,7 @@ export async function handleEmployeeRoutes(
           unmatchedDepartments++;
           warnings.push(`User ${p.id} (${p.username}) has department_id ${p.department_id} but no matching department in db.departments`);
         }
-        const cp = { ...p };
+        const cp = decryptPerson({ ...p });
         delete cp.password;
         return { ...cp, department_name: dept ? dept.name : "N/A" };
       });
@@ -818,7 +824,12 @@ export async function handleEmployeeRoutes(
         warnings
       });
 
-      return jsonResponse(200, rows, undefined, getPerfHeaders(metric));
+      const decryptedRows = rows.map(r => {
+        const dec = decryptPerson(r);
+        delete dec.password;
+        return dec;
+      });
+      return jsonResponse(200, decryptedRows, undefined, getPerfHeaders(metric));
     } else {
       const dbTimer = startTimer();
       const db = readDatabase();
@@ -835,7 +846,7 @@ export async function handleEmployeeRoutes(
           unmatchedDepartments++;
           warnings.push(`User ${p.id} (${p.username}) missing dept in JSON db`);
         }
-        const cp = { ...p };
+        const cp = decryptPerson({ ...p });
         delete cp.password;
         return { ...cp, department_name: dept ? dept.name : "N/A" };
       });

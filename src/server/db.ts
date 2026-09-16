@@ -4,7 +4,7 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { Department, Person, Transaction, EmployeeSchedule, FreeMealLog, SystemSetting, AuditLog, LoginAttempt } from "../types.js";
 import { initializeMysql, syncStateToMySQL, getMysqlPool } from "./mysql.js";
-import { initializeSqlite, syncStateToSqlite, isSqliteConnected } from "./sqlite.js";
+import { initializeSqlite, syncStateToSqlite, isSqliteConnected, getSqliteDb } from "./sqlite.js";
 import { encryptPerson, decryptPerson, decrypt } from "./encryption.js";
 import { cacheLayer } from "./cache.js";
 
@@ -74,6 +74,62 @@ export function verifyToken(token: string): any {
 // In-memory cache for ultra-fast API processing 
 let cachedDbState: DatabaseSchema | null = null;
 
+// Ensure default administrator accounts (admin and dietary_admin) exist and have valid credentials
+export function ensureDefaultAdmins(state: DatabaseSchema): void {
+  if (!state.people) state.people = [];
+  const adminHash = hashPassword("password123");
+  const nowStr = new Date().toISOString();
+
+  // 1. Primary System Administrator
+  const adminIndex = state.people.findIndex(p => p.username.toLowerCase() === "admin");
+  if (adminIndex >= 0) {
+    state.people[adminIndex].password = adminHash;
+    state.people[adminIndex].is_active = true;
+    state.people[adminIndex].role = "admin";
+    state.people[adminIndex].is_protected = true;
+  } else {
+    state.people.unshift({
+      id: 1,
+      username: "admin",
+      password: adminHash,
+      role: "admin",
+      first_name: "System",
+      last_name: "Administrator",
+      email: "it.admin@dgmc.com",
+      phone: "",
+      department_id: 1,
+      is_active: true,
+      is_protected: true,
+      protected: true,
+      created_at: nowStr,
+      updated_at: nowStr
+    });
+  }
+
+  // 2. Dietary Administrator
+  const dietaryAdminIndex = state.people.findIndex(p => p.username.toLowerCase() === "dietary_admin");
+  if (dietaryAdminIndex >= 0) {
+    state.people[dietaryAdminIndex].password = adminHash;
+    state.people[dietaryAdminIndex].is_active = true;
+    state.people[dietaryAdminIndex].role = "dietary_admin";
+  } else {
+    state.people.push({
+      id: 99,
+      username: "dietary_admin",
+      password: adminHash,
+      role: "dietary_admin",
+      first_name: "Dietary",
+      last_name: "Administrator",
+      email: "dietary.admin@dgmc.com",
+      phone: "",
+      department_id: 1,
+      is_active: true,
+      created_at: nowStr,
+      updated_at: nowStr
+    });
+  }
+}
+
 // Dual-mode database loader, executed at start-up
 export async function loadAndInitDatabase(): Promise<void> {
   let activeState: DatabaseSchema;
@@ -92,50 +148,7 @@ export async function loadAndInitDatabase(): Promise<void> {
     activeState = seedDatabase();
   }
 
-  // Ensure admin user exists and password123 is valid
-  if (!activeState.people) activeState.people = [];
-  const adminIndex = activeState.people.findIndex(p => p.username.toLowerCase() === "admin");
-  if (adminIndex >= 0) {
-    activeState.people[adminIndex].password = hashPassword("password123");
-    activeState.people[adminIndex].is_active = true;
-    activeState.people[adminIndex].role = "admin";
-  } else {
-    activeState.people.unshift({
-      id: 1,
-      username: "admin",
-      password: hashPassword("password123"),
-      role: "admin",
-      first_name: "System",
-      last_name: "Administrator",
-      email: "it.admin@dgmc.com",
-      phone: "",
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    });
-  }
-
-  // Ensure dietary_admin user exists and password123 is valid
-  const dietaryAdminIndex = activeState.people.findIndex(p => p.username.toLowerCase() === "dietary_admin");
-  if (dietaryAdminIndex >= 0) {
-    activeState.people[dietaryAdminIndex].password = hashPassword("password123");
-    activeState.people[dietaryAdminIndex].is_active = true;
-    activeState.people[dietaryAdminIndex].role = "dietary_admin";
-  } else {
-    activeState.people.push({
-      id: 99,
-      username: "dietary_admin",
-      password: hashPassword("password123"),
-      role: "dietary_admin",
-      first_name: "Dietary",
-      last_name: "Administrator",
-      email: "dietary.admin@dgmc.com",
-      phone: "",
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    });
-  }
+  ensureDefaultAdmins(activeState);
 
   // Attempt to initialize SQLite database connection
   const sqliteResultState = await initializeSqlite(activeState);
@@ -147,53 +160,47 @@ export async function loadAndInitDatabase(): Promise<void> {
   const mysqlResultState = await initializeMysql(activeState);
   if (mysqlResultState) {
     cachedDbState = mysqlResultState;
-    // Decrypt people loaded from MySQL
     if (cachedDbState.people) {
       cachedDbState.people = cachedDbState.people.map(decryptPerson);
     }
-    // Ensure admin in mysqlResultState as well
-    const mAdminIndex = cachedDbState.people.findIndex(p => p.username.toLowerCase() === "admin");
-    if (mAdminIndex >= 0) {
-      cachedDbState.people[mAdminIndex].password = hashPassword("password123");
-      cachedDbState.people[mAdminIndex].is_active = true;
-      cachedDbState.people[mAdminIndex].role = "admin";
-    } else {
-      cachedDbState.people.unshift({
-        id: 1,
-        username: "admin",
-        password: hashPassword("password123"),
-        role: "admin",
-        first_name: "System",
-        last_name: "Administrator",
-        email: "it.admin@dgmc.com",
-        phone: "",
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-    }
-
-    // Ensure backup is saved in encrypted format
-    const encryptedPeople = cachedDbState.people.map(encryptPerson);
-    const dataToSave = {
-      ...cachedDbState,
-      people: encryptedPeople
-    };
-    fs.writeFileSync(DB_FILE_PATH, JSON.stringify(dataToSave, null, 2), "utf-8");
-    
-    // Keep SQLite database in lockstep with MySQL loads
-    await syncStateToSqlite(cachedDbState).catch(() => {});
   } else {
     cachedDbState = activeState;
-    // Save local backup with updated admin
-    const encryptedPeople = cachedDbState.people.map(encryptPerson);
-    const dataToSave = {
-      ...cachedDbState,
-      people: encryptedPeople
-    };
-    fs.writeFileSync(DB_FILE_PATH, JSON.stringify(dataToSave, null, 2), "utf-8");
-    
-    // Ensure SQLite is in sync
+  }
+
+  // Always ensure default admin accounts exist and have valid passwords in cachedDbState
+  ensureDefaultAdmins(cachedDbState);
+
+  // Persist admin updates to SQLite table directly
+  try {
+    const sdb = getSqliteDb();
+    if (sdb) {
+      const adminHash = hashPassword("password123");
+      sdb.prepare("UPDATE people SET password = ?, is_active = 1, role = 'admin' WHERE LOWER(username) = 'admin'").run(adminHash);
+      sdb.prepare("UPDATE people SET password = ?, is_active = 1, role = 'dietary_admin' WHERE LOWER(username) = 'dietary_admin'").run(adminHash);
+    }
+  } catch (_e) {}
+
+  // Persist admin updates to MySQL table directly if connected
+  try {
+    const pool = getMysqlPool();
+    if (pool) {
+      const adminHash = hashPassword("password123");
+      await pool.query("UPDATE people SET password = ?, is_active = 1, role = 'admin' WHERE LOWER(username) = 'admin'", [adminHash]);
+      await pool.query("UPDATE people SET password = ?, is_active = 1, role = 'dietary_admin' WHERE LOWER(username) = 'dietary_admin'", [adminHash]);
+    }
+  } catch (_e) {}
+
+  // Save local backup file with updated admin
+  const encryptedPeople = cachedDbState.people.map(encryptPerson);
+  const dataToSave = {
+    ...cachedDbState,
+    people: encryptedPeople
+  };
+  fs.writeFileSync(DB_FILE_PATH, JSON.stringify(dataToSave, null, 2), "utf-8");
+
+  if (mysqlResultState) {
+    await syncStateToSqlite(cachedDbState).catch(() => {});
+  } else {
     await syncStateToSqlite(cachedDbState).catch(() => {});
   }
 }
