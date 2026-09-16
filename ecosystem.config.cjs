@@ -6,7 +6,7 @@ module.exports = {
       instances: "max",
       exec_mode: "cluster",
       wait_ready: true,
-      listen_timeout: 30000,
+      listen_timeout: 10000,
       kill_timeout: 4000,
       env: {
         NODE_ENV: "production",
@@ -16,8 +16,8 @@ module.exports = {
         MYSQL_HOST: process.env.MYSQL_HOST || "localhost",
         MYSQL_PORT: process.env.MYSQL_PORT || "3311",
         MYSQL_USER: process.env.MYSQL_USER || "root",
-        MYSQL_PASSWORD: process.env.MYSQL_PASSWORD || "root",
-        MYSQL_DATABASE: process.env.MYSQL_DATABASE || "dgmc",
+        MYSQL_PASSWORD: process.env.MYSQL_PASSWORD || "rootpassword",
+        MYSQL_DATABASE: process.env.MYSQL_DATABASE || "dgmc_meals",
         REDIS_URL: process.env.REDIS_URL || "redis://localhost:6379",
         REDIS_HOST: process.env.REDIS_HOST || "localhost",
         REDIS_PORT: process.env.REDIS_PORT || "6379"
@@ -30,15 +30,8 @@ module.exports = {
       max_memory_restart: "500M",
       watch: false,
       ignore_watch: ["node_modules", "dist", "logs"],
-      max_restarts: 15,
-      min_uptime: "30s",
-      restart_delay: 5000,
-      // Health check configuration
-      cron_restart: "0 0 * * *",
-      // Graceful shutdown with 4s timeout
-      kill_timeout: 4000,
-      // For Docker: wait for containers to be ready
-      delay_between_restart: 8000
+      max_restarts: 10,
+      min_uptime: "10s"
     }
   ]
 };

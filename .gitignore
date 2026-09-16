@@ -1,83 +1,12 @@
-# Dependencies
 node_modules/
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-
-# Build outputs
-dist/
 build/
-.next/
-out/
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# IDE and Editor
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
-
-# Test files and directories (REMOVE FROM REPO)
-**/*.test.ts
-**/*.test.tsx
-**/*.test.js
-**/*.test.jsx
-**/*.spec.ts
-**/*.spec.tsx
-**/*.spec.js
-**/*.spec.jsx
-__tests__/
-tests/
-test/
-src/tests/
-src/server/tests/
-
-# Test configuration files
-jest.config.js
-jest.config.ts
-vitest.config.ts
-vitest.config.js
-karma.conf.js
-*.test.config.js
-
-# Test coverage
+dist/
 coverage/
-.coverage
-*.lcov
-
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-pnpm-debug.log*
-
-# OS files
 .DS_Store
-Thumbs.db
-*.tmp
-
-# Temporary files
-*.bak
-*.swp
-.tmp/
-temp/
-
-# Docker
-.docker/
-docker-compose.override.yml
-
-# PM2
-ecosystem-local.js
-.pm2/
-
-# Misc
-.cache/
-.vuepress/dist/
+*.log
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+.env*
+!.env.example

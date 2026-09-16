@@ -4,3 +4,6 @@
 *.db-*
 .vscode
 .idea
+node_modules
+dist
+logs

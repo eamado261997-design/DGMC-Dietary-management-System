@@ -6,7 +6,9 @@ import { Server, Database, Zap, RefreshCw, AlertCircle, CheckCircle2, Loader2 } 
 interface ConnectivityStatus {
   mysql: "connected" | "disconnected";
   redis: "connected" | "disconnected";
-  pm2: string;
+  engine: string;
+  telemetry: string;
+  pm2?: string;
   timestamp: string;
 }
 
@@ -40,7 +42,7 @@ export default function SystemConnectivity() {
     <div className="space-y-6">
       <PageHeader title="System Connectivity Monitor" subtitle="Real-time health status of infrastructure components" />
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         {/* Database Status */}
         <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm">
             <div className="flex items-center gap-4 mb-4">
@@ -57,10 +59,10 @@ export default function SystemConnectivity() {
             )}
         </div>
 
-        {/* Redis Status */}
+        {/* Redis Cache Status */}
         <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm">
             <div className="flex items-center gap-4 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
+                <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-600">
                     <Zap className="w-5 h-5" />
                 </div>
                 <h3 className="text-sm font-bold">Redis Cache</h3>
@@ -73,17 +75,50 @@ export default function SystemConnectivity() {
             )}
         </div>
 
-        {/* PM2 Status */}
+        {/* Engine Status */}
+        <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm">
+            <div className="flex items-center gap-4 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
+                    <Zap className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-bold">Node.js API Engine</h3>
+            </div>
+            {loading ? <Loader2 className="animate-spin w-6 h-6 text-zinc-400" /> : (
+                <div className="flex items-center gap-2">
+                    <StatusIcon connected={status?.engine === "online"} />
+                    <span className="font-mono font-bold capitalize">{status?.engine}</span>
+                </div>
+            )}
+        </div>
+
+        {/* PM2 Process Cluster */}
+        <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm">
+            <div className="flex items-center gap-4 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                    <Server className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-bold">PM2 Cluster Process</h3>
+            </div>
+            {loading ? <Loader2 className="animate-spin w-6 h-6 text-zinc-400" /> : (
+                <div className="flex items-center gap-2">
+                    <StatusIcon connected={!!(status?.pm2 && status.pm2.includes("online"))} />
+                    <span className="font-mono font-bold capitalize">{status?.pm2 || "standalone"}</span>
+                </div>
+            )}
+        </div>
+
+        {/* Telemetry Status */}
         <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm">
             <div className="flex items-center gap-4 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600">
                     <Server className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm font-bold">PM2 Process</h3>
+                <h3 className="text-sm font-bold">Prometheus Telemetry</h3>
             </div>
             {loading ? <Loader2 className="animate-spin w-6 h-6 text-zinc-400" /> : (
                 <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold capitalize">{status?.pm2}</span>
+                    <StatusIcon connected={status?.telemetry === "active"} />
+                    <span className="font-mono font-bold capitalize">{status?.telemetry}</span>
                 </div>
             )}
         </div>

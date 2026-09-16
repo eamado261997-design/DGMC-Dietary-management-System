@@ -1,1 +1,4 @@
-ignore-scripts=false
+# Configuration for pnpm package manager
+shamefully-hoist=true
+auto-install-peers=true
+strict-peer-dependencies=false

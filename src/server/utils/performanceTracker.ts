@@ -1,4 +1,5 @@
 import { logger } from "./logger.js";
+import os from "os";
 
 export interface EmployeePerfMetric {
   id: string;
@@ -17,6 +18,13 @@ export interface EmployeePerfMetric {
 
 const MAX_PERF_LOGS = 200;
 export const employeePerfLogs: EmployeePerfMetric[] = [];
+
+// Prometheus metrics accumulators
+let promRequestsTotal = 0;
+let promTotalLatencySum = 0;
+let promDbLatencySum = 0;
+let promJoinLatencySum = 0;
+let promUnmatchedDepartmentsTotal = 0;
 
 /**
  * High precision millisecond timer wrapper
@@ -44,6 +52,13 @@ export function recordEmployeePerfMetric(metric: Omit<EmployeePerfMetric, "id" |
     employeePerfLogs.pop();
   }
 
+  // Update Prometheus Accumulators
+  promRequestsTotal++;
+  promTotalLatencySum += metric.totalLatencyMs;
+  promDbLatencySum += metric.dbLatencyMs;
+  promJoinLatencySum += metric.joinLatencyMs;
+  promUnmatchedDepartmentsTotal += metric.unmatchedDepartments;
+
   // Determine primary contributor / bottleneck
   const bottleneck = fullMetric.dbLatencyMs > fullMetric.joinLatencyMs ? "DATABASE QUERY" : "JOIN LOGIC";
   const dbRatio = Math.round((fullMetric.dbLatencyMs / Math.max(0.01, fullMetric.totalLatencyMs)) * 100);
@@ -58,6 +73,118 @@ export function recordEmployeePerfMetric(metric: Omit<EmployeePerfMetric, "id" |
   }
 
   return fullMetric;
+}
+
+/**
+ * Retrieves the primary IPv4 address of the host machine
+ */
+function getHostIp(): string {
+  try {
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name] || []) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          return iface.address;
+        }
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+  return '127.0.0.1';
+}
+
+const HOST_IP = getHostIp();
+
+/**
+ * Generates Prometheus-compatible metrics text
+ */
+export function getPrometheusMetrics(): string {
+  const lines: string[] = [];
+  const label = `{host="${HOST_IP}"}`;
+  
+  // Basic API Metrics
+  lines.push(`# HELP dgmc_api_http_requests_total Total number of HTTP requests recorded by performance tracker`);
+  lines.push(`# TYPE dgmc_api_http_requests_total counter`);
+  lines.push(`dgmc_api_http_requests_total${label} ${promRequestsTotal}`);
+
+  lines.push(`# HELP dgmc_api_http_request_duration_ms_sum Total request latency in milliseconds`);
+  lines.push(`# TYPE dgmc_api_http_request_duration_ms_sum counter`);
+  lines.push(`dgmc_api_http_request_duration_ms_sum${label} ${promTotalLatencySum.toFixed(2)}`);
+
+  lines.push(`# HELP dgmc_api_db_latency_ms_sum Database latency in milliseconds`);
+  lines.push(`# TYPE dgmc_api_db_latency_ms_sum counter`);
+  lines.push(`dgmc_api_db_latency_ms_sum${label} ${promDbLatencySum.toFixed(2)}`);
+
+  lines.push(`# HELP dgmc_api_join_latency_ms_sum In-memory join logic latency in milliseconds`);
+  lines.push(`# TYPE dgmc_api_join_latency_ms_sum counter`);
+  lines.push(`dgmc_api_join_latency_ms_sum${label} ${promJoinLatencySum.toFixed(2)}`);
+
+  lines.push(`# HELP dgmc_api_unmatched_departments_total Total number of unmatched department joins`);
+  lines.push(`# TYPE dgmc_api_unmatched_departments_total counter`);
+  lines.push(`dgmc_api_unmatched_departments_total${label} ${promUnmatchedDepartmentsTotal}`);
+  
+  // System metrics
+  lines.push(`# HELP node_memory_rss_bytes Node.js Resident Set Size (RSS) memory usage`);
+  lines.push(`# TYPE node_memory_rss_bytes gauge`);
+  lines.push(`node_memory_rss_bytes${label} ${process.memoryUsage().rss}`);
+  
+  lines.push(`# HELP node_memory_heap_used_bytes Node.js heap memory used`);
+  lines.push(`# TYPE node_memory_heap_used_bytes gauge`);
+  lines.push(`node_memory_heap_used_bytes${label} ${process.memoryUsage().heapUsed}`);
+
+  lines.push(`# HELP node_memory_heap_total_bytes Node.js heap memory total`);
+  lines.push(`# TYPE node_memory_heap_total_bytes gauge`);
+  lines.push(`node_memory_heap_total_bytes${label} ${process.memoryUsage().heapTotal}`);
+  
+  lines.push(`# HELP system_memory_total_bytes Total system memory`);
+  lines.push(`# TYPE system_memory_total_bytes gauge`);
+  lines.push(`system_memory_total_bytes${label} ${os.totalmem()}`);
+  
+  lines.push(`# HELP system_memory_free_bytes Free system memory`);
+  lines.push(`# TYPE system_memory_free_bytes gauge`);
+  lines.push(`system_memory_free_bytes${label} ${os.freemem()}`);
+
+  const loadAvg = os.loadavg();
+  lines.push(`# HELP system_cpu_load_average_1m System CPU load average over 1 minute`);
+  lines.push(`# TYPE system_cpu_load_average_1m gauge`);
+  lines.push(`system_cpu_load_average_1m${label} ${loadAvg[0].toFixed(2)}`);
+
+  lines.push(`# HELP system_cpu_load_average_5m System CPU load average over 5 minutes`);
+  lines.push(`# TYPE system_cpu_load_average_5m gauge`);
+  lines.push(`system_cpu_load_average_5m${label} ${loadAvg[1].toFixed(2)}`);
+
+  lines.push(`# HELP system_cpu_load_average_15m System CPU load average over 15 minutes`);
+  lines.push(`# TYPE system_cpu_load_average_15m gauge`);
+  lines.push(`system_cpu_load_average_15m${label} ${loadAvg[2].toFixed(2)}`);
+
+  const cpuUsage = process.cpuUsage();
+  lines.push(`# HELP node_cpu_user_microseconds Node.js user CPU time in microseconds`);
+  lines.push(`# TYPE node_cpu_user_microseconds counter`);
+  lines.push(`node_cpu_user_microseconds${label} ${cpuUsage.user}`);
+
+  lines.push(`# HELP node_cpu_system_microseconds Node.js system CPU time in microseconds`);
+  lines.push(`# TYPE node_cpu_system_microseconds counter`);
+  lines.push(`node_cpu_system_microseconds${label} ${cpuUsage.system}`);
+
+  lines.push(`# HELP node_uptime_seconds Node.js process uptime in seconds`);
+  lines.push(`# TYPE node_uptime_seconds counter`);
+  lines.push(`node_uptime_seconds${label} ${process.uptime()}`);
+
+  try {
+    // Very basic proxy for disk/DB size (helps IT know if DB is growing too fast)
+    const fs = require('fs');
+    if (fs.existsSync('./dgmc_meals.db')) {
+      const dbStats = fs.statSync('./dgmc_meals.db');
+      lines.push(`# HELP dgmc_db_file_size_bytes SQLite Database file size in bytes`);
+      lines.push(`# TYPE dgmc_db_file_size_bytes gauge`);
+      lines.push(`dgmc_db_file_size_bytes${label} ${dbStats.size}`);
+    }
+  } catch (e) {
+    // Ignore if not using local SQLite or file missing
+  }
+
+  return lines.join('\n') + '\n';
 }
 
 /**

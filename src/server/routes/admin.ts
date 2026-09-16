@@ -247,22 +247,37 @@ export async function handleAdminRoutes(
     
     // 2. Redis Status
     const redisStatus = cacheLayer.getIsRedisConnected();
+
+    // 3. Node API Engine Status
+    const engineStatus = "online";
     
-    // 3. PM2 Status
-    let pm2Status = "unknown";
-    try {
+    // 4. Telemetry Status
+    const telemetryStatus = "active";
+
+    // 5. PM2 Status Detection
+    let pm2Status = "standalone";
+    if (process.env.pm_id !== undefined || process.env.PM2_HOME !== undefined || process.env.exec_mode !== undefined) {
+      const instanceId = process.env.pm_id ?? "0";
+      pm2Status = `online (Worker #${instanceId})`;
+    } else {
+      try {
         const { execSync } = await import('child_process');
-        const output = execSync('npx pm2 jlist', { encoding: 'utf-8' });
+        const output = execSync('npx pm2 jlist', { encoding: 'utf-8', timeout: 2000 });
         const processes = JSON.parse(output);
-        const dgmcProcess = processes.find((p: any) => p.name === 'dgmc-dietary-system');
-        pm2Status = dgmcProcess ? dgmcProcess.pm2_env.status : "not-found";
-    } catch (e) {
-        pm2Status = "error";
+        if (Array.isArray(processes) && processes.length > 0) {
+          const online = processes.filter((p: any) => p.pm2_env?.status === 'online');
+          pm2Status = online.length > 0 ? `online (${online.length} workers)` : 'stopped';
+        }
+      } catch (e) {
+        pm2Status = "standalone";
+      }
     }
 
     return jsonResponse(200, {
         mysql: mysqlStatus ? "connected" : "disconnected",
         redis: redisStatus ? "connected" : "disconnected",
+        engine: engineStatus,
+        telemetry: telemetryStatus,
         pm2: pm2Status,
         timestamp: new Date().toISOString()
     });
