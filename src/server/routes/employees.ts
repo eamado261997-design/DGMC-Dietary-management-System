@@ -294,30 +294,41 @@ export async function handleEmployeeRoutes(
         }
       }
 
+      // Check for associated transaction or meal history records
       const hasTransactionsRows = await query(
         "SELECT id FROM transactions WHERE person_id = ? OR cashier_person_id = ? LIMIT 1",
         [targetId, targetId]
       );
+      const hasFreeMealRows = await query(
+        "SELECT id FROM free_meal_logs WHERE person_id = ? LIMIT 1",
+        [targetId]
+      );
+      const hasMealHistory = hasTransactionsRows.length > 0 || hasFreeMealRows.length > 0;
 
-      if (hasTransactionsRows.length > 0 && !isForce) {
+      if (hasMealHistory && !isForce) {
+        // Soft delete: deactivate user to preserve accounting & meal history
         await execute("UPDATE people SET is_active = 0, employee_status = 'inactive' WHERE id = ?", [targetId]);
         const todayStr = new Date().toISOString().split('T')[0];
         await execute("DELETE FROM employee_schedules WHERE person_id = ? AND work_date >= ?", [targetId, todayStr]);
-        await logToAudit("EMPLOYEE_DEACTIVATE", "people", targetId, null, "Account deactivated gracefully due to active transaction receipts. Future schedules purged.");
+        await logToAudit("EMPLOYEE_DEACTIVATE", "people", targetId, null, "Account deactivated gracefully due to active transaction/meal receipts. Future schedules purged.");
         return jsonResponse(200, {
           success: true,
           deactivated: true,
-          message: "Employee has recorded meal transactions. To protect accounting records, their profile was deactivated (status: inactive) and future schedules were removed."
+          message: "Employee has recorded meal transactions or free meal history. To protect accounting records, their profile was deactivated (status: inactive) and future schedules were removed."
         });
       }
 
-      // If force delete or no transaction history:
-      // CRITICAL: Delete child references FIRST to prevent Foreign Key constraint failures
+      // If force delete or no meal history:
+      // Cascading deletion of all child and related references in proper foreign key order
       await execute("DELETE FROM employee_schedules WHERE person_id = ? OR created_by = ?", [targetId, targetId]);
       await execute("DELETE FROM free_meal_logs WHERE person_id = ?", [targetId]);
       if (isForce) {
         await execute("DELETE FROM transactions WHERE person_id = ? OR cashier_person_id = ?", [targetId, targetId]);
       }
+      try {
+        await execute("UPDATE audit_logs SET user_id = NULL WHERE user_id = ?", [targetId]);
+        await execute("UPDATE system_settings SET updated_by = NULL WHERE updated_by = ?", [targetId]);
+      } catch (_fkIgnore) {}
       await execute("DELETE FROM people WHERE id = ?", [targetId]);
       await logToAudit("EMPLOYEE_DELETE", "people", targetId, null, "Employee record deleted permanently from database.");
       return jsonResponse(200, { success: true, deleted: true, message: "Employee profile deleted permanently." });
@@ -336,26 +347,40 @@ export async function handleEmployeeRoutes(
         }
       }
 
-      const hasTransactions = db.transactions.some(t => t.person_id === targetId || t.cashier_person_id === targetId);
-      if (hasTransactions && !isForce) {
+      const hasTransactions = (db.transactions || []).some(t => t.person_id === targetId || t.cashier_person_id === targetId);
+      const hasFreeMeals = (db.free_meal_log || []).some(f => f.person_id === targetId);
+      const hasMealHistory = hasTransactions || hasFreeMeals;
+
+      if (hasMealHistory && !isForce) {
+        // Soft delete: deactivate user to preserve accounting & meal history
         db.people[index].is_active = false;
         db.people[index].employee_status = "inactive";
         const todayStr = new Date().toISOString().split('T')[0];
-        db.employee_schedules = db.employee_schedules.filter(s => !(s.person_id === targetId && s.work_date >= todayStr));
+        db.employee_schedules = (db.employee_schedules || []).filter(s => !(s.person_id === targetId && s.work_date >= todayStr));
         writeDatabase(db);
-        await logToAudit("EMPLOYEE_DEACTIVATE", "people", targetId, null, "Account deactivated gracefully due to active transaction receipts. Future schedules purged.");
+        await logToAudit("EMPLOYEE_DEACTIVATE", "people", targetId, null, "Account deactivated gracefully due to active transaction/meal receipts. Future schedules purged.");
         return jsonResponse(200, {
           success: true,
           deactivated: true,
-          message: "Employee has recorded meal transactions. To protect accounting records, their profile was deactivated (status: inactive) and future schedules were removed."
+          message: "Employee has recorded meal transactions or free meal history. To protect accounting records, their profile was deactivated (status: inactive) and future schedules were removed."
         });
       }
 
-      // Delete child references first
+      // Cascading deletion of all child and related references in proper foreign key order
       db.employee_schedules = (db.employee_schedules || []).filter(s => s.person_id !== targetId && s.created_by !== targetId);
       db.free_meal_log = (db.free_meal_log || []).filter(f => f.person_id !== targetId);
       if (isForce) {
         db.transactions = (db.transactions || []).filter(t => t.person_id !== targetId && t.cashier_person_id !== targetId);
+      }
+      if (db.audit_logs) {
+        db.audit_logs.forEach(a => {
+          if (a.user_id === targetId) a.user_id = null as any;
+        });
+      }
+      if (db.system_settings) {
+        db.system_settings.forEach(s => {
+          if (s.updated_by === targetId) s.updated_by = null as any;
+        });
       }
       db.people.splice(index, 1);
       writeDatabase(db);

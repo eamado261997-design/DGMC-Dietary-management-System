@@ -712,20 +712,12 @@ export async function syncStateToMySQL(pool: any, data: DatabaseSchema): Promise
       await batchUpsert(conn, "login_attempts", ["id", "username", "ip_address", "timestamp", "success"], rows, updateCols);
     }
 
-    // --- EXECUTE SYNCHRONOUS DELETIONS IN DATABASE IF RECORDS REMOVED FROM MEMORY ---
-    if (data.departments.length > 0) {
-      const ids = data.departments.map(x => x.id);
-      await conn.query("DELETE FROM departments WHERE id NOT IN (?)", [ids]);
-    }
-    if (data.people.length > 0) {
-      const ids = data.people.map(x => x.id);
-      await conn.query("DELETE FROM people WHERE id NOT IN (?)", [ids]);
-    }
-    if (data.employee_schedules.length > 0) {
-      const ids = data.employee_schedules.map(x => x.id);
-      await conn.query("DELETE FROM employee_schedules WHERE id NOT IN (?)", [ids]);
+    // --- EXECUTE SYNCHRONOUS DELETIONS IN DATABASE IN REVERSE DEPENDENCY ORDER ---
+    if (data.free_meal_log.length > 0) {
+      const ids = data.free_meal_log.map(x => x.id);
+      await conn.query("DELETE FROM free_meal_logs WHERE id NOT IN (?)", [ids]);
     } else {
-      await conn.query("DELETE FROM employee_schedules");
+      await conn.query("DELETE FROM free_meal_logs");
     }
     if (data.transactions.length > 0) {
       const ids = data.transactions.map(x => x.id);
@@ -733,16 +725,17 @@ export async function syncStateToMySQL(pool: any, data: DatabaseSchema): Promise
     } else {
       await conn.query("DELETE FROM transactions");
     }
-    if (data.free_meal_log.length > 0) {
-      const ids = data.free_meal_log.map(x => x.id);
-      await conn.query("DELETE FROM free_meal_logs WHERE id NOT IN (?)", [ids]);
+    if (data.employee_schedules.length > 0) {
+      const ids = data.employee_schedules.map(x => x.id);
+      await conn.query("DELETE FROM employee_schedules WHERE id NOT IN (?)", [ids]);
     } else {
-      await conn.query("DELETE FROM free_meal_logs");
+      await conn.query("DELETE FROM employee_schedules");
     }
-
-    if (data.system_settings && data.system_settings.length > 0) {
-      const ids = data.system_settings.map(x => x.id);
-      await conn.query("DELETE FROM system_settings WHERE id NOT IN (?)", [ids]);
+    if (data.login_attempts && data.login_attempts.length > 0) {
+      const ids = data.login_attempts.map(x => x.id);
+      await conn.query("DELETE FROM login_attempts WHERE id NOT IN (?)", [ids]);
+    } else {
+      await conn.query("DELETE FROM login_attempts");
     }
     if (data.audit_logs && data.audit_logs.length > 0) {
       const ids = data.audit_logs.map(x => x.id);
@@ -750,11 +743,17 @@ export async function syncStateToMySQL(pool: any, data: DatabaseSchema): Promise
     } else {
       await conn.query("DELETE FROM audit_logs");
     }
-    if (data.login_attempts && data.login_attempts.length > 0) {
-      const ids = data.login_attempts.map(x => x.id);
-      await conn.query("DELETE FROM login_attempts WHERE id NOT IN (?)", [ids]);
-    } else {
-      await conn.query("DELETE FROM login_attempts");
+    if (data.system_settings && data.system_settings.length > 0) {
+      const ids = data.system_settings.map(x => x.id);
+      await conn.query("DELETE FROM system_settings WHERE id NOT IN (?)", [ids]);
+    }
+    if (data.people.length > 0) {
+      const ids = data.people.map(x => x.id);
+      await conn.query("DELETE FROM people WHERE id NOT IN (?)", [ids]);
+    }
+    if (data.departments.length > 0) {
+      const ids = data.departments.map(x => x.id);
+      await conn.query("DELETE FROM departments WHERE id NOT IN (?)", [ids]);
     }
 
     await conn.commit();
