@@ -278,6 +278,7 @@ export async function handleEmployeeRoutes(
     if (!authUser) return jsonResponse(401, { error: "Authentication required" });
     if (!requireRole(["admin", "dietary_admin"])) return jsonResponse(403, { error: "Admin privilege required" });
     const targetId = parseInt(personMatch[1], 10);
+    const isForce = queryParams?.force === "true" || queryParams?.force === true;
 
     if (isMysqlConnected()) {
       const rows = await query("SELECT * FROM people WHERE id = ?", [targetId]);
@@ -297,19 +298,28 @@ export async function handleEmployeeRoutes(
         [targetId, targetId]
       );
 
-      if (hasTransactionsRows.length > 0) {
+      if (hasTransactionsRows.length > 0 && !isForce) {
         await execute("UPDATE people SET is_active = 0, employee_status = 'inactive' WHERE id = ?", [targetId]);
         const todayStr = new Date().toISOString().split('T')[0];
         await execute("DELETE FROM employee_schedules WHERE person_id = ? AND work_date >= ?", [targetId, todayStr]);
         await logToAudit("EMPLOYEE_DEACTIVATE", "people", targetId, null, "Account deactivated gracefully due to active transaction receipts. Future schedules purged.");
-        return jsonResponse(200, { message: "Person has active transaction receipts. Gracefully deactivated account and purged future schedules to preserve database integrity." });
+        return jsonResponse(200, {
+          success: true,
+          deactivated: true,
+          message: "Employee has recorded meal transactions. To protect accounting records, their profile was deactivated (status: inactive) and future schedules were removed."
+        });
       }
 
-      await execute("DELETE FROM people WHERE id = ?", [targetId]);
-      await execute("DELETE FROM employee_schedules WHERE person_id = ?", [targetId]);
+      // If force delete or no transaction history:
+      // CRITICAL: Delete child references FIRST to prevent Foreign Key constraint failures
+      await execute("DELETE FROM employee_schedules WHERE person_id = ? OR created_by = ?", [targetId, targetId]);
       await execute("DELETE FROM free_meal_logs WHERE person_id = ?", [targetId]);
+      if (isForce) {
+        await execute("DELETE FROM transactions WHERE person_id = ? OR cashier_person_id = ?", [targetId, targetId]);
+      }
+      await execute("DELETE FROM people WHERE id = ?", [targetId]);
       await logToAudit("EMPLOYEE_DELETE", "people", targetId, null, "Employee record deleted permanently from database.");
-      return jsonResponse(200, { message: "Person deleted successfully" });
+      return jsonResponse(200, { success: true, deleted: true, message: "Employee profile deleted permanently." });
     } else {
       const db = readDatabase();
       const index = db.people.findIndex(item => item.id === targetId);
@@ -326,23 +336,30 @@ export async function handleEmployeeRoutes(
       }
 
       const hasTransactions = db.transactions.some(t => t.person_id === targetId || t.cashier_person_id === targetId);
-      if (hasTransactions) {
+      if (hasTransactions && !isForce) {
         db.people[index].is_active = false;
         db.people[index].employee_status = "inactive";
         const todayStr = new Date().toISOString().split('T')[0];
         db.employee_schedules = db.employee_schedules.filter(s => !(s.person_id === targetId && s.work_date >= todayStr));
         writeDatabase(db);
         await logToAudit("EMPLOYEE_DEACTIVATE", "people", targetId, null, "Account deactivated gracefully due to active transaction receipts. Future schedules purged.");
-        return jsonResponse(200, { message: "Person has active transaction receipts. Gracefully deactivated account and purged future schedules to preserve database integrity." });
+        return jsonResponse(200, {
+          success: true,
+          deactivated: true,
+          message: "Employee has recorded meal transactions. To protect accounting records, their profile was deactivated (status: inactive) and future schedules were removed."
+        });
       }
 
+      // Delete child references first
+      db.employee_schedules = (db.employee_schedules || []).filter(s => s.person_id !== targetId && s.created_by !== targetId);
+      db.free_meal_log = (db.free_meal_log || []).filter(f => f.person_id !== targetId);
+      if (isForce) {
+        db.transactions = (db.transactions || []).filter(t => t.person_id !== targetId && t.cashier_person_id !== targetId);
+      }
       db.people.splice(index, 1);
-      db.employee_schedules = db.employee_schedules.filter(s => s.person_id !== targetId);
-      db.free_meal_log = db.free_meal_log.filter(f => f.person_id !== targetId);
-      
       writeDatabase(db);
       await logToAudit("EMPLOYEE_DELETE", "people", targetId, null, "Employee record deleted permanently from database.");
-      return jsonResponse(200, { message: "Person deleted successfully" });
+      return jsonResponse(200, { success: true, deleted: true, message: "Employee profile deleted permanently." });
     }
   }
 

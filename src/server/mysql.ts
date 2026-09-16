@@ -231,16 +231,22 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
     // A. Departments table
     await dbPool.query(`
       CREATE TABLE IF NOT EXISTS departments (
-        id INT PRIMARY KEY,
+        id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(100) NOT NULL UNIQUE,
         created_at VARCHAR(50) NOT NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
+    try {
+      await dbPool.query("ALTER TABLE departments MODIFY id INT AUTO_INCREMENT");
+    } catch (e) {
+      // Ignore if already AUTO_INCREMENT or if table structure doesn't support
+    }
+
     // B. People Table (personnel information)
     await dbPool.query(`
       CREATE TABLE IF NOT EXISTS people (
-        id INT PRIMARY KEY,
+        id INT AUTO_INCREMENT PRIMARY KEY,
         username VARCHAR(50) NOT NULL UNIQUE,
         password LONGTEXT NOT NULL,
         role VARCHAR(20) NOT NULL,
@@ -261,6 +267,12 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
         managed_department_id INT
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    try {
+      await dbPool.query("ALTER TABLE people MODIFY id INT AUTO_INCREMENT");
+    } catch (e) {
+      // Ignore if already AUTO_INCREMENT
+    }
 
     // C. Work schedules
     await dbPool.query(`
