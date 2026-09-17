@@ -400,75 +400,7 @@ export default function CashierScan() {
 
 
 
-          {/* Quick Badge Simulation Panel */}
-          <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs space-y-4">
-            <div>
-              <h3 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
-                <Smartphone className="w-4 h-4 text-teal-700" />
-                Badge Emulation Panel
-              </h3>
-              <p className="text-[11px] text-zinc-550 mt-1 leading-relaxed">
-                No physical scanner? Click any badge below to simulate a digital scan event.
-              </p>
-            </div>
 
-            <div className="space-y-2">
-              {recentTxs.length > 0 ? (
-                <div className="space-y-2">
-                  <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase tracking-wider block">
-                    Today's Registered Staff
-                  </span>
-                  <div className="grid grid-cols-1 gap-2 max-h-[180px] overflow-y-auto pr-1">
-                    {recentTxs.map((tx, idx) => (
-                      <button
-                        key={`${tx.id}-${idx}`}
-                        onClick={() => handleSimulateScan(tx.employee_no || tx.qr_code)}
-                        disabled={scanning}
-                        className="flex items-center justify-between p-2.5 bg-zinc-50 hover:bg-teal-50/50 border border-zinc-200 hover:border-teal-250 rounded-xl text-left transition-all group disabled:opacity-50"
-                      >
-                        <div className="truncate mr-2">
-                          <p className="text-xs font-bold text-zinc-800 truncate group-hover:text-teal-900 font-sans">
-                            {tx.employee_name}
-                          </p>
-                          <p className="text-[9px] font-mono text-zinc-400">
-                            ID: {tx.employee_no}
-                          </p>
-                        </div>
-                        <span className="text-[9px] font-mono font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md group-hover:bg-teal-100 shrink-0">
-                          SCAN
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="space-y-2 pt-2 border-t border-zinc-100">
-                <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase tracking-wider block">
-                  Quick Test Barcodes
-                </span>
-                <div className="grid grid-cols-1 gap-2">
-                  <button
-                    onClick={() => handleSimulateScan("EMP-DEMO-01")}
-                    disabled={scanning}
-                    className="flex items-center justify-between p-2.5 bg-zinc-50 hover:bg-amber-50 border border-zinc-200 hover:border-amber-300 rounded-xl text-left transition-all group disabled:opacity-50"
-                  >
-                    <div>
-                      <p className="text-xs font-bold text-zinc-800 group-hover:text-amber-950 font-sans">
-                        Demo Unregistered Code
-                      </p>
-                      <p className="text-[9px] font-mono text-zinc-400">
-                        Code: EMP-DEMO-01
-                      </p>
-                    </div>
-                    <span className="text-[9px] font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md group-hover:bg-amber-100 shrink-0">
-                      TEST ERROR
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
 
         </div>
 
