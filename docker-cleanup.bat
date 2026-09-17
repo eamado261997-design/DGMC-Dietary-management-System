@@ -11,6 +11,9 @@ echo [2/2] Pruning orphaned docker-compose resources...
 docker compose down --remove-orphans 2>nul
 
 echo.
+echo [Optional] To completely reset the database (WIPE ALL DATA), run:
+echo docker compose down -v
+echo.
 echo === Cleanup Complete ===
 echo You can now run: docker compose up -d
 echo.
