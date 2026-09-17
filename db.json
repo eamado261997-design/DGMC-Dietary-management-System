@@ -2,139 +2,63 @@
   "departments": [
     {
       "id": 1,
-      "name": "Nursing Department",
-      "created_at": "2026-08-12T11:17:13.113Z"
+      "name": "ICT Department",
+      "created_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 2,
-      "name": "ICT Dept.",
-      "created_at": "2026-09-10T05:45:14.964Z"
+      "name": "Nursing Department",
+      "created_at": "2026-09-10T13:28:28.673Z"
+    },
+    {
+      "id": 3,
+      "name": "Emergency Department",
+      "created_at": "2026-09-10T13:28:28.673Z"
+    },
+    {
+      "id": 4,
+      "name": "Pharmacy",
+      "created_at": "2026-09-10T13:28:28.673Z"
+    },
+    {
+      "id": 5,
+      "name": "Laboratory",
+      "created_at": "2026-09-10T13:28:28.673Z"
     }
   ],
   "people": [
     {
       "id": 1,
       "username": "admin",
-<<<<<<< HEAD
-      "password": "enc_det:11f9326b3342c5abab970ed5:c8884d88f356d313d4f4df286c69a3e5b6c3c800dbaf61897bac80facc9f7c8e2ebe48800572200fcf9ccb2055c2915600bf7fd77de042af5e4059c253e09a8e073d7ee46b482b192a0f44cc00707b80d2db927aefc8a9cfaf732680948ae4690b41c4712e3a93f8a8951a3cb0609e5461ece6970011b791b93df550392befdb68600a0df129aa18f681c598297c7c40a326e2f20e50abe74fb94cca9077e990fe6aa8d9932358e1792215f14ee7:79a5091709cd12128ed88293b3bcdf74",
-=======
-      "password": "pbkdf2$20000$1274a5eacc8a6cf9a0fa97497e41480a$029c4861b73d6dcb3a2ee5df42877cda04fe88d67a497acafe2150970c500aac84aea8941919799b06face15ff5177d377dd15e0b7f6f29d5d3a0c08ec4200f4",
->>>>>>> 41e696098d4482b5b06dbaca7142719f3a772ae3
+      "password": "pbkdf2$20000$508912b74bc10214374ab1250e47d11c$60426486d924405827b4568716d175ce667702275f810f2cef53679297b7258b84ed90650b846a93de4aea05bdbacbdac99035448b37e636a421bc67f5040a17",
       "role": "admin",
-      "first_name": "enc_det:e9f36b573142b36cff95dade:4b5f0e0551ae:ad58818195e08b93646e2f85af2b3d56",
-      "last_name": "enc_det:4eafd5a42ad90ba45197b7eb:51a747125417fadefa34942065:20df7dc5c27d4265380630c0934c2b84",
-      "email": "enc_det:28b87ae421d12c811c487d42:ea6f793f3745dc79ebd9c7b7fb7b17184e:92781bf2a9e0b2ef7f8309feaab704bc",
+      "first_name": "enc_det:68f3cca718fecb844a667e3e:8605750a2a70:28e406ba282ff49a890b75e9f383eeda",
+      "last_name": "enc_det:d3dcc4c0b42dd8e4c59a0022:0b75e721e0408a23636afa44be:d4e2fe3a44940cfe1af8c62bfbf5b9b5",
+      "email": "enc_det:a73109318222e2a5aa6acebf:4c73bff4838ceec9e8ce2680468c15675d:d09d4a549b2a7f3e120fe862dfb31ac6",
       "is_active": true,
-      "last_login": "2026-09-16T03:44:37.332Z",
-      "created_at": "2026-06-30T21:40:00.000Z",
-      "updated_at": "2026-06-30T21:40:00.000Z",
+      "last_login": null,
+      "created_at": "2026-09-10T13:28:28.673Z",
+      "updated_at": "2026-09-10T13:28:28.673Z",
+      "department_id": 1,
       "employee_status": "active",
       "is_protected": true
     },
     {
       "id": 99,
       "username": "dietary_admin",
-      "password": "pbkdf2$20000$1274a5eacc8a6cf9a0fa97497e41480a$029c4861b73d6dcb3a2ee5df42877cda04fe88d67a497acafe2150970c500aac84aea8941919799b06face15ff5177d377dd15e0b7f6f29d5d3a0c08ec4200f4",
+      "password": "pbkdf2$20000$508912b74bc10214374ab1250e47d11c$60426486d924405827b4568716d175ce667702275f810f2cef53679297b7258b84ed90650b846a93de4aea05bdbacbdac99035448b37e636a421bc67f5040a17",
       "role": "dietary_admin",
-      "first_name": "enc_det:4837d52d6785ad1af1b8fece:6f43d805c2fa0e:fea1b222719606be8059762f5d9543dd",
-      "last_name": "enc_det:4eafd5a42ad90ba45197b7eb:51a747125417fadefa34942065:20df7dc5c27d4265380630c0934c2b84",
-      "email": "enc_det:6832c88d1cc5e5afed6108f0:95b8d17f25084d2997d947132765166db4bc6e635a3b:f1706ca51d3cb6798fa794dfd522ecbc",
-      "is_active": true,
-      "last_login": "2026-09-16T02:53:56.702Z",
-      "created_at": "2026-08-10T03:14:35.416Z",
-      "updated_at": "2026-08-10T03:14:35.416Z",
-      "employee_status": "active"
-    },
-    {
-      "id": 100,
-      "username": "Nurse_dept",
-      "password": "pbkdf2$20000$f4bf46706292835b80828504751e3a4d$d959b676058e91ff83abc9acdb51373db6e1785eb5df880374579ee4b698dc58c62bafe8bb2ccd3d94b61ffbe7d2257fd248a906d32cb2c2256bf3c741ec672f",
-      "role": "manager",
-      "first_name": "enc_det:e3ff637854a9d22f02991314:cc3aa9e187:a0f445c607e459f85826dfd3ba834e25",
-      "last_name": "enc_det:7841ef762707ce814b9f47d4:bdf4c480676a37eefbb4:bc565b1de9f125769895a5fa28b65afd",
-      "is_active": true,
-      "last_login": "2026-08-12T11:27:08.989Z",
-      "created_at": "2026-08-12T11:24:26.296Z",
-      "updated_at": "2026-08-12T11:24:26.296Z",
-      "employee_no": "enc_det:307321c93d9b2af98357205c:14c01322e7b959:cf55bedf48621a354c9759a843922365",
-      "department_id": 1,
-      "qr_code": "enc_det:307321c93d9b2af98357205c:14c01322e7b959:cf55bedf48621a354c9759a843922365",
-      "employee_status": "active",
-      "hire_date": "2026-08-12",
-      "managed_department_id": 1
-    },
-    {
-      "id": 101,
-      "username": "ICT_dept",
-      "password": "pbkdf2$20000$f4bf46706292835b80828504751e3a4d$d959b676058e91ff83abc9acdb51373db6e1785eb5df880374579ee4b698dc58c62bafe8bb2ccd3d94b61ffbe7d2257fd248a906d32cb2c2256bf3c741ec672f",
-      "role": "manager",
-      "first_name": "enc_det:cfde7b75f6a3ea3c3a27e922:b832c8:ea82d7642fc951477bf5b6ecb554d08e",
-      "last_name": "enc_det:7841ef762707ce814b9f47d4:bdf4c480676a37eefbb4:bc565b1de9f125769895a5fa28b65afd",
+      "first_name": "enc_det:5bff7477599904dbb79191fd:ca9d9ba42fd3b2:68f6563a7fdcf569091c37fdcb7278fc",
+      "last_name": "enc_det:d3dcc4c0b42dd8e4c59a0022:0b75e721e0408a23636afa44be:d4e2fe3a44940cfe1af8c62bfbf5b9b5",
+      "email": "enc_det:17f627d9ea11e721a04271d4:be2579955020c214b04f6111bbefd9b64bd37922342d:2e7cb534c8fb20b82cda9dec7b322531",
       "is_active": true,
       "last_login": null,
-      "created_at": "2026-09-10T05:46:02.266Z",
-      "updated_at": "2026-09-10T05:46:02.266Z",
-      "employee_no": "enc_det:dd8f6e7950d26cfaffdcb81e:21fc9c45822b24:37b99fc31d250bba5df5da735d2b059d",
+      "created_at": "2026-09-10T13:28:28.673Z",
+      "updated_at": "2026-09-10T13:28:28.673Z",
       "department_id": 1,
-      "qr_code": "enc_det:dd8f6e7950d26cfaffdcb81e:21fc9c45822b24:37b99fc31d250bba5df5da735d2b059d",
-      "employee_status": "active",
-      "hire_date": "2026-09-10",
-      "managed_department_id": 1
-    },
-    {
-      "id": 102,
-      "username": "cash",
-      "password": "pbkdf2$20000$4d1c40e89d5665d3dbc0d1b562963b03$54d14c59313e493c156e47efabd97d42a385ef3316d6c36805029cb366688f11f6485cf1aa3268aa46534edecfbb295e4c84f7b467b7ad47a408d307db367af2",
-      "role": "cashier",
-      "first_name": "enc_det:d21a3aefd9c7b5050efc2271:95e0e331eb0370:160f3d9c3578c93ae9a3fac3d3f02a81",
-      "last_name": "enc_det:60e5e7122cd5307787b199b1:68:b6e3c6e32720b043bed84abe0d070fca",
-      "is_active": true,
-      "last_login": "2026-09-16T03:29:12.422Z",
-      "created_at": "2026-09-10T05:46:37.887Z",
-      "updated_at": "2026-09-16T03:29:02.969Z",
-      "employee_no": "enc_det:75120da8787297e2a7055ad1:eb5e62de7bee2a:ea76cfd0a482229782a4e68ebc15c0e2",
-      "qr_code": "enc_det:75120da8787297e2a7055ad1:eb5e62de7bee2a:ea76cfd0a482229782a4e68ebc15c0e2",
-      "employee_status": "active",
-      "hire_date": "2026-09-10"
-    },
-    {
-      "id": 103,
-      "username": "EMP123456",
-      "password": "pbkdf2$20000$d0eccf892d6ac9f9b362925edf1240f4$c2f2f612ffb4827a42bb72318dbbaea13750166c3f52353cdd43a1aef44734a614fc7053e56c73ada03ae2918b08a1463952e3c666f2dfd06e978aef0d5aae34",
-      "role": "employee",
-      "first_name": "enc_det:ce309d97dec023ab4871d755:20624a58ca:335dde776d75fd5a60e65e83d5009f23",
-      "last_name": "enc_det:e0d419581f33bb6c2a661b91:98756d84a125f01b:59254188363682d99b1edffe7d22d7e2",
-      "is_active": true,
-      "last_login": "2026-09-16T03:44:22.347Z",
-      "created_at": "2026-09-10T05:48:40.795Z",
-      "updated_at": "2026-09-16T03:16:21.176Z",
-      "employee_no": "enc_det:22b880a121aba3376ab6b832:a6a2a84b465a:5ac1b4fd4e29d6d01434cb70d796151a",
-      "position": "ICT ASSISTANT",
-      "department_id": 2,
-      "qr_code": "enc_det:22b880a121aba3376ab6b832:a6a2a84b465a:5ac1b4fd4e29d6d01434cb70d796151a",
-      "employee_status": "active",
-      "hire_date": "2026-09-10"
+      "employee_status": "active"
     }
   ],
-  "employee_schedules": [
-    {
-      "id": 1,
-      "person_id": 101,
-      "work_date": "2026-08-12",
-      "shift_type": "night",
-      "created_by": 100,
-      "created_at": "2026-08-12T11:27:38.074Z"
-    },
-    {
-      "id": 2,
-      "person_id": 101,
-      "work_date": "2026-08-13",
-      "shift_type": "day",
-      "created_by": 100,
-      "created_at": "2026-08-12T11:27:38.074Z"
-    }
-  ],
-<<<<<<< HEAD
   "employee_schedules": [
     {
       "id": 1,
@@ -191,1047 +115,105 @@
       "created_at": "2026-09-10T11:58:21.291Z"
     }
   ],
-=======
-  "transactions": [],
->>>>>>> 41e696098d4482b5b06dbaca7142719f3a772ae3
   "free_meal_log": [],
   "system_settings": [
     {
       "id": 1,
       "setting_key": "shift_day_start",
       "setting_value": "11:00",
-      "updated_at": "2026-06-30T21:40:00.000Z"
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 2,
       "setting_key": "shift_day_end",
       "setting_value": "14:00",
-      "updated_at": "2026-06-30T21:40:00.000Z"
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 3,
       "setting_key": "shift_night_start",
-      "setting_value": "23:00",
-      "updated_at": "2026-06-30T21:40:00.000Z"
+      "setting_value": "22:00",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 4,
       "setting_key": "shift_night_end",
-      "setting_value": "02:00",
-      "updated_at": "2026-06-30T21:40:00.000Z"
+      "setting_value": "06:00",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 5,
       "setting_key": "meal_price",
       "setting_value": "150.00",
-      "updated_at": "2026-06-30T21:40:00.000Z"
-    }
-  ],
-  "audit_logs": [
-    {
-      "id": 1,
-      "action": "SECURITY_HASH_UPGRADE",
-      "entity_type": "people",
-      "entity_id": "1",
-      "old_value": "Legacy SHA-256",
-      "new_value": "Salted PBKDF2-SHA512",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-07-24T19:41:07.714Z"
-    },
-    {
-      "id": 2,
-      "user_id": 1,
-      "action": "LOGIN",
-      "entity_type": "people",
-      "entity_id": "1",
-      "old_value": null,
-      "new_value": "Successful web login",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-07-24T19:41:07.715Z"
-    },
-    {
-      "id": 3,
-      "user_id": 1,
-      "action": "LOGIN",
-      "entity_type": "people",
-      "entity_id": "1",
-      "old_value": null,
-      "new_value": "Successful web login",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-07-29T10:58:32.146Z"
-    },
-    {
-      "id": 4,
-      "user_id": 1,
-      "action": "DEPARTMENT_CREATE",
-      "entity_type": "departments",
-      "entity_id": "1",
-      "old_value": null,
-      "new_value": "{\"id\":1,\"name\":\"Nursing Department\",\"created_at\":\"2026-08-12T11:17:13.113Z\"}",
-      "ip_address": "112.206.240.51, 169.254.169.126",
-      "created_at": "2026-08-12T11:17:13.116Z"
-    },
-    {
-      "id": 5,
-      "user_id": 1,
-      "action": "EMPLOYEE_CREATE",
-      "entity_type": "people",
-      "entity_id": "100",
-      "old_value": null,
-      "new_value": "{\"id\":100,\"username\":\"Nurse_dept\",\"role\":\"manager\",\"first_name\":\"Nurse\",\"last_name\":\"Department\",\"email\":null,\"phone\":null,\"is_active\":true,\"employee_no\":\"EMP1402\",\"position\":null,\"department_id\":1,\"qr_code\":\"EMP1402\",\"employee_status\":\"active\",\"hire_date\":\"2026-08-12\",\"managed_department_id\":1,\"is_protected\":false,\"protected\":false,\"created_at\":\"2026-08-12T11:24:26.296Z\",\"updated_at\":\"2026-08-12T11:24:26.296Z\"}",
-      "ip_address": "112.206.240.51, 169.254.169.126",
-      "created_at": "2026-08-12T11:24:26.314Z"
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 6,
-      "user_id": 1,
-      "action": "EMPLOYEE_CREATE",
-      "entity_type": "people",
-      "entity_id": "101",
-      "old_value": null,
-      "new_value": "{\"id\":101,\"username\":\"Emp-001\",\"role\":\"employee\",\"first_name\":\"Red\",\"last_name\":\"Amado\",\"email\":null,\"phone\":null,\"is_active\":true,\"employee_no\":\"Emp-002\",\"position\":\"Resident Nurse\",\"department_id\":1,\"qr_code\":\"Emp-002\",\"employee_status\":\"active\",\"hire_date\":\"2026-08-12\",\"managed_department_id\":null,\"is_protected\":false,\"protected\":false,\"created_at\":\"2026-08-12T11:25:45.581Z\",\"updated_at\":\"2026-08-12T11:25:45.581Z\"}",
-      "ip_address": "112.206.240.51, 169.254.169.126",
-      "created_at": "2026-08-12T11:25:45.600Z"
+      "setting_key": "schedule_cutoff_days",
+      "setting_value": "3",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 7,
-      "user_id": 100,
-      "action": "BATCH_SCHEDULE_UPDATE",
-      "entity_type": "employee_schedules",
-      "old_value": null,
-      "new_value": "2 schedules updated",
-      "ip_address": "112.206.240.51, 169.254.169.126",
-      "created_at": "2026-08-12T11:27:38.078Z"
+      "setting_key": "max_login_attempts",
+      "setting_value": "5",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 8,
-      "user_id": 1,
-      "action": "EMPLOYEE_UPDATE",
-      "entity_type": "people",
-      "entity_id": "101",
-      "old_value": "{\"id\":101,\"username\":\"Emp-001\",\"role\":\"employee\",\"first_name\":\"Red\",\"last_name\":\"Amado\",\"is_active\":true,\"last_login\":null,\"created_at\":\"2026-08-12T11:25:45.581Z\",\"updated_at\":\"2026-08-12T11:25:45.581Z\",\"employee_no\":\"Emp-002\",\"position\":\"Resident Nurse\",\"department_id\":1,\"qr_code\":\"Emp-002\",\"employee_status\":\"active\",\"hire_date\":\"2026-08-12\"}",
-      "new_value": "{\"id\":101,\"username\":\"Emp-001\",\"role\":\"employee\",\"first_name\":\"Red\",\"last_name\":\"Amado\",\"email\":null,\"phone\":null,\"is_active\":true,\"last_login\":null,\"created_at\":\"2026-08-12T11:25:45.581Z\",\"updated_at\":\"2026-09-10T03:23:00.951Z\",\"employee_no\":\"Emp-002\",\"position\":\"Resident Nurse\",\"department_id\":1,\"qr_code\":\"Emp-002\",\"employee_status\":\"active\",\"hire_date\":\"2026-08-12\"}",
-      "ip_address": "112.206.243.166, 169.254.169.126",
-      "created_at": "2026-09-10T03:23:00.954Z"
+      "setting_key": "lockout_duration_minutes",
+      "setting_value": "15",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 9,
-      "user_id": 1,
-      "action": "EMPLOYEE_DELETE",
-      "entity_type": "people",
-      "entity_id": "101",
-      "old_value": null,
-      "new_value": "Employee record deleted permanently from database.",
-      "ip_address": "112.206.243.166, 169.254.169.126",
-      "created_at": "2026-09-10T03:23:07.994Z"
+      "setting_key": "min_password_length",
+      "setting_value": "6",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 10,
-      "user_id": 1,
-      "action": "DEPARTMENT_CREATE",
-      "entity_type": "departments",
-      "entity_id": "2",
-      "old_value": null,
-      "new_value": "{\"id\":2,\"name\":\"ICT Dept.\",\"created_at\":\"2026-09-10T05:45:14.964Z\"}",
-      "ip_address": "112.206.243.166, 169.254.169.126",
-      "created_at": "2026-09-10T05:45:14.967Z"
+      "setting_key": "company_name",
+      "setting_value": "Divine Grace Medical Center",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 11,
-      "user_id": 1,
-      "action": "EMPLOYEE_CREATE",
-      "entity_type": "people",
-      "entity_id": "101",
-      "old_value": null,
-      "new_value": "{\"id\":101,\"username\":\"ICT_dept\",\"role\":\"manager\",\"first_name\":\"ICT\",\"last_name\":\"Department\",\"email\":null,\"phone\":null,\"is_active\":true,\"employee_no\":\"EMP8419\",\"position\":null,\"department_id\":1,\"qr_code\":\"EMP8419\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":1,\"is_protected\":false,\"protected\":false,\"created_at\":\"2026-09-10T05:46:02.266Z\",\"updated_at\":\"2026-09-10T05:46:02.266Z\"}",
-      "ip_address": "112.206.243.166, 169.254.169.126",
-      "created_at": "2026-09-10T05:46:02.282Z"
+      "setting_key": "company_tagline",
+      "setting_value": "Compassionate Care, Exceptional Service",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 12,
-      "user_id": 1,
-      "action": "EMPLOYEE_CREATE",
-      "entity_type": "people",
-      "entity_id": "102",
-      "old_value": null,
-      "new_value": "{\"id\":102,\"username\":\"cash\",\"role\":\"cashier\",\"first_name\":\"cashier\",\"last_name\":\"1\",\"email\":null,\"phone\":null,\"is_active\":true,\"employee_no\":\"EMP3434\",\"position\":null,\"department_id\":1,\"qr_code\":\"EMP3434\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":null,\"is_protected\":false,\"protected\":false,\"created_at\":\"2026-09-10T05:46:37.887Z\",\"updated_at\":\"2026-09-10T05:46:37.887Z\"}",
-      "ip_address": "112.206.243.166, 169.254.169.126",
-      "created_at": "2026-09-10T05:46:37.903Z"
+      "setting_key": "company_logo_url",
+      "setting_value": "",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 13,
-      "user_id": 1,
-      "action": "EMPLOYEE_CREATE",
-      "entity_type": "people",
-      "entity_id": "103",
-      "old_value": null,
-      "new_value": "{\"id\":103,\"username\":\"EMP123456\",\"role\":\"employee\",\"first_name\":\"Grant\",\"last_name\":\"Mantilla\",\"email\":null,\"phone\":null,\"is_active\":true,\"employee_no\":\"123456\",\"position\":\"ICT ASSISTANT\",\"department_id\":2,\"qr_code\":\"123456\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":null,\"is_protected\":false,\"protected\":false,\"created_at\":\"2026-09-10T05:48:40.795Z\",\"updated_at\":\"2026-09-10T05:48:40.795Z\"}",
-      "ip_address": "112.206.243.166, 169.254.169.126",
-      "created_at": "2026-09-10T05:48:40.811Z"
+      "setting_key": "currency_symbol",
+      "setting_value": "₱",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 14,
-      "user_id": 1,
-      "action": "EMPLOYEE_UPDATE",
-      "entity_type": "people",
-      "entity_id": "103",
-      "old_value": "{\"id\":103,\"username\":\"EMP123456\",\"role\":\"employee\",\"first_name\":\"enc_det:632bf1636bc82f9db72e959d:bc68e14354:0331ab8df1c324138ea1d45b0fa9915e\",\"last_name\":\"enc_det:54dc4fa56a5921f3c86cb3d2:f7f709237fa0b976:1d6dedc0a2ff579aba9a7386128e1c05\",\"is_active\":true,\"last_login\":\"2026-09-10T05:48:54.447Z\",\"created_at\":\"2026-09-10T05:48:40.795Z\",\"updated_at\":\"2026-09-10T05:48:40.795Z\",\"employee_no\":\"123456\",\"position\":\"ICT ASSISTANT\",\"department_id\":2,\"qr_code\":\"enc_det:90d9ddddb8f43eb8347f355e:7178c032f091:004fced5698141458780e2910f127a46\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\"}",
-      "new_value": "{\"id\":103,\"username\":\"EMP123456\",\"role\":\"employee\",\"first_name\":\"drei\",\"last_name\":\"imp\",\"email\":null,\"phone\":null,\"is_active\":true,\"last_login\":\"2026-09-10T05:48:54.447Z\",\"created_at\":\"2026-09-10T05:48:40.795Z\",\"updated_at\":\"2026-09-16T02:56:40.041Z\",\"employee_no\":\"123456\",\"position\":\"ICT ASSISTANT\",\"department_id\":2,\"qr_code\":\"enc_det:90d9ddddb8f43eb8347f355e:7178c032f091:004fced5698141458780e2910f127a46\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\"}",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "created_at": "2026-09-16T02:56:40.048Z"
+      "setting_key": "free_meal_limit_daily",
+      "setting_value": "1",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 15,
-      "user_id": 1,
-      "action": "EMPLOYEE_UPDATE",
-      "entity_type": "people",
-      "entity_id": "103",
-      "old_value": "{\"id\":103,\"username\":\"EMP123456\",\"role\":\"employee\",\"first_name\":\"drei\",\"last_name\":\"imp\",\"email\":null,\"phone\":null,\"is_active\":true,\"last_login\":\"2026-09-10T05:48:54.447Z\",\"created_at\":\"2026-09-10T05:48:40.795Z\",\"updated_at\":\"2026-09-16T02:56:40.041Z\",\"employee_no\":\"123456\",\"position\":\"ICT ASSISTANT\",\"department_id\":2,\"qr_code\":\"enc_det:90d9ddddb8f43eb8347f355e:7178c032f091:004fced5698141458780e2910f127a46\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\"}",
-      "new_value": "{\"id\":103,\"username\":\"EMP123456\",\"role\":\"employee\",\"first_name\":\"drei\",\"last_name\":\"imp\",\"email\":null,\"phone\":null,\"is_active\":true,\"last_login\":\"2026-09-10T05:48:54.447Z\",\"created_at\":\"2026-09-10T05:48:40.795Z\",\"updated_at\":\"2026-09-16T02:57:22.040Z\",\"employee_no\":\"123456\",\"position\":\"ICT ASSISTANT\",\"department_id\":2,\"qr_code\":\"enc_det:90d9ddddb8f43eb8347f355e:7178c032f091:004fced5698141458780e2910f127a46\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\"}",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "created_at": "2026-09-16T02:57:22.044Z"
+      "setting_key": "audit_log_retention_days",
+      "setting_value": "30",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     },
     {
       "id": 16,
-      "user_id": 1,
-      "action": "EMPLOYEE_DELETE",
-      "entity_type": "people",
-      "entity_id": "103",
-      "old_value": null,
-      "new_value": "Employee record deleted permanently from database.",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "created_at": "2026-09-16T02:58:07.054Z"
-    },
-    {
-      "id": 17,
-      "user_id": 1,
-      "action": "EMPLOYEE_UPDATE",
-      "entity_type": "people",
-      "entity_id": "103",
-      "old_value": "{\"id\":103,\"username\":\"EMP123456\",\"role\":\"employee\",\"first_name\":\"Grant\",\"last_name\":\"Mantilla\",\"is_active\":true,\"last_login\":null,\"created_at\":\"2026-09-10T05:48:40.795Z\",\"updated_at\":\"2026-09-10T05:48:40.795Z\",\"employee_no\":\"123456\",\"position\":\"ICT ASSISTANT\",\"department_id\":2,\"qr_code\":\"123456\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\"}",
-      "new_value": "{\"id\":103,\"username\":\"EMP123456\",\"role\":\"employee\",\"first_name\":\"Grant\",\"last_name\":\"Mantilla\",\"email\":null,\"phone\":null,\"is_active\":true,\"last_login\":null,\"created_at\":\"2026-09-10T05:48:40.795Z\",\"updated_at\":\"2026-09-16T03:15:22.910Z\",\"employee_no\":\"123456\",\"position\":\"ICT ASSISTANT\",\"department_id\":2,\"qr_code\":\"123456\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\"}",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "created_at": "2026-09-16T03:15:22.916Z"
-    },
-    {
-      "id": 18,
-      "user_id": 1,
-      "action": "EMPLOYEE_UPDATE",
-      "entity_type": "people",
-      "entity_id": "103",
-      "old_value": "{\"id\":103,\"username\":\"EMP123456\",\"role\":\"employee\",\"first_name\":\"Grant\",\"last_name\":\"Mantilla\",\"email\":null,\"phone\":null,\"is_active\":true,\"last_login\":null,\"created_at\":\"2026-09-10T05:48:40.795Z\",\"updated_at\":\"2026-09-16T03:15:22.910Z\",\"employee_no\":\"123456\",\"position\":\"ICT ASSISTANT\",\"department_id\":2,\"qr_code\":\"123456\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\"}",
-      "new_value": "{\"id\":103,\"username\":\"EMP123456\",\"role\":\"employee\",\"first_name\":\"Grant\",\"last_name\":\"Mantilla\",\"email\":null,\"phone\":null,\"is_active\":true,\"last_login\":null,\"created_at\":\"2026-09-10T05:48:40.795Z\",\"updated_at\":\"2026-09-16T03:16:21.176Z\",\"employee_no\":\"123456\",\"position\":\"ICT ASSISTANT\",\"department_id\":2,\"qr_code\":\"123456\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\"}",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "created_at": "2026-09-16T03:16:21.181Z"
-    },
-    {
-      "id": 19,
-      "user_id": 1,
-      "action": "EMPLOYEE_UPDATE",
-      "entity_type": "people",
-      "entity_id": "102",
-      "old_value": "{\"id\":102,\"username\":\"cash\",\"role\":\"cashier\",\"first_name\":\"cashier\",\"last_name\":\"1\",\"is_active\":true,\"last_login\":null,\"created_at\":\"2026-09-10T05:46:37.887Z\",\"updated_at\":\"2026-09-10T05:46:37.887Z\",\"employee_no\":\"EMP3434\",\"department_id\":1,\"qr_code\":\"EMP3434\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\"}",
-      "new_value": "{\"id\":102,\"username\":\"cash\",\"role\":\"cashier\",\"first_name\":\"cashier\",\"last_name\":\"1\",\"is_active\":true,\"last_login\":null,\"created_at\":\"2026-09-10T05:46:37.887Z\",\"updated_at\":\"2026-09-16T03:29:02.969Z\",\"employee_no\":\"EMP3434\",\"department_id\":null,\"qr_code\":\"EMP3434\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":null}",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "created_at": "2026-09-16T03:29:02.974Z"
-    },
-    {
-      "id": 20,
-      "user_id": 1,
-      "action": "EMPLOYEE_CREATE",
-      "entity_type": "people",
-      "entity_id": "104",
-      "old_value": null,
-      "new_value": "{\"id\":104,\"username\":\"testemp1789530256297\",\"role\":\"employee\",\"first_name\":\"Test\",\"last_name\":\"TempEmployee\",\"email\":null,\"phone\":null,\"is_active\":true,\"employee_no\":\"EMP824101\",\"position\":\"Tester\",\"department_id\":1,\"qr_code\":\"EMP824101\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-16\",\"managed_department_id\":null,\"is_protected\":false,\"protected\":false,\"created_at\":\"2026-09-16T03:44:16.300Z\",\"updated_at\":\"2026-09-16T03:44:16.300Z\"}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-16T03:44:16.317Z"
-    },
-    {
-      "id": 21,
-      "user_id": 1,
-      "action": "EMPLOYEE_DELETE",
-      "entity_type": "people",
-      "entity_id": "104",
-      "old_value": null,
-      "new_value": "Employee record deleted permanently from database.",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-16T03:44:16.330Z"
-    },
-    {
-      "id": 22,
-      "user_id": 1,
-      "action": "EMPLOYEE_CREATE",
-      "entity_type": "people",
-      "entity_id": "104",
-      "old_value": null,
-      "new_value": "{\"id\":104,\"username\":\"mealtester1789530260224\",\"role\":\"employee\",\"first_name\":\"Meal\",\"last_name\":\"Tester\",\"email\":null,\"phone\":null,\"is_active\":true,\"employee_no\":\"EMP440960\",\"position\":\"Tester\",\"department_id\":1,\"qr_code\":\"EMP440960\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-16\",\"managed_department_id\":null,\"is_protected\":false,\"protected\":false,\"created_at\":\"2026-09-16T03:44:20.227Z\",\"updated_at\":\"2026-09-16T03:44:20.227Z\"}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-16T03:44:20.245Z"
-    },
-    {
-      "id": 23,
-      "user_id": 1,
-      "action": "EMPLOYEE_DELETE",
-      "entity_type": "people",
-      "entity_id": "104",
-      "old_value": null,
-      "new_value": "Employee record deleted permanently from database.",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-16T03:44:20.265Z"
-    },
-    {
-      "id": 24,
-      "user_id": 1,
-      "action": "EMPLOYEE_CREATE",
-      "entity_type": "people",
-      "entity_id": "104",
-      "old_value": null,
-      "new_value": "{\"id\":104,\"username\":\"mealpurchaser1789530277365\",\"role\":\"employee\",\"first_name\":\"Meal\",\"last_name\":\"Purchaser\",\"email\":null,\"phone\":null,\"is_active\":true,\"employee_no\":\"EMP596471\",\"position\":\"Buyer\",\"department_id\":1,\"qr_code\":\"EMP596471\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-16\",\"managed_department_id\":null,\"is_protected\":false,\"protected\":false,\"created_at\":\"2026-09-16T03:44:37.368Z\",\"updated_at\":\"2026-09-16T03:44:37.368Z\"}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-16T03:44:37.384Z"
-    },
-    {
-      "id": 25,
-      "user_id": 1,
-      "action": "MEAL_SCAN_PAID",
-      "entity_type": "transactions",
-      "entity_id": "1",
-      "old_value": null,
-      "new_value": "{\"id\":1,\"person_id\":104,\"cashier_person_id\":1,\"meal_date\":\"2026-09-16\",\"meal_time\":\"03:44:37\",\"is_free\":false,\"meal_amount\":120,\"status\":\"completed\",\"meal_type\":\"paid\",\"created_at\":\"2026-09-16T03:44:37.392Z\"}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-16T03:44:37.396Z"
-    },
-    {
-      "id": 26,
-      "user_id": 1,
-      "action": "EMPLOYEE_DEACTIVATE",
-      "entity_type": "people",
-      "entity_id": "104",
-      "old_value": null,
-      "new_value": "Account deactivated gracefully due to active transaction/meal receipts. Future schedules purged.",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-16T03:44:37.407Z"
-    },
-    {
-      "id": 27,
-      "user_id": 1,
-      "action": "EMPLOYEE_DELETE",
-      "entity_type": "people",
-      "entity_id": "104",
-      "old_value": null,
-      "new_value": "Employee record deleted permanently from database.",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-16T03:44:37.416Z"
+      "setting_key": "it_support_phone",
+      "setting_value": "Medical arts Bldg. 5th floor/ICT dept. / 2568",
+      "updated_at": "2026-09-10T13:28:28.673Z"
     }
   ],
-<<<<<<< HEAD
-  "audit_logs": [
-    {
-      "id": 1,
-      "user_id": 1,
-      "action": "DEPARTMENT_CREATE",
-      "entity_type": "departments",
-      "entity_id": "2",
-      "old_value": null,
-      "new_value": "{\"id\":2,\"name\":\"ICT\",\"created_at\":\"2026-09-10T05:05:12.725Z\"}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T05:05:12.745Z"
-    },
-    {
-      "id": 2,
-      "user_id": 1,
-      "action": "EMPLOYEE_CREATE",
-      "entity_type": "people",
-      "entity_id": "102",
-      "old_value": null,
-      "new_value": "{\"id\":102,\"username\":\"ICT_manager\",\"role\":\"manager\",\"first_name\":\"ICT\",\"last_name\":\"Dept\",\"email\":null,\"phone\":null,\"is_active\":1,\"last_login\":null,\"created_at\":\"2026-09-10T05:06:02.864Z\",\"updated_at\":\"2026-09-10T05:06:02.864Z\",\"employee_no\":\"EMP4912\",\"position\":null,\"department_id\":2,\"qr_code\":\"EMP4912\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":2}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T05:06:02.927Z"
-    },
-    {
-      "id": 3,
-      "user_id": 1,
-      "action": "EMPLOYEE_CREATE",
-      "entity_type": "people",
-      "entity_id": "103",
-      "old_value": null,
-      "new_value": "{\"id\":103,\"username\":\"emp123456\",\"role\":\"employee\",\"first_name\":\"Grant\",\"last_name\":\"mantilla\",\"email\":null,\"phone\":null,\"is_active\":1,\"last_login\":null,\"created_at\":\"2026-09-10T05:07:01.039Z\",\"updated_at\":\"2026-09-10T05:07:01.039Z\",\"employee_no\":\"123456\",\"position\":\"ICT Assistant\",\"department_id\":2,\"qr_code\":\"123456\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":null}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T05:07:01.081Z"
-    },
-    {
-      "id": 4,
-      "user_id": 1,
-      "action": "EMPLOYEE_CREATE",
-      "entity_type": "people",
-      "entity_id": "104",
-      "old_value": null,
-      "new_value": "{\"id\":104,\"username\":\"rediswan\",\"role\":\"cashier\",\"first_name\":\"cash\",\"last_name\":\"ier\",\"email\":null,\"phone\":null,\"is_active\":1,\"last_login\":null,\"created_at\":\"2026-09-10T05:09:16.879Z\",\"updated_at\":\"2026-09-10T05:09:16.879Z\",\"employee_no\":\"EMP4323\",\"position\":null,\"department_id\":null,\"qr_code\":\"EMP4323\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":null}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T05:09:16.936Z"
-    },
-    {
-      "id": 5,
-      "user_id": 104,
-      "action": "MEAL_SCAN_PAID",
-      "entity_type": "transactions",
-      "entity_id": "1",
-      "old_value": null,
-      "new_value": "{\"id\":1,\"person_id\":103,\"employee_name\":\"Grant mantilla\",\"employee_no\":\"123456\",\"department_name\":\"ICT\",\"meal_date\":\"2026-09-10\",\"meal_time\":\"13:13:34\",\"is_free\":false,\"meal_amount\":150,\"status\":\"completed\",\"meal_type\":\"paid\",\"cashier_name\":\"cash ier\"}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T05:13:34.398Z"
-    },
-    {
-      "id": 6,
-      "user_id": 104,
-      "action": "TRANSACTION_VOID",
-      "entity_type": "transactions",
-      "entity_id": "1",
-      "old_value": "{\"id\":1,\"person_id\":103,\"cashier_person_id\":104,\"meal_date\":\"2026-09-10\",\"meal_time\":\"13:13:34\",\"is_free\":0,\"meal_amount\":\"150.00\",\"status\":\"completed\",\"meal_type\":\"paid\",\"created_at\":\"2026-09-10T05:13:34.372Z\"}",
-      "new_value": "{\"id\":1,\"person_id\":103,\"cashier_person_id\":104,\"meal_date\":\"2026-09-10\",\"meal_time\":\"13:13:34\",\"is_free\":0,\"meal_amount\":\"150.00\",\"status\":\"cancelled\",\"meal_type\":\"paid\",\"created_at\":\"2026-09-10T05:13:34.372Z\"}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T05:14:04.767Z"
-    },
-    {
-      "id": 7,
-      "user_id": 104,
-      "action": "MEAL_SCAN_PAID",
-      "entity_type": "transactions",
-      "entity_id": "2",
-      "old_value": null,
-      "new_value": "{\"id\":2,\"person_id\":103,\"employee_name\":\"Grant mantilla\",\"employee_no\":\"123456\",\"department_name\":\"ICT\",\"meal_date\":\"2026-09-10\",\"meal_time\":\"13:14:13\",\"is_free\":false,\"meal_amount\":150,\"status\":\"completed\",\"meal_type\":\"paid\",\"cashier_name\":\"cash ier\"}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T05:14:13.170Z"
-    },
-    {
-      "id": 8,
-      "user_id": 1,
-      "action": "EMPLOYEE_UPDATE",
-      "entity_type": "people",
-      "entity_id": "104",
-      "old_value": "{\"id\":104,\"username\":\"rediswan\",\"role\":\"cashier\",\"first_name\":\"cash\",\"last_name\":\"ier\",\"email\":null,\"phone\":null,\"is_active\":1,\"last_login\":\"2026-09-10T05:17:05.852Z\",\"created_at\":\"2026-09-10T05:09:16.879Z\",\"updated_at\":\"2026-09-10T05:09:16.879Z\",\"employee_no\":\"EMP4323\",\"position\":null,\"department_id\":null,\"qr_code\":\"EMP4323\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":null}",
-      "new_value": "{\"id\":104,\"username\":\"rediswan\",\"role\":\"cashier\",\"first_name\":\"cash\",\"last_name\":\"ier\",\"email\":null,\"phone\":null,\"is_active\":true,\"last_login\":\"2026-09-10T05:17:05.852Z\",\"created_at\":\"2026-09-10T05:09:16.879Z\",\"updated_at\":\"2026-09-10T11:51:32.773Z\",\"employee_no\":\"EMP4323\",\"position\":null,\"department_id\":null,\"qr_code\":\"EMP4323\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":null}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T11:51:32.820Z"
-    },
-    {
-      "id": 9,
-      "user_id": 104,
-      "action": "MEAL_SCAN_PAID",
-      "entity_type": "transactions",
-      "entity_id": "3",
-      "old_value": null,
-      "new_value": "{\"id\":3,\"person_id\":103,\"employee_name\":\"Grant mantilla\",\"employee_no\":\"123456\",\"meal_date\":\"2026-09-10\",\"meal_time\":\"19:58:21\",\"is_free\":false,\"meal_amount\":350,\"status\":\"completed\",\"meal_type\":\"paid\"}",
-      "ip_address": "127.0.0.1",
-      "created_at": "2026-09-10T11:58:21.319Z"
-    }
-  ],
-  "login_attempts": [
-    {
-      "id": 1,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T04:42:11.588Z",
-=======
-  "login_attempts": [
-    {
-      "id": 1,
-      "username": "dietary_admin",
-      "ip_address": "122.2.98.255, 169.254.169.126",
-      "timestamp": "2026-08-10T08:25:39.631Z",
->>>>>>> 41e696098d4482b5b06dbaca7142719f3a772ae3
-      "success": true
-    },
-    {
-      "id": 2,
-      "username": "admin",
-<<<<<<< HEAD
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T04:43:20.470Z",
-=======
-      "ip_address": "122.2.98.255, 169.254.169.126",
-      "timestamp": "2026-08-10T08:33:10.124Z",
->>>>>>> 41e696098d4482b5b06dbaca7142719f3a772ae3
-      "success": true
-    },
-    {
-      "id": 3,
-      "username": "admin",
-<<<<<<< HEAD
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T04:47:30.252Z",
-=======
-      "ip_address": "122.2.98.255, 169.254.169.126",
-      "timestamp": "2026-08-10T09:03:32.295Z",
->>>>>>> 41e696098d4482b5b06dbaca7142719f3a772ae3
-      "success": true
-    },
-    {
-      "id": 4,
-<<<<<<< HEAD
-      "username": "rediswan",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T05:12:15.507Z",
-=======
-      "username": "admin",
-      "ip_address": "122.2.98.255, 169.254.169.126",
-      "timestamp": "2026-08-10T09:33:19.364Z",
->>>>>>> 41e696098d4482b5b06dbaca7142719f3a772ae3
-      "success": true
-    },
-    {
-      "id": 5,
-      "username": "admin",
-<<<<<<< HEAD
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T05:13:06.338Z",
-=======
-      "ip_address": "2001:fd8:1f61:2ee6:f82b:3cff:fefe:226f, 169.254.169.126",
-      "timestamp": "2026-08-10T20:14:40.606Z",
->>>>>>> 41e696098d4482b5b06dbaca7142719f3a772ae3
-      "success": true
-    },
-    {
-      "id": 6,
-<<<<<<< HEAD
-      "username": "rediswan",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T05:13:26.790Z",
-=======
-      "username": "admin",
-      "ip_address": "2001:fd8:1f61:2ee6:f82b:3cff:fefe:226f, 169.254.169.126",
-      "timestamp": "2026-08-10T20:15:24.515Z",
->>>>>>> 41e696098d4482b5b06dbaca7142719f3a772ae3
-      "success": true
-    },
-    {
-      "id": 7,
-<<<<<<< HEAD
-      "username": "rediswan",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T05:17:05.852Z",
-=======
-      "username": "admin",
-      "ip_address": "2001:fd8:1f61:2ee6:f82b:3cff:fefe:226f, 169.254.169.126",
-      "timestamp": "2026-08-10T20:24:55.253Z",
->>>>>>> 41e696098d4482b5b06dbaca7142719f3a772ae3
-      "success": true
-    },
-    {
-      "id": 8,
-<<<<<<< HEAD
-      "username": "emp123456",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T05:20:28.053Z",
-=======
-      "username": "dietary_admin",
-      "ip_address": "2001:fd8:1f61:2ee6:f82b:3cff:fefe:226f, 169.254.169.126",
-      "timestamp": "2026-08-10T20:28:35.376Z",
->>>>>>> 41e696098d4482b5b06dbaca7142719f3a772ae3
-      "success": true
-    },
-    {
-      "id": 9,
-      "username": "admin",
-<<<<<<< HEAD
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T09:54:42.605Z",
-=======
-      "ip_address": "2001:fd8:1f61:2ee6:f82b:3cff:fefe:226f, 169.254.169.126",
-      "timestamp": "2026-08-10T20:40:56.594Z",
->>>>>>> 41e696098d4482b5b06dbaca7142719f3a772ae3
-      "success": true
-    },
-    {
-      "id": 10,
-<<<<<<< HEAD
-      "username": "EMP654321",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T09:55:22.116Z",
-      "success": false
-    },
-    {
-      "id": 11,
-      "username": "EMP123456",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T09:55:35.920Z",
-      "success": false
-    },
-    {
-      "id": 12,
-      "username": "EMP123456",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T09:55:48.323Z",
-=======
-      "username": "admin",
-      "ip_address": "2001:fd8:1f61:2ee6:9842:9a5a:96eb:80d0, 169.254.169.126",
-      "timestamp": "2026-08-10T21:57:42.960Z",
-      "success": true
-    },
-    {
-      "id": 11,
-      "username": "admin",
-      "ip_address": "2001:fd8:1f61:2ee6:9842:9a5a:96eb:80d0, 169.254.169.126",
-      "timestamp": "2026-08-10T22:06:06.569Z",
-      "success": true
-    },
-    {
-      "id": 12,
-      "username": "admin",
-      "ip_address": "112.206.240.51, 169.254.169.126",
-      "timestamp": "2026-08-12T11:15:50.626Z",
->>>>>>> 41e696098d4482b5b06dbaca7142719f3a772ae3
-      "success": true
-    },
-    {
-      "id": 13,
-      "username": "admin",
-<<<<<<< HEAD
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T11:49:35.848Z",
-=======
-      "ip_address": "112.206.240.51, 169.254.169.126",
-      "timestamp": "2026-08-12T11:19:00.050Z",
->>>>>>> 41e696098d4482b5b06dbaca7142719f3a772ae3
-      "success": true
-    },
-    {
-      "id": 14,
-<<<<<<< HEAD
-      "username": "rediswan",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T11:50:21.936Z",
-      "success": false
-    },
-    {
-      "id": 15,
-      "username": "rediswan",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T11:50:28.580Z",
-      "success": false
-    },
-    {
-      "id": 16,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T11:50:40.108Z",
-      "success": true
-    },
-    {
-      "id": 17,
-      "username": "rediswan",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T11:51:39.342Z",
-=======
-      "username": "Nurse_dept",
-      "ip_address": "112.206.240.51, 169.254.169.126",
-      "timestamp": "2026-08-12T11:26:31.134Z",
-      "success": true
-    },
-    {
-      "id": 15,
-      "username": "Nurse_dept",
-      "ip_address": "112.206.240.51, 169.254.169.126",
-      "timestamp": "2026-08-12T11:27:08.989Z",
-      "success": true
-    },
-    {
-      "id": 16,
-      "username": "manager",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-08-12T11:33:09.557Z",
-      "success": false
-    },
-    {
-      "id": 17,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-08-12T11:33:27.995Z",
->>>>>>> 41e696098d4482b5b06dbaca7142719f3a772ae3
-      "success": true
-    },
-    {
-      "id": 18,
-<<<<<<< HEAD
-      "username": "rediswan",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-10T11:57:00.761Z",
-=======
-      "username": "admin",
-      "ip_address": "112.206.243.166, 169.254.169.126",
-      "timestamp": "2026-09-10T02:50:26.695Z",
->>>>>>> 41e696098d4482b5b06dbaca7142719f3a772ae3
-      "success": true
-    },
-    {
-      "id": 19,
-      "username": "admin",
-<<<<<<< HEAD
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-11T04:32:19.378Z",
-      "success": true
-=======
-      "ip_address": "112.206.243.166, 169.254.169.126",
-      "timestamp": "2026-09-10T03:21:03.460Z",
-      "success": true
-    },
-    {
-      "id": 20,
-      "username": "admin",
-      "ip_address": "112.206.243.166, 169.254.169.126",
-      "timestamp": "2026-09-10T05:44:07.496Z",
-      "success": false
-    },
-    {
-      "id": 21,
-      "username": "admin",
-      "ip_address": "112.206.243.166, 169.254.169.126",
-      "timestamp": "2026-09-10T05:44:20.637Z",
-      "success": false
-    },
-    {
-      "id": 22,
-      "username": "admin",
-      "ip_address": "112.206.243.166, 169.254.169.126",
-      "timestamp": "2026-09-10T05:44:31.899Z",
-      "success": true
-    },
-    {
-      "id": 23,
-      "username": "admin",
-      "ip_address": "112.206.243.166, 169.254.169.126",
-      "timestamp": "2026-09-10T05:47:38.392Z",
-      "success": true
-    },
-    {
-      "id": 24,
-      "username": "EMP123456",
-      "ip_address": "112.206.243.166, 169.254.169.126",
-      "timestamp": "2026-09-10T05:48:54.447Z",
-      "success": true
-    },
-    {
-      "id": 25,
-      "username": "admin",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:42:30.142Z",
-      "success": false
-    },
-    {
-      "id": 26,
-      "username": "admin",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:42:37.370Z",
-      "success": false
-    },
-    {
-      "id": 27,
-      "username": "admin",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:42:49.316Z",
-      "success": false
-    },
-    {
-      "id": 28,
-      "username": "admin",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:42:57.546Z",
-      "success": false
-    },
-    {
-      "id": 29,
-      "username": "admin",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:43:07.939Z",
-      "success": false
-    },
-    {
-      "id": 30,
-      "username": "admin",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:43:14.828Z",
-      "success": false
-    },
-    {
-      "id": 31,
-      "username": "EMP123456",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:43:22.362Z",
-      "success": false
-    },
-    {
-      "id": 32,
-      "username": "cash",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:44:05.425Z",
-      "success": false
-    },
-    {
-      "id": 33,
-      "username": "ICT_dept",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:44:08.594Z",
-      "success": false
-    },
-    {
-      "id": 34,
-      "username": "admin",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:49:15.514Z",
-      "success": false
-    },
-    {
-      "id": 35,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-16T02:50:06.551Z",
-      "success": false
-    },
-    {
-      "id": 36,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-16T02:51:50.880Z",
-      "success": false
-    },
-    {
-      "id": 37,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-16T02:53:54.549Z",
-      "success": true
-    },
-    {
-      "id": 38,
-      "username": "dietary_admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-16T02:53:56.702Z",
-      "success": true
-    },
-    {
-      "id": 39,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-16T02:54:39.271Z",
-      "success": true
-    },
-    {
-      "id": 40,
-      "username": "admin",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:55:29.026Z",
-      "success": true
-    },
-    {
-      "id": 41,
-      "username": "123456",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:56:56.485Z",
-      "success": false
-    },
-    {
-      "id": 42,
-      "username": "123456",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:56:59.521Z",
-      "success": false
-    },
-    {
-      "id": 43,
-      "username": "admin",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:57:02.738Z",
-      "success": true
-    },
-    {
-      "id": 44,
-      "username": "123456",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:57:34.695Z",
-      "success": false
-    },
-    {
-      "id": 45,
-      "username": "123456",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:57:41.084Z",
-      "success": false
-    },
-    {
-      "id": 46,
-      "username": "123456",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:57:42.740Z",
-      "success": false
-    },
-    {
-      "id": 47,
-      "username": "admin",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T02:57:47.933Z",
-      "success": true
-    },
-    {
-      "id": 48,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-16T03:13:28.235Z",
-      "success": true
-    },
-    {
-      "id": 49,
-      "username": "123456",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T03:13:28.900Z",
-      "success": false
-    },
-    {
-      "id": 50,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "timestamp": "2026-09-16T03:13:30.803Z",
-      "success": true
-    },
-    {
-      "id": 51,
-      "username": "admin",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T03:13:33.697Z",
-      "success": true
-    },
-    {
-      "id": 52,
-      "username": "123456",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T03:14:06.450Z",
-      "success": false
-    },
-    {
-      "id": 53,
-      "username": "admin",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T03:14:09.536Z",
-      "success": true
-    },
-    {
-      "id": 54,
-      "username": "123456",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T03:15:49.862Z",
-      "success": false
-    },
-    {
-      "id": 55,
-      "username": "123456",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T03:16:00.650Z",
-      "success": false
-    },
-    {
-      "id": 56,
-      "username": "emp123456",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T03:16:08.779Z",
-      "success": false
-    },
-    {
-      "id": 57,
-      "username": "admin",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T03:16:12.464Z",
-      "success": true
-    },
-    {
-      "id": 58,
-      "username": "EMP123456",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T03:16:26.873Z",
-      "success": true
-    },
-    {
-      "id": 59,
-      "username": "ICT_dept",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T03:23:23.404Z",
-      "success": false
-    },
-    {
-      "id": 60,
-      "username": "admin",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T03:23:26.678Z",
-      "success": true
-    },
-    {
-      "id": 61,
-      "username": "cash",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T03:28:40.223Z",
-      "success": false
-    },
-    {
-      "id": 62,
-      "username": "admin",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T03:28:43.110Z",
-      "success": true
-    },
-    {
-      "id": 63,
-      "username": "cash",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T03:29:12.422Z",
-      "success": true
-    },
-    {
-      "id": 64,
-      "username": "admin",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "timestamp": "2026-09-16T03:44:02.206Z",
-      "success": true
-    },
-    {
-      "id": 65,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "success": true,
-      "timestamp": "2026-09-16T03:44:07.381Z"
-    },
-    {
-      "id": 66,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "success": true,
-      "timestamp": "2026-09-16T03:44:11.263Z"
-    },
-    {
-      "id": 67,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "success": true,
-      "timestamp": "2026-09-16T03:44:16.263Z"
-    },
-    {
-      "id": 68,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "success": true,
-      "timestamp": "2026-09-16T03:44:20.186Z"
-    },
-    {
-      "id": 69,
-      "username": "EMP123456",
-      "ip_address": "180.193.214.195, 169.254.169.126",
-      "success": true,
-      "timestamp": "2026-09-16T03:44:22.347Z"
-    },
-    {
-      "id": 70,
-      "username": "admin",
-      "ip_address": "127.0.0.1",
-      "success": true,
-      "timestamp": "2026-09-16T03:44:37.332Z"
->>>>>>> 41e696098d4482b5b06dbaca7142719f3a772ae3
-    }
-  ]
+  "audit_logs": [],
+  "login_attempts": []
 }
