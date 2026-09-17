@@ -10,22 +10,16 @@ interface TransactionSummaryProps {
   currencySymbol?: string;
 }
 
-const defaultData = [
-  { time: "08:00", volume: 12, avgPrice: 150 },
-  { time: "10:00", volume: 25, avgPrice: 160 },
-  { time: "12:00", volume: 58, avgPrice: 155 },
-  { time: "14:00", volume: 32, avgPrice: 150 },
-  { time: "16:00", volume: 19, avgPrice: 165 },
-  { time: "18:00", volume: 28, avgPrice: 170 },
-];
-
 export default function TransactionSummaryWidget({
-  totalVolume = 174,
-  totalRevenue = 27840,
-  avgMealPrice = 160,
-  chartData = defaultData,
+  totalVolume = 0,
+  totalRevenue = 0,
+  avgMealPrice = 0,
+  chartData = [],
   currencySymbol = "₱"
 }: TransactionSummaryProps) {
+  const hasActiveScans = totalVolume > 0;
+  const hasVolumeInChart = chartData.some(d => d.volume > 0);
+
   return (
     <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs space-y-6">
       <div className="flex items-center justify-between">
@@ -34,7 +28,7 @@ export default function TransactionSummaryWidget({
             <BarChart3 className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-extrabold text-zinc-900">Transaction & Pricing Summary</h3>
+            <h3 className="text-sm font-extrabold text-zinc-900">Transaction &amp; Pricing Summary</h3>
             <p className="text-[11px] text-zinc-500 font-medium">Real-time daily volume and average meal pricing trends</p>
           </div>
         </div>
@@ -52,9 +46,15 @@ export default function TransactionSummaryWidget({
           </span>
           <div className="flex items-baseline justify-between mt-1">
             <span className="text-2xl font-black text-zinc-900 tracking-tight">{totalVolume}</span>
-            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> +14.2%
-            </span>
+            {hasActiveScans ? (
+              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" /> Live Active
+              </span>
+            ) : (
+              <span className="text-[11px] font-bold text-zinc-400 bg-zinc-100 border border-zinc-200 px-2 py-0.5 rounded-md">
+                No Scans Today
+              </span>
+            )}
           </div>
           <p className="text-[10px] text-zinc-500 mt-1">Redemptions &amp; cash sales today</p>
         </div>
@@ -82,9 +82,15 @@ export default function TransactionSummaryWidget({
             <span className="text-2xl font-black text-teal-900 tracking-tight">
               {currencySymbol}{avgMealPrice.toFixed(2)}
             </span>
-            <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md flex items-center gap-1">
-              <DollarSign className="w-3 h-3" /> Override Active
-            </span>
+            {avgMealPrice > 0 ? (
+              <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <DollarSign className="w-3 h-3" /> Real Average
+              </span>
+            ) : (
+              <span className="text-[11px] font-bold text-zinc-400 bg-zinc-100 border border-zinc-200 px-2 py-0.5 rounded-md">
+                No Paid Sales
+              </span>
+            )}
           </div>
           <p className="text-[10px] text-zinc-500 mt-1">Mean price per paid transaction</p>
         </div>
@@ -94,9 +100,11 @@ export default function TransactionSummaryWidget({
       <div className="space-y-3 pt-2 border-t border-zinc-100">
         <div className="flex items-center justify-between text-xs font-bold text-zinc-700">
           <span>Hourly Volume &amp; Pricing Trend</span>
-          <span className="text-[10px] font-mono text-zinc-400">Today vs. Hourly Distribution</span>
+          <span className="text-[10px] font-mono text-zinc-400">
+            {hasVolumeInChart ? "Today vs. Hourly Distribution" : "Awaiting transactions for today"}
+          </span>
         </div>
-        <div className="h-56 w-full">
+        <div className="h-56 w-full relative">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
@@ -106,7 +114,7 @@ export default function TransactionSummaryWidget({
                 </linearGradient>
               </defs>
               <XAxis dataKey="time" stroke="#a1a1aa" fontSize={11} tickLine={false} />
-              <YAxis stroke="#a1a1aa" fontSize={11} tickLine={false} />
+              <YAxis stroke="#a1a1aa" fontSize={11} tickLine={false} allowDecimals={false} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "#18181b",

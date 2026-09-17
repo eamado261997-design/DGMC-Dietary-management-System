@@ -39,7 +39,8 @@ import {
   processHourlyData,
   processDepartmentChartData,
   processDailyTrendData,
-  processSessionChartData
+  processSessionChartData,
+  processHourlyVolumeAndPricing
 } from "../../utils/analytics.js";
 
 export type {
@@ -308,6 +309,11 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
     return processSessionChartData(transactions);
   }, [transactions]);
 
+  // Compute Live Hourly Volume and Pricing Trends
+  const hourlyVolumePricing = useMemo(() => {
+    return processHourlyVolumeAndPricing(transactions);
+  }, [transactions]);
+
   return (
     <div id="admin-dashboard-page">
       <PageHeader
@@ -396,7 +402,8 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
             <TransactionSummaryWidget
               totalVolume={(stats?.freeMealsToday || 0) + (stats?.cashMealsTodayCount || 0)}
               totalRevenue={stats?.paidAmountToday || 0}
-              avgMealPrice={stats?.cashMealsTodayCount && stats.cashMealsTodayCount > 0 ? (stats.paidAmountToday / stats.cashMealsTodayCount) : 150}
+              avgMealPrice={stats?.cashMealsTodayCount && stats.cashMealsTodayCount > 0 ? (stats.paidAmountToday / stats.cashMealsTodayCount) : 0}
+              chartData={hourlyVolumePricing}
             />
 
             {/* Operational Watch & Daily Indicators Grid */}

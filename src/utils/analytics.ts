@@ -270,3 +270,89 @@ export function processSessionChartData(transactions: Transaction[]): SessionDat
     "Meal Check-ins": checkins,
   }));
 }
+
+export interface HourlyVolumePricingPoint {
+  time: string;
+  volume: number;
+  avgPrice: number;
+}
+
+/**
+ * Computes live hourly transaction volume and average meal pricing for today
+ * dynamically from actual transaction logs.
+ */
+export function processHourlyVolumeAndPricing(transactions: Transaction[], targetDate?: string): HourlyVolumePricingPoint[] {
+  // Key distribution intervals across cafeteria meal operating hours
+  const hourSlots = [6, 8, 10, 12, 14, 16, 18, 20, 22];
+  
+  // Format today's date in YYYY-MM-DD
+  const now = new Date();
+  const todayStr = targetDate || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+  // Filter transactions for today's date
+  let dayTxs = transactions.filter((t) => {
+    if (t.status && t.status !== "completed") return false;
+    const date = t.meal_date || (t.created_at ? t.created_at.substring(0, 10) : "");
+    return date === todayStr;
+  });
+
+  // If no transactions logged for today yet, check if there are historical transactions to display latest activity
+  if (dayTxs.length === 0 && transactions.length > 0) {
+    const dates = transactions
+      .filter(t => t.status === "completed")
+      .map(t => t.meal_date || (t.created_at ? t.created_at.substring(0, 10) : ""))
+      .filter(Boolean)
+      .sort();
+    if (dates.length > 0) {
+      const latestDate = dates[dates.length - 1];
+      dayTxs = transactions.filter((t) => {
+        if (t.status && t.status !== "completed") return false;
+        const date = t.meal_date || (t.created_at ? t.created_at.substring(0, 10) : "");
+        return date === latestDate;
+      });
+    }
+  }
+
+  // Initialize hourly buckets
+  const buckets: Record<number, { volume: number; paidSum: number; paidCount: number }> = {};
+  hourSlots.forEach((h) => {
+    buckets[h] = { volume: 0, paidSum: 0, paidCount: 0 };
+  });
+
+  dayTxs.forEach((t) => {
+    let hour = -1;
+    if (t.meal_time) {
+      const parts = t.meal_time.split(":");
+      hour = parseInt(parts[0], 10);
+    } else if (t.created_at) {
+      try {
+        const d = new Date(t.created_at);
+        if (!isNaN(d.getTime())) hour = d.getHours();
+      } catch (_e) {}
+    }
+
+    if (hour >= 0 && hour <= 23) {
+      // Slot bucket: find matching 2-hour window slot
+      const slot = hourSlots.reduce((prev, curr) => (curr <= hour ? curr : prev), hourSlots[0]);
+      if (buckets[slot]) {
+        buckets[slot].volume += 1;
+        const amount = Number(t.meal_amount) || 0;
+        if (!t.is_free && amount > 0) {
+          buckets[slot].paidSum += amount;
+          buckets[slot].paidCount += 1;
+        }
+      }
+    }
+  });
+
+  return hourSlots.map((h) => {
+    const timeLabel = `${String(h).padStart(2, "0")}:00`;
+    const b = buckets[h];
+    const avgPrice = b.paidCount > 0 ? Math.round((b.paidSum / b.paidCount) * 100) / 100 : 0;
+    return {
+      time: timeLabel,
+      volume: b.volume,
+      avgPrice,
+    };
+  });
+}

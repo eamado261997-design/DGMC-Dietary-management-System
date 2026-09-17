@@ -3,6 +3,7 @@ import { useAuth } from "../../context/AuthContext.js";
 import PageHeader from "../../components/PageHeader.js";
 import { Skeleton } from "../../components/Skeleton.js";
 import TransactionSummaryWidget from "../../components/TransactionSummaryWidget.js";
+import { processHourlyVolumeAndPricing } from "../../utils/analytics.js";
 import { Activity, Coins, Utensils, QrCode, HelpCircle, X, Search, ShieldCheck, History, RefreshCw, BarChart3, Lightbulb } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts";
 import { useDebounce } from "../../hooks/useDebounce.js";
@@ -105,6 +106,10 @@ export default function CashierDashboard({ onViewChange }: { onViewChange: (v: s
       Paid: map[day].paid,
       Total: map[day].free + map[day].paid
     }));
+  }, [transactions]);
+
+  const hourlyVolumePricing = React.useMemo(() => {
+    return processHourlyVolumeAndPricing(transactions);
   }, [transactions]);
 
   const totalToday = stats?.totalMeals || 0;
@@ -240,7 +245,8 @@ export default function CashierDashboard({ onViewChange }: { onViewChange: (v: s
         <TransactionSummaryWidget
           totalVolume={stats?.totalMeals || 0}
           totalRevenue={stats?.totalRevenue || 0}
-          avgMealPrice={stats?.paidCount && stats.paidCount > 0 ? (stats.totalRevenue / stats.paidCount) : 150}
+          avgMealPrice={stats?.paidCount && stats.paidCount > 0 ? (stats.totalRevenue / stats.paidCount) : 0}
+          chartData={hourlyVolumePricing}
         />
 
         {/* Daily Summary & Terminal Row */}
