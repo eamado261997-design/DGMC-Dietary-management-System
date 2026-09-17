@@ -18,8 +18,22 @@ import { checkMysqlHealth, getPoolStats, isMysqlConnected, getMysqlPool } from '
 import { isSqliteConnected } from './src/server/sqlite.ts';
 import { getOpenApiSpec } from './src/server/services/openapiService.ts';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Safe filename and directory resolution for both ESM and CommonJS bundles
+let _currentDirname = process.cwd();
+let _currentFilename = '';
+
+try {
+  if (typeof __dirname !== 'undefined' && __dirname) {
+    _currentDirname = __dirname;
+    _currentFilename = typeof __filename !== 'undefined' ? __filename : '';
+  } else if (typeof import.meta !== 'undefined' && typeof import.meta?.url === 'string' && import.meta.url) {
+    _currentFilename = fileURLToPath(import.meta.url);
+    _currentDirname = path.dirname(_currentFilename);
+  }
+} catch {
+  _currentDirname = process.cwd();
+  _currentFilename = '';
+}
 
 // Environment validation
 function validateEnvironment() {
@@ -392,7 +406,7 @@ async function startServer() {
   // Prioritize the local project dist over parent directories to avoid picking up stale builds
   const possibleDistPaths = [
     path.join(process.cwd(), 'dist'),
-    path.join(__dirname, 'dist')
+    path.join(_currentDirname, 'dist')
   ];
   const distPath = possibleDistPaths.find(p => fs.existsSync(path.join(p, 'index.html'))) || path.join(process.cwd(), 'dist');
 
@@ -413,7 +427,7 @@ async function startServer() {
       if (req.path.startsWith('/api')) return next();
       try {
         const url = req.originalUrl;
-        const template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
+        const template = fs.readFileSync(path.resolve(_currentDirname, 'index.html'), 'utf-8');
         const html = await viteServer.transformIndexHtml(url, template);
         res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
       } catch (e) {
