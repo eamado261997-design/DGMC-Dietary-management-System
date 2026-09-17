@@ -2,6 +2,7 @@ import { jsonResponse, ApiResponse } from "../utils/apiUtils.js";
 import { readDatabase, writeDatabase } from "../db.js";
 import { isMysqlConnected, query } from "../mysql.js";
 import { cacheLayer } from "../cache.js";
+import { isRedisClientConnected } from "../redis.js";
 import { Person } from "../../types.js";
 import { getEmployeePerfSummary } from "../utils/performanceTracker.js";
 import { decrypt } from "../encryption.js";
@@ -265,7 +266,7 @@ export async function handleAdminRoutes(
     const mysqlStatus = isMysqlConnected();
     
     // 2. Redis Status
-    const redisStatus = cacheLayer.getIsRedisConnected();
+    const redisStatus = isRedisClientConnected() || cacheLayer.getIsRedisConnected();
 
     // 3. Node API Engine Status
     const engineStatus = "online";

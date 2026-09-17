@@ -1,4 +1,4 @@
-import Redis from "ioredis";
+import Redis, { RedisOptions } from "ioredis";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -6,29 +6,30 @@ dotenv.config();
 let client: Redis | null = null;
 let connected = false;
 
-/**
- * Returns the shared ioredis singleton.
- * Returns null if Redis is not configured (REDIS_HOST / REDIS_URL absent).
- */
-export function getRedisClient(): Redis | null {
-  if (client) return client;
+const isInvalid = (v?: string | null) =>
+  !v ||
+  typeof v !== "string" ||
+  v.trim() === "" ||
+  v === "EMPTY" ||
+  v === "YOUR_REDIS_HOST" ||
+  v === "YOUR_REDIS_URL" ||
+  v === "undefined" ||
+  v === "null" ||
+  v === '""' ||
+  v === "''";
 
-  const isInvalid = (v?: string | null) =>
-    !v ||
-    typeof v !== "string" ||
-    v.trim() === "" ||
-    v === "EMPTY" ||
-    v === "YOUR_REDIS_HOST" ||
-    v === "YOUR_REDIS_URL" ||
-    v === "undefined" ||
-    v === "null" ||
-    v === '""' ||
-    v === "''";
-
+export function getRedisConfig(): { targetUrl: string | null; targetHost: string | null; targetPort: number; options: RedisOptions } | null {
   const rawUrl = process.env.REDIS_URL ? process.env.REDIS_URL.trim() : "";
   const rawHost = process.env.REDIS_HOST ? process.env.REDIS_HOST.trim() : "";
   const rawPort = process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT, 10) : 6379;
   const rawPassword = process.env.REDIS_PASSWORD ? process.env.REDIS_PASSWORD.trim() : undefined;
+  const rawUsername = process.env.REDIS_USERNAME ? process.env.REDIS_USERNAME.trim() : undefined;
+  const rawDb = process.env.REDIS_DB ? parseInt(process.env.REDIS_DB, 10) : undefined;
+  const rawFamily = process.env.REDIS_FAMILY ? parseInt(process.env.REDIS_FAMILY, 10) : 4;
+  const connectTimeout = process.env.REDIS_CONNECT_TIMEOUT ? parseInt(process.env.REDIS_CONNECT_TIMEOUT, 10) : 5000;
+  const maxRetries = process.env.REDIS_MAX_RETRIES ? parseInt(process.env.REDIS_MAX_RETRIES, 10) : 3;
+  const keepAlive = process.env.REDIS_KEEP_ALIVE ? parseInt(process.env.REDIS_KEEP_ALIVE, 10) : 10000;
+  const enableOfflineQueue = process.env.REDIS_ENABLE_OFFLINE_QUEUE === "false" ? false : true;
 
   let targetUrl: string | null = null;
   let targetHost: string | null = null;
@@ -80,22 +81,60 @@ export function getRedisClient(): Redis | null {
     return null;
   }
 
+  const options: RedisOptions = {
+    lazyConnect: true,
+    maxRetriesPerRequest: isNaN(maxRetries) ? 3 : maxRetries,
+    enableOfflineQueue,
+    connectTimeout: isNaN(connectTimeout) ? 5000 : connectTimeout,
+    family: isNaN(rawFamily) ? 4 : rawFamily,
+    keepAlive: isNaN(keepAlive) ? 10000 : keepAlive,
+    db: rawDb !== undefined && !isNaN(rawDb) ? rawDb : undefined,
+    username: rawUsername && !isInvalid(rawUsername) ? rawUsername : undefined,
+    password: rawPassword && !isInvalid(rawPassword) ? rawPassword : undefined,
+    retryStrategy: (times: number) => {
+      const maxReconnectAttempts = process.env.REDIS_MAX_RECONNECT_ATTEMPTS
+        ? parseInt(process.env.REDIS_MAX_RECONNECT_ATTEMPTS, 10)
+        : 50;
+      if (times > maxReconnectAttempts) {
+        console.warn(`[Redis] Max reconnect attempts (${maxReconnectAttempts}) reached.`);
+        return null;
+      }
+      return Math.min(times * 150, 3000);
+    },
+    reconnectOnError: (err) => {
+      if (err.message && err.message.includes("READONLY")) {
+        return true;
+      }
+      return false;
+    },
+  };
+
+  return { targetUrl, targetHost, targetPort, options };
+}
+
+/**
+ * Returns the shared ioredis singleton.
+ * Returns null if Redis is not configured (REDIS_HOST / REDIS_URL absent).
+ */
+export function getRedisClient(): Redis | null {
+  if (client) return client;
+
+  const config = getRedisConfig();
+  if (!config) {
+    return null;
+  }
+
   try {
-    const options = {
-      lazyConnect: true,
-      maxRetriesPerRequest: 2,
-      retryStrategy: (times: number) => {
-        if (times > 3) return null;
-        return Math.min(times * 200, 1000);
-      },
-      enableOfflineQueue: false,
-      connectTimeout: 2000,
-    };
+    const { targetUrl, targetHost, targetPort, options } = config;
 
     if (targetUrl) {
       client = new Redis(targetUrl, options);
     } else if (targetHost) {
-      client = new Redis({ host: targetHost, port: targetPort, password: rawPassword, ...options });
+      client = new Redis({
+        host: targetHost,
+        port: targetPort,
+        ...options,
+      });
     }
 
     if (client) {
@@ -104,21 +143,44 @@ export function getRedisClient(): Redis | null {
         console.log("[Redis] Shared client connected.");
       });
 
-      client.on("error", () => {
+      client.on("ready", () => {
+        connected = true;
+        console.log("[Redis] Shared client ready to receive commands.");
+      });
+
+      client.on("close", () => {
         connected = false;
       });
 
-      client.connect().catch(() => {
+      client.on("reconnecting", () => {
+        console.log("[Redis] Client reconnecting...");
+      });
+
+      client.on("end", () => {
+        connected = false;
+      });
+
+      client.on("error", (err: any) => {
+        if (client && client.status !== "ready" && client.status !== "connect") {
+          connected = false;
+        }
+      });
+
+      client.connect().catch((_err: any) => {
         connected = false;
       });
     }
-  } catch {
+  } catch (err) {
     client = null;
+    connected = false;
   }
 
   return client;
 }
 
 export function isRedisClientConnected(): boolean {
+  if (client) {
+    return client.status === "ready" || client.status === "connect" || connected;
+  }
   return connected;
 }

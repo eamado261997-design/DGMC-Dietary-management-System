@@ -1,6 +1,7 @@
 import Redis, { RedisOptions } from "ioredis";
 import zlib from "zlib";
 import dotenv from "dotenv";
+import { getRedisClient, isRedisClientConnected } from "./redis.js";
 
 dotenv.config();
 
@@ -59,110 +60,19 @@ export class CacheLayer {
   }
 
   private initRedis(): void {
-    const isInvalid = (v?: string | null) =>
-      !v ||
-      typeof v !== "string" ||
-      v.trim() === "" ||
-      v === "EMPTY" ||
-      v === "YOUR_REDIS_HOST" ||
-      v === "YOUR_REDIS_URL" ||
-      v === "undefined" ||
-      v === "null" ||
-      v === '""' ||
-      v === "''";
-
-    const rawUrl = process.env.REDIS_URL ? process.env.REDIS_URL.trim() : "";
-    const rawHost = process.env.REDIS_HOST ? process.env.REDIS_HOST.trim() : "";
-    const rawPort = process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT, 10) : 6379;
-    const rawPassword = process.env.REDIS_PASSWORD ? process.env.REDIS_PASSWORD.trim() : undefined;
-
-    let targetUrl: string | null = null;
-    let targetHost: string | null = null;
-    let targetPort: number = isNaN(rawPort) ? 6379 : rawPort;
-
-    // 1. Process REDIS_URL if provided
-    if (!isInvalid(rawUrl)) {
-      let formattedUrl = rawUrl;
-      if (!formattedUrl.startsWith("redis://") && !formattedUrl.startsWith("rediss://")) {
-        formattedUrl = `redis://${formattedUrl}`;
-      }
-      try {
-        const parsed = new URL(formattedUrl);
-        if (parsed.hostname) {
-          targetUrl = formattedUrl;
-        }
-      } catch {
-        const cleanUrl = rawUrl.replace(/^(redis|rediss):\/\//, "");
-        const parts = cleanUrl.split(":");
-        if (parts[0] && !isInvalid(parts[0])) {
-          targetHost = parts[0];
-          if (parts[1]) targetPort = parseInt(parts[1], 10);
-        }
-      }
-    }
-
-    // 2. Process REDIS_HOST if no valid URL found
-    if (!targetUrl && !targetHost && !isInvalid(rawHost)) {
-      if (rawHost.startsWith("redis://") || rawHost.startsWith("rediss://")) {
-        try {
-          const parsed = new URL(rawHost);
-          if (parsed.hostname) {
-            targetUrl = rawHost;
-          }
-        } catch {
-          const clean = rawHost.replace(/^(redis|rediss):\/\//, "");
-          const parts = clean.split(":");
-          targetHost = parts[0];
-          if (parts[1]) targetPort = parseInt(parts[1], 10);
-        }
-      } else if (rawHost.includes(":")) {
-        const parts = rawHost.split(":");
-        targetHost = parts[0];
-        if (parts[1]) targetPort = parseInt(parts[1], 10);
-      } else {
-        targetHost = rawHost;
-      }
-    }
-
-    // If neither URL nor Host is configured, silently keep in-memory cache
-    if (!targetUrl && !targetHost) {
-      return;
-    }
-
     try {
-      const options: RedisOptions = {
-        lazyConnect: true,
-        maxRetriesPerRequest: 2,
-        retryStrategy(times) {
-          if (times > 3) return null; // Stop retrying after 3 attempts
-          return Math.min(times * 200, 1000);
-        },
-        enableOfflineQueue: false,
-        connectTimeout: 2000
-      };
-
-      if (targetUrl) {
-        this.redisClient = new Redis(targetUrl, options);
-      } else if (targetHost) {
-        this.redisClient = new Redis({
-          host: targetHost,
-          port: targetPort,
-          password: rawPassword || undefined,
-          ...options
-        });
-      }
-
+      this.redisClient = getRedisClient();
       if (this.redisClient) {
+        this.isRedisConnected = isRedisClientConnected();
+
         this.redisClient.on("connect", () => {
           this.isRedisConnected = true;
           this.redisErrorMsg = null;
-          console.log(`[Redis] Client connected.`);
         });
 
         this.redisClient.on("ready", () => {
           this.isRedisConnected = true;
           this.redisErrorMsg = null;
-          console.log(`[Redis] Ready to accept commands.`);
         });
 
         this.redisClient.on("close", () => {
@@ -170,16 +80,17 @@ export class CacheLayer {
         });
 
         this.redisClient.on("reconnecting", () => {
-          console.log(`[Redis] Reconnecting to server...`);
+          this.isRedisConnected = false;
+        });
+
+        this.redisClient.on("end", () => {
+          this.isRedisConnected = false;
         });
 
         this.redisClient.on("error", (err: any) => {
-          this.isRedisConnected = false;
-          this.redisErrorMsg = err?.message || String(err);
-        });
-
-        this.redisClient.connect().catch((err) => {
-          this.isRedisConnected = false;
+          if (this.redisClient && this.redisClient.status !== "ready" && this.redisClient.status !== "connect") {
+            this.isRedisConnected = false;
+          }
           this.redisErrorMsg = err?.message || String(err);
         });
       }
