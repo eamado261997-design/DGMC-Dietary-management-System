@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import os from 'os';
@@ -385,11 +386,11 @@ async function startServer() {
 
   const isProd = process.env.NODE_ENV === 'production';
 
-  // Robust path discovery for compiled dist files in Docker / container / host environments
+  // Robust path discovery for compiled dist files
+  // Prioritize the local project dist over parent directories to avoid picking up stale builds
   const possibleDistPaths = [
     path.join(process.cwd(), 'dist'),
-    path.join(__dirname, 'dist'),
-    path.join(__dirname, '../dist')
+    path.join(__dirname, 'dist')
   ];
   const distPath = possibleDistPaths.find(p => fs.existsSync(path.join(p, 'index.html'))) || path.join(process.cwd(), 'dist');
 
