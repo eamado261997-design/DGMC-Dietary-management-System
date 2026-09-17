@@ -406,20 +406,17 @@ async function startServer() {
   ];
   const distPath = possibleDistPaths.find(p => fs.existsSync(path.join(p, 'index.html'))) || path.join(process.cwd(), 'dist');
 
+  let viteServer: any;
   if (!isProd && !fs.existsSync(path.join(distPath, 'index.html'))) {
     logger.info('Starting server in DEVELOPMENT mode with Vite integration...');
     const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
+    viteServer = await createViteServer({
       server: { 
         middlewareMode: true,
-        hmr: {
-          port: 24678,
-          host: '0.0.0.0'
-        }
       },
       appType: 'spa',
     });
-    app.use(vite.middlewares);
+    app.use(viteServer.middlewares);
     
     // SPA fallback for development mode
     app.get('*', async (req, res, next) => {
@@ -427,10 +424,10 @@ async function startServer() {
       try {
         const url = req.originalUrl;
         const template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
-        const html = await vite.transformIndexHtml(url, template);
+        const html = await viteServer.transformIndexHtml(url, template);
         res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
       } catch (e) {
-        vite.ssrFixStacktrace(e as Error);
+        viteServer.ssrFixStacktrace(e as Error);
         next(e);
       }
     });
@@ -472,6 +469,15 @@ async function startServer() {
       logger.info('[PM2] Sent "ready" signal to PM2 process manager.');
     }
   });
+
+  // Proxy WebSocket upgrade requests to Vite in development mode
+  if (viteServer) {
+    server.on('upgrade', (req, socket, head) => {
+      if (req.headers['upgrade']?.toLowerCase() === 'websocket') {
+        viteServer.ws.handleUpgrade(req, socket, head);
+      }
+    });
+  }
 
   const gracefulShutdown = async (signal: string) => {
     logger.info(`[Server] Received ${signal}. Starting graceful shutdown...`);
