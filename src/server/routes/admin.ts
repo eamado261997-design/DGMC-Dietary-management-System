@@ -534,7 +534,7 @@ export async function handleAdminRoutes(
           ].map(escapeCsv).join(",") + "\n";
         });
       } else if (type === "employees") {
-        csvContent = "Employee No,Name,Department,Position,Free Meals Claimed,Paid Meals Purchased,Total Money Spent,Status\n";
+        csvContent = "Employee No,Name,Department,Position,Free Meals Claimed,Salary Deductions,Total Salary Deductions,Status\n";
         const rows = await query(`
           SELECT p.employee_no, CONCAT(p.first_name, ' ', p.last_name) AS name,
                  d.name AS department_name, p.position, p.is_active,
@@ -556,7 +556,7 @@ export async function handleAdminRoutes(
           ].map(escapeCsv).join(",") + "\n";
         });
       } else {
-        csvContent = "Date,Free Meals Distributed,Paid Meals Purchased,Total Amount Earned\n";
+        csvContent = "Date,Free Meals Distributed,Salary Deductions,Total Salary Deductions\n";
         const rows = await query(`
           SELECT meal_date AS date,
                  COUNT(CASE WHEN is_free = 1 THEN 1 END) AS freeCount,
@@ -611,7 +611,7 @@ export async function handleAdminRoutes(
           ].map(escapeCsv).join(",") + "\n";
         });
       } else if (type === "employees") {
-        csvContent = "Employee No,Name,Department,Position,Free Meals Claimed,Paid Meals Purchased,Total Money Spent,Status\n";
+        csvContent = "Employee No,Name,Department,Position,Free Meals Claimed,Salary Deductions,Total Salary Deductions,Status\n";
         db.people.filter(p => p.role === "employee").forEach(p => {
           const empTrans = db.transactions.filter(t => t.person_id === p.id && t.status === "completed");
           const freeClaims = empTrans.filter(t => t.is_free).length;
@@ -624,7 +624,7 @@ export async function handleAdminRoutes(
           ].map(escapeCsv).join(",") + "\n";
         });
       } else {
-        csvContent = "Date,Free Meals Distributed,Paid Meals Purchased,Total Amount Earned\n";
+        csvContent = "Date,Free Meals Distributed,Salary Deductions,Total Salary Deductions\n";
         const dailyMap: { [date: string]: { freeCount: number; paidCount: number; amount: number } } = {};
         db.transactions.filter(t => t.status === "completed").forEach(t => {
           if (!dailyMap[t.meal_date]) dailyMap[t.meal_date] = { freeCount: 0, paidCount: 0, amount: 0 };

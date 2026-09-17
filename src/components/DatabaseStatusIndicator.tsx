@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Database, Cpu, CheckCircle2, AlertCircle, RefreshCw, Server } from "lucide-react";
+import { getApiBaseUrl } from "../utils/apiConfig.js";
 
 interface DbStatus {
   sqliteConnected: boolean;
@@ -23,7 +24,8 @@ export default function DatabaseStatusIndicator() {
     }
 
     try {
-      const response = await fetch("/api/db-status");
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/api/db-status`);
       if (response.ok) {
         const data = await response.json();
         setStatus(data);

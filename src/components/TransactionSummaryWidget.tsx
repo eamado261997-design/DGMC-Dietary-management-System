@@ -425,7 +425,7 @@ export default function TransactionSummaryWidget({
             )}
           </div>
           <p className="text-[10px] text-zinc-500 mt-1">
-            {datePreset === "today" ? "Redemptions & cash sales today" : `Transactions in ${appliedDates.label}`}
+            {datePreset === "today" ? "Redemptions & salary deduction sales today" : `Transactions in ${appliedDates.label}`}
           </p>
         </div>
 

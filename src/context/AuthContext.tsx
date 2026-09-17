@@ -4,6 +4,7 @@ import { useToast } from "./ToastContext.js";
 import { useLoading } from "./LoadingContext.js";
 import { getCookie } from "../utils/cookie.js";
 import { parseJwt } from "../utils/jwt.js";
+import { getApiBaseUrl } from "../utils/apiConfig.js";
 
 export interface SystemBranding {
   companyName: string;
@@ -63,7 +64,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshBranding = async () => {
     try {
-      const res = await fetch("/api/public-stats");
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/public-stats`);
       if (res.ok) {
         const data = await res.json();
         setBranding({
@@ -87,7 +89,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const storedToken = localStorage.getItem("dgmc_token");
       if (storedToken) {
         try {
-          const res = await fetch("/api/auth/me", {
+          const baseUrl = getApiBaseUrl();
+          const res = await fetch(`${baseUrl}/api/auth/me`, {
             headers: {
               Authorization: `Bearer ${storedToken}`,
             },
@@ -117,7 +120,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (username: string, password: string) => {
     startLoading("Verifying credentials and starting secure session...");
     try {
-      const res = await fetch("/api/auth/login", {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -184,7 +188,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!authState.token || isRefreshing) return;
     setIsRefreshing(true);
     try {
-      const res = await fetch("/api/auth/refresh", {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/auth/refresh`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${authState.token}`,
@@ -290,8 +295,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const start = Date.now();
         const xsrfToken = getCookie("XSRF-TOKEN");
+        const baseUrl = getApiBaseUrl();
+        const requestUrl = item.path.startsWith('http') ? item.path : `${baseUrl}${item.path}`;
         
-        await fetch(item.path, {
+        await fetch(requestUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -322,7 +329,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // This is complex. Let's just assume "Keep Local" means overwrite or something.
             // The prompt says "automatically". Let's assume for now, it just overwrites.
             const xsrfToken = getCookie("XSRF-TOKEN");
-            await fetch(item.path, {
+            const baseUrl = getApiBaseUrl();
+            const requestUrl = item.path.startsWith('http') ? item.path : `${baseUrl}${item.path}`;
+            await fetch(requestUrl, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -396,7 +405,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const res = await fetch(path, {
+      const baseUrl = getApiBaseUrl();
+      const requestUrl = path.startsWith('http') ? path : `${baseUrl}${path}`;
+
+      const res = await fetch(requestUrl, {
         ...options,
         headers,
       });

@@ -309,7 +309,7 @@ export default function CashierScan() {
     <div id="cashier-scanner-terminal">
       <PageHeader
         title="QR Meal Redemption"
-        subtitle="Process employee complimentary vouchers or register direct cash sales using Zebra barcode scanner"
+        subtitle="Process employee complimentary vouchers or record payroll salary deduction sales using Zebra barcode scanner"
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -713,7 +713,7 @@ export default function CashierScan() {
                         <span className="text-[10px] font-mono text-zinc-500">Manual Price Override Active</span>
                       </div>
                       <p className="text-[11px] text-zinc-500 leading-relaxed mb-4">
-                        Select complimentary voucher claim or process a paid cash sale with a custom manual price.
+                        Select complimentary voucher claim or process a salary deduction sale with a custom manual price.
                       </p>
 
                       <div className="space-y-4">

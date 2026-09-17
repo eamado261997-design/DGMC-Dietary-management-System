@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext.js";
 import { getCookie } from "../../utils/cookie.js";
+import { getApiBaseUrl } from "../../utils/apiConfig.js";
 import { AlertCircle, CheckCircle, Shield, Key, Eye, X, Clock, User, Fingerprint } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -53,7 +54,8 @@ export default function AuthDebugger() {
     setPingLoading(true);
     try {
       const startTime = Date.now();
-      const res = await fetch("/api/auth-ping", {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/auth-ping`, {
         method,
         headers: {
           "Authorization": `Bearer ${token}`,

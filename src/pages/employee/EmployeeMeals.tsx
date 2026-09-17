@@ -335,7 +335,7 @@ export default function EmployeeMeals() {
                         </span>
                       ) : (
                         <span className="inline-block px-2.5 py-0.5 bg-indigo-50 text-indigo-800 border border-indigo-100 rounded-full font-bold text-[10px]">
-                          Personal Cash Payment
+                          Payroll / Salary Deduction
                         </span>
                       )}
                     </td>

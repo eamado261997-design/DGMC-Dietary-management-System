@@ -129,7 +129,7 @@ export default function EmployeeSchedule() {
               <span className="text-[9px] uppercase font-mono tracking-widest text-zinc-400 font-bold block">Active Duty Shift</span>
               <h4 className="text-md font-extrabold text-zinc-900 mt-1">Off Duty Today</h4>
               <p className="text-[11px] text-zinc-500 mt-2 leading-relaxed">
-                You are not on the scheduled rosters for today. Cafeteria meals will require normal cash payment.
+                You are not on the scheduled rosters for today. Cafeteria meals will be billed via salary deduction.
               </p>
             </div>
           )}
@@ -164,33 +164,35 @@ export default function EmployeeSchedule() {
               {upcomingSchedules.map((s) => {
                 const isToday = s.work_date === todayStr;
                 return (
-                  <div key={s.id} className={`p-4 flex items-center justify-between transition-colors hover:bg-zinc-50/50 ${isToday ? "bg-teal-50/30 font-bold" : ""}`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                  <div key={s.id} className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors hover:bg-zinc-50/50 ${isToday ? "bg-teal-50/30 font-bold" : ""}`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border ${
                         s.shift_type === "day" 
                           ? "bg-amber-50 text-amber-600 border-amber-100" 
                           : "bg-indigo-50 text-indigo-600 border-indigo-100"
                       }`}>
-                        {s.shift_type === "day" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                        {s.shift_type === "day" ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
-                          <span>{s.work_date}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-zinc-900 font-mono">{s.work_date}</span>
                           {isToday && (
-                            <span className="bg-teal-600 text-white font-mono text-[8px] uppercase tracking-wider px-1.5 rounded-md font-bold py-0.2">
+                            <span className="bg-teal-600 text-white font-mono text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold">
                               Today
                             </span>
                           )}
-                        </p>
+                        </div>
                         <p className="text-[10px] text-zinc-500 capitalize mt-0.5">{s.shift_type} Shift Assignment</p>
                       </div>
                     </div>
 
-                    <div className="text-right">
-                      <span className="font-mono text-[10px] font-bold text-zinc-700">
-                        {s.shift_type === "day" ? "11 AM - 2 PM" : "10 PM - 6 AM"}
+                    <div className="flex items-center justify-between sm:flex-col sm:items-end gap-1 pt-2 sm:pt-0 border-t border-zinc-100 sm:border-0 text-right">
+                      <span className="font-mono text-xs font-bold text-zinc-800">
+                        {s.shift_type === "day" ? "11:00 AM – 2:00 PM" : "10:00 PM – 6:00 AM"}
                       </span>
-                      <p className="text-[9px] text-emerald-700 font-bold mt-0.5">Voucher Benefit Eligible</p>
+                      <span className="text-[9px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md font-mono">
+                        Voucher Eligible
+                      </span>
                     </div>
                   </div>
                 );

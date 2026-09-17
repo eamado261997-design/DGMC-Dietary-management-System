@@ -1,7 +1,10 @@
 import React from "react";
 import { useAuth } from "../context/AuthContext.js";
+import { useLoading } from "../context/LoadingContext.js";
+import { motion, AnimatePresence } from "motion/react";
 import DGMCLogo from "./DGMCLogo.js";
 import DatabaseStatusIndicator from "./DatabaseStatusIndicator.js";
+import OfflineIndicatorDot from "./OfflineIndicatorDot.js";
 import {
   Sparkles,
   LayoutDashboard,
@@ -39,6 +42,7 @@ interface LayoutProps {
 
 export default function Layout({ children, activeView, onViewChange }: LayoutProps) {
   const { user, logout } = useAuth();
+  const { isLoading, progress } = useLoading();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   // PWA Install Prompt State
@@ -212,14 +216,49 @@ export default function Layout({ children, activeView, onViewChange }: LayoutPro
   const breadcrumbs = getBreadcrumbs(activeView, user?.role || "");
 
   return (
-    <div id="layout-container" className="min-h-screen bg-zinc-50 flex flex-col font-sans">
+    <div id="layout-container" className="min-h-screen bg-zinc-50 flex flex-col font-sans relative">
+      {/* Global Progress Bar for Pending Async API Requests */}
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed top-0 left-0 right-0 z-[9990] h-1.5 bg-teal-950/20 pointer-events-none overflow-hidden"
+          >
+            {progress !== null ? (
+              <motion.div
+                className="h-full bg-gradient-to-r from-teal-400 via-emerald-400 to-teal-500 shadow-[0_0_10px_rgba(20,184,166,0.9)]"
+                initial={{ width: "0%" }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              />
+            ) : (
+              <motion.div
+                className="h-full w-2/5 bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-300 shadow-[0_0_12px_rgba(20,184,166,0.95)] rounded-full"
+                animate={{
+                  x: ["-100%", "280%"]
+                }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 1.1,
+                  ease: "easeInOut"
+                }}
+              />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Top Mobile Bar */}
       <header className="lg:hidden h-14 bg-teal-900 border-b border-teal-850 px-4 flex items-center justify-between text-white sticky top-0 z-40 shadow-sm">
         <div className="flex items-center gap-2 min-w-0">
           <DGMCLogo variant="icon" />
           <span className="hidden sm:inline text-[10px] font-mono uppercase bg-white/10 text-teal-250 border border-white/5 py-0.5 px-2 rounded-full font-bold truncate">Cafeteria Unit</span>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          <OfflineIndicatorDot />
           <DatabaseStatusIndicator />
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
@@ -337,7 +376,8 @@ export default function Layout({ children, activeView, onViewChange }: LayoutPro
               })}
             </div>
 
-            <div className="hidden lg:block">
+            <div className="hidden lg:flex items-center gap-2">
+              <OfflineIndicatorDot />
               <DatabaseStatusIndicator />
             </div>
           </div>

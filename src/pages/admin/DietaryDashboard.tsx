@@ -1533,7 +1533,7 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
                             <Area 
                               type="monotone" 
                               dataKey="paidMeals" 
-                              name="Paid Meals" 
+                              name="Salary Deductions" 
                               stroke="#14b8a6" 
                               strokeWidth={2} 
                               fillOpacity={1} 
@@ -1676,7 +1676,7 @@ export default function DietaryDashboard({ onViewChange }: DietaryDashboardProps
                             <Line 
                               type="monotone" 
                               dataKey="paidMeals" 
-                              name="Paid Meals" 
+                              name="Salary Deductions" 
                               stroke="#14b8a6" 
                               strokeWidth={2.5} 
                               dot={{ r: 4, className: "cursor-pointer" }} 

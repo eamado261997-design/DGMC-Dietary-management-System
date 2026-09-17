@@ -223,7 +223,7 @@ export async function handleTransactionRoutes(
 
       if (!schedule) {
         isFree = false;
-        reason = "No Active Schedule Today: Registered as Off Duty/Absent. Meal requires standard cashier payment.";
+        reason = "No Active Schedule Today: Registered as Off Duty/Absent. Meal will be billed via salary deduction.";
         windowDetails = "No Scheduled Shift";
         shiftType = "off";
       } else {
@@ -287,7 +287,7 @@ export async function handleTransactionRoutes(
         },
         success: true,
         isFree,
-        message: isFree ? "Complimentary meal voucher verified." : "Quota limit reached or off schedule. Standard cash sale required."
+        message: isFree ? "Complimentary meal voucher verified." : "Quota limit reached or off schedule. Standard salary deduction required."
       });
     }
 

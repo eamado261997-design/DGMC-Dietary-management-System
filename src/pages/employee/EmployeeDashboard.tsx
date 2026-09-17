@@ -12,7 +12,11 @@ import {
   ShieldCheck, 
   DollarSign,
   AlertCircle,
-  PieChart
+  PieChart,
+  Sun,
+  Moon,
+  CalendarRange,
+  ChevronRight
 } from "lucide-react";
 import DGMCLogo from "../../components/DGMCLogo.js";
 import { Skeleton } from "../../components/Skeleton.js";
@@ -26,11 +30,21 @@ interface DashboardData {
   monthlyMealAllocation?: number;
 }
 
+interface MealSchedule {
+  id: number;
+  work_date: string;
+  shift_type: "day" | "night";
+}
+
 export default function EmployeeDashboard({ onViewChange }: { onViewChange: (view: string) => void }) {
   const { user, apiFetch, branding } = useAuth();
   const [data, setData] = useState<DashboardData | null>(() => {
     const cached = localStorage.getItem("cached_employee_dashboard");
     return cached ? JSON.parse(cached) : null;
+  });
+  const [schedules, setSchedules] = useState<MealSchedule[]>(() => {
+    const cached = localStorage.getItem("cached_employee_schedules");
+    return cached ? JSON.parse(cached) : [];
   });
   const [loading, setLoading] = useState(!data);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
@@ -41,8 +55,16 @@ export default function EmployeeDashboard({ onViewChange }: { onViewChange: (vie
   useEffect(() => {
     async function loadStats() {
       try {
-        const stats = await apiFetch("/api/employee/dashboard-data");
+        const [stats, scheduleList] = await Promise.all([
+          apiFetch("/api/employee/dashboard-data"),
+          apiFetch("/api/employee/schedules").catch(() => [])
+        ]);
         setData(stats);
+        if (Array.isArray(scheduleList)) {
+          scheduleList.sort((a: any, b: any) => a.work_date.localeCompare(b.work_date));
+          setSchedules(scheduleList);
+          localStorage.setItem("cached_employee_schedules", JSON.stringify(scheduleList));
+        }
         localStorage.setItem("cached_employee_dashboard", JSON.stringify(stats));
         const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " " + new Date().toLocaleDateString();
         localStorage.setItem("cached_employee_dashboard_timestamp", nowStr);
@@ -50,8 +72,10 @@ export default function EmployeeDashboard({ onViewChange }: { onViewChange: (vie
         setIsOfflineMode(false);
       } catch (_err) {
         const cached = localStorage.getItem("cached_employee_dashboard");
+        const cachedSched = localStorage.getItem("cached_employee_schedules");
         if (cached) {
           setData(JSON.parse(cached));
+          if (cachedSched) setSchedules(JSON.parse(cachedSched));
           setIsOfflineMode(true);
         }
       } finally {
@@ -185,19 +209,19 @@ export default function EmployeeDashboard({ onViewChange }: { onViewChange: (vie
           </div>
         </div>
 
-        {/* Metric 3: Paid Meals Count */}
+        {/* Metric 3: Salary Deductions Count */}
         <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-700 shrink-0">
             <Activity className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-[10px] uppercase font-mono font-bold text-zinc-400 block tracking-wider">Personal Cash Purchases</span>
+            <span className="text-[10px] uppercase font-mono font-bold text-zinc-400 block tracking-wider">Salary Deductions</span>
             {loading ? (
               <Skeleton className="h-6 w-16 mt-1" />
             ) : (
               <p className="text-2xl font-black text-zinc-950 font-mono mt-1 leading-none">{data?.totalPaidMeals ?? 0}</p>
             )}
-            <span className="text-[9px] text-zinc-400 mt-1 block">Meals purchased off-roster</span>
+            <span className="text-[9px] text-zinc-400 mt-1 block">Meals billed via payroll deduction</span>
           </div>
         </div>
       </div>
@@ -255,7 +279,107 @@ export default function EmployeeDashboard({ onViewChange }: { onViewChange: (vie
         )
       )}
 
-      {/* 3. Fast Operations Section */}
+      {/* 3. Meal Schedule & Roster Cards (Grid on Desktop, Stack-based Card View on Mobile) */}
+      <div className="mt-8 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200 pb-3">
+          <div>
+            <h3 className="text-xs font-black uppercase tracking-wider text-zinc-500 font-mono flex items-center gap-2">
+              <CalendarRange className="w-4 h-4 text-teal-700" />
+              <span>Meal Schedule & Roster Eligibility</span>
+            </h3>
+            <p className="text-[11px] text-zinc-500 mt-0.5">
+              Your registered duty shifts & cafeteria benefit eligibility windows
+            </p>
+          </div>
+          <button
+            onClick={() => onViewChange("employee-schedule")}
+            className="text-xs font-bold text-[#003299] hover:text-[#002577] flex items-center gap-1 self-start sm:self-auto hover:underline cursor-pointer"
+          >
+            <span>Full Roster Schedule</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {schedules.length === 0 ? (
+          <div className="bg-white border border-zinc-200 rounded-3xl p-6 text-center shadow-xs">
+            <Calendar className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
+            <p className="text-xs font-bold text-zinc-700">No Upcoming Shift Schedules Registered</p>
+            <p className="text-[11px] text-zinc-400 mt-1 max-w-md mx-auto">
+              You are currently off-duty or have no active shift assignments in the database.
+            </p>
+          </div>
+        ) : (
+          /* Stack-Based Mobile Card View (1 col on mobile, 2 col on tablet, 3 col on desktop) */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+            {schedules.slice(0, 6).map((sched) => {
+              const todayStr = new Date().toISOString().split("T")[0];
+              const isToday = sched.work_date === todayStr;
+              const isDay = sched.shift_type === "day";
+
+              return (
+                <div
+                  key={sched.id}
+                  className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs transition-all hover:shadow-md ${
+                    isToday
+                      ? "border-teal-500 ring-2 ring-teal-500/10 bg-teal-50/20"
+                      : "border-zinc-200 hover:border-zinc-300"
+                  }`}
+                >
+                  <div className="space-y-2.5">
+                    {/* Header: Date + Today Badge */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-bold text-zinc-900">
+                          {sched.work_date}
+                        </span>
+                        {isToday && (
+                          <span className="bg-teal-700 text-white font-mono text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
+                            Today
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-mono text-zinc-400">
+                        {new Date(sched.work_date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" })}
+                      </span>
+                    </div>
+
+                    {/* Shift Card Details */}
+                    <div className="flex items-center gap-3 p-2.5 rounded-xl bg-zinc-50 border border-zinc-150/80">
+                      <div
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border ${
+                          isDay
+                            ? "bg-amber-50 text-amber-600 border-amber-200/80"
+                            : "bg-indigo-50 text-indigo-600 border-indigo-200/80"
+                        }`}
+                      >
+                        {isDay ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-zinc-900 capitalize">
+                          {sched.shift_type} Shift
+                        </p>
+                        <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                          {isDay ? "11:00 AM – 2:00 PM" : "10:00 PM – 6:00 AM"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Benefit Status Footer */}
+                  <div className="mt-3 pt-2.5 border-t border-zinc-100 flex items-center justify-between text-[10px]">
+                    <span className="text-zinc-500 font-medium">Allowance Window</span>
+                    <span className="text-emerald-700 font-bold font-mono bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md">
+                      Free Voucher Eligible
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 4. Fast Operations Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         
         {/* Quick Action Block 1: QR Badge Access */}
