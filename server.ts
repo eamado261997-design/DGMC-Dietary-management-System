@@ -100,12 +100,23 @@ async function startServer() {
           "'self'",
           "'unsafe-inline'",
           "'unsafe-eval'",
-          "https://*"
+          "https://*",
+          "http://localhost:*"
         ],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://*"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://*", "http://localhost:*"],
         imgSrc: ["'self'", "data:", "blob:", "https://*"],
-        connectSrc: ["'self'", "wss:", "https://*", "http://*", "ws://*"],
-        frameAncestors: ["'self'", "https://*", "http://*", "*"], // allow embedding in AI Studio preview iframe
+        connectSrc: [
+          "'self'", 
+          "wss:", 
+          "https://*", 
+          "http://*", 
+          "ws://*", 
+          "ws://localhost:*", 
+          "ws://127.0.0.1:*",
+          "http://localhost:*",
+          "http://127.0.0.1:*"
+        ],
+        frameAncestors: ["'self'", "https://*", "http://*", "*"],
       },
     },
     frameguard: false, // Critical: Disables X-Frame-Options: SAMEORIGIN to allow AI Studio preview iframe embedding
@@ -400,11 +411,28 @@ async function startServer() {
     const vite = await createViteServer({
       server: { 
         middlewareMode: true,
-        hmr: false
+        hmr: {
+          port: 3000,
+          clientPort: 3000
+        }
       },
       appType: 'spa',
     });
     app.use(vite.middlewares);
+    
+    // SPA fallback for development mode
+    app.get('*', async (req, res, next) => {
+      if (req.path.startsWith('/api')) return next();
+      try {
+        const url = req.originalUrl;
+        const template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
+        const html = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
   } else {
     logger.info(`Starting server in PRODUCTION mode with static file hosting from: ${distPath}`);
     app.use(express.static(distPath));

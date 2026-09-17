@@ -159,7 +159,17 @@ export async function loadAndInitDatabase(): Promise<void> {
   // Attempt to initialize MySQL database connection
   const mysqlResultState = await initializeMysql(activeState);
   if (mysqlResultState) {
-    cachedDbState = mysqlResultState;
+    // If local activeState (JSON/SQLite) has more people than what was found in MySQL,
+    // it likely means the user created data while MySQL was offline. Sync TO MySQL.
+    if (activeState.people.length > mysqlResultState.people.length) {
+      logger.info(`[Database] Local data is more complete (${activeState.people.length} vs ${mysqlResultState.people.length}). Syncing to MySQL...`);
+      cachedDbState = activeState;
+      await syncStateToMySQL(getMysqlPool(), cachedDbState);
+    } else {
+      // Use MySQL state as primary
+      cachedDbState = mysqlResultState;
+    }
+
     if (cachedDbState.people) {
       cachedDbState.people = cachedDbState.people.map(decryptPerson);
     }
