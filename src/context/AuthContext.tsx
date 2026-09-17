@@ -424,8 +424,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setQueue(prev => [...prev, newItem]);
         return { queued: true };
       }
-      addToast(e.message || "An unexpected error occurred.", 'error');
-      throw e;
+      const rawMsg = e.message || "An unexpected error occurred.";
+      const errorMsg = (rawMsg.includes("Failed to fetch") || rawMsg.includes("NetworkError"))
+        ? "Unable to connect to the server. Please ensure the backend server is running."
+        : rawMsg;
+      addToast(errorMsg, 'error');
+      throw new Error(errorMsg);
     } finally {
       stopLoading();
     }
