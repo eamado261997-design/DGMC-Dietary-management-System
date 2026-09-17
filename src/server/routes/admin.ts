@@ -307,7 +307,7 @@ export async function handleAdminRoutes(
   // Reports - Meals
   if (path === "/api/admin/reports/meals" && method === "GET") {
     if (!authUser) return jsonResponse(401, { error: "Authentication required" });
-    if (!requireRole(["admin", "dietary_admin"])) return jsonResponse(403, { error: "Admin privilege required" });
+    if (!requireRole(["admin", "dietary_admin", "cashier", "manager"])) return jsonResponse(403, { error: "Staff privilege required" });
 
     const { startDate, endDate, isFree, departmentId } = queryParams;
 
@@ -348,8 +348,8 @@ export async function handleAdminRoutes(
     } else {
       const db = readDatabase();
       let list = [...db.transactions];
-      if (startDate) list = list.filter(t => t.meal_date >= startDate);
-      if (endDate) list = list.filter(t => t.meal_date <= endDate);
+      if (startDate) list = list.filter(t => (t.meal_date || (t.created_at ? t.created_at.substring(0, 10) : "")) >= startDate);
+      if (endDate) list = list.filter(t => (t.meal_date || (t.created_at ? t.created_at.substring(0, 10) : "")) <= endDate);
       if (isFree !== undefined && isFree !== "") {
         const freeBool = isFree === "true" || isFree === "1" || isFree === 1;
         list = list.filter(t => t.is_free === freeBool);

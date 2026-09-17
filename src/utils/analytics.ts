@@ -277,77 +277,158 @@ export interface HourlyVolumePricingPoint {
   avgPrice: number;
 }
 
+export function getTransactionHour(t: Transaction): number {
+  if (t.meal_time) {
+    const clean = t.meal_time.trim().toLowerCase();
+    const isPm = clean.includes("pm");
+    const isAm = clean.includes("am");
+    const parts = clean.replace(/[^\d:]/g, "").split(":");
+    let h = parseInt(parts[0] || "0", 10);
+    if (isPm && h < 12) h += 12;
+    if (isAm && h === 12) h = 0;
+    if (!isNaN(h) && h >= 0 && h <= 23) return h;
+  }
+  if (t.created_at) {
+    const d = new Date(t.created_at);
+    if (!isNaN(d.getTime())) return d.getHours();
+  }
+  return -1;
+}
+
+export function parseTransactionDate(t: Transaction): Date | null {
+  if (t.created_at) {
+    const d = new Date(t.created_at);
+    if (!isNaN(d.getTime())) return d;
+  }
+  if (t.meal_date) {
+    const h = getTransactionHour(t);
+    const hourStr = h >= 0 ? String(h).padStart(2, "0") : "00";
+    let minStr = "00";
+    if (t.meal_time) {
+      const parts = t.meal_time.replace(/[^\d:]/g, "").split(":");
+      if (parts[1]) minStr = parts[1].padStart(2, "0");
+    }
+    const d = new Date(`${t.meal_date}T${hourStr}:${minStr}:00`);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
 /**
- * Computes live hourly transaction volume and average meal pricing for today
+ * Computes live hourly transaction volume and average meal pricing for the last 24 hours
  * dynamically from actual transaction logs.
  */
-export function processHourlyVolumeAndPricing(transactions: Transaction[], targetDate?: string): HourlyVolumePricingPoint[] {
-  // Key distribution intervals across cafeteria meal operating hours
-  const hourSlots = [6, 8, 10, 12, 14, 16, 18, 20, 22];
-  
-  // Format today's date in YYYY-MM-DD
+export function processHourlyVolumeAndPricing(
+  transactions: Transaction[],
+  targetDate?: string,
+  options?: { rolling24Hours?: boolean; useAllTransactions?: boolean }
+): HourlyVolumePricingPoint[] {
   const now = new Date();
+  const currentHour = now.getHours();
+
+  // Mode 1: Rolling 24 Hours Window (last 24 elapsed hours ending at currentHour)
+  if (options?.rolling24Hours) {
+    const points: HourlyVolumePricingPoint[] = [];
+    const oneHourMs = 3600 * 1000;
+    const nowMs = now.getTime();
+    const twentyFourHoursAgoMs = nowMs - 24 * oneHourMs;
+
+    // Build 24 sequential hourly slots chronologically from 23 hours ago to current hour
+    const slotData = Array.from({ length: 24 }, (_, i) => {
+      const hoursAgo = 23 - i;
+      const slotDate = new Date(nowMs - hoursAgo * oneHourMs);
+      const hour = slotDate.getHours();
+      return {
+        label: `${String(hour).padStart(2, "0")}:00`,
+        hoursAgo,
+        volume: 0,
+        paidSum: 0,
+        paidCount: 0,
+      };
+    });
+
+    const completed = transactions.filter(t => !t.status || t.status === "completed");
+    completed.forEach((t) => {
+      const tDate = parseTransactionDate(t);
+      if (!tDate) return;
+      const tMs = tDate.getTime();
+      // Must fall within the last 24 hours (with 1-minute grace period for clock variance)
+      if (tMs >= twentyFourHoursAgoMs && tMs <= nowMs + 60000) {
+        const hoursAgo = Math.floor((nowMs - tMs) / oneHourMs);
+        if (hoursAgo >= 0 && hoursAgo < 24) {
+          const slotIndex = 23 - hoursAgo;
+          if (slotData[slotIndex]) {
+            slotData[slotIndex].volume += 1;
+            const amount = Number(t.meal_amount) || 0;
+            if (!t.is_free && amount > 0) {
+              slotData[slotIndex].paidSum += amount;
+              slotData[slotIndex].paidCount += 1;
+            }
+          }
+        }
+      }
+    });
+
+    return slotData.map(s => ({
+      time: s.label,
+      volume: s.volume,
+      avgPrice: s.paidCount > 0 ? Math.round((s.paidSum / s.paidCount) * 100) / 100 : 0,
+    }));
+  }
+
+  // Mode 2: Fixed 24-hour day schedule (00:00 - 23:00)
+  const hourSlots = Array.from({ length: 24 }, (_, i) => i);
   const todayStr = targetDate || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
-  // Filter transactions for today's date
-  let dayTxs = transactions.filter((t) => {
-    if (t.status && t.status !== "completed") return false;
-    const date = t.meal_date || (t.created_at ? t.created_at.substring(0, 10) : "");
-    return date === todayStr;
-  });
+  let dayTxs: Transaction[];
+  if (options?.useAllTransactions) {
+    dayTxs = transactions.filter(t => !t.status || t.status === "completed");
+  } else {
+    dayTxs = transactions.filter((t) => {
+      if (t.status && t.status !== "completed") return false;
+      const date = t.meal_date || (t.created_at ? t.created_at.substring(0, 10) : "");
+      return date === todayStr;
+    });
 
-  // If no transactions logged for today yet, check if there are historical transactions to display latest activity
-  if (dayTxs.length === 0 && transactions.length > 0) {
-    const dates = transactions
-      .filter(t => t.status === "completed")
-      .map(t => t.meal_date || (t.created_at ? t.created_at.substring(0, 10) : ""))
-      .filter(Boolean)
-      .sort();
-    if (dates.length > 0) {
-      const latestDate = dates[dates.length - 1];
-      dayTxs = transactions.filter((t) => {
-        if (t.status && t.status !== "completed") return false;
-        const date = t.meal_date || (t.created_at ? t.created_at.substring(0, 10) : "");
-        return date === latestDate;
-      });
+    // Only fallback if no explicit targetDate was requested and it's default initial exploration
+    if (!targetDate && dayTxs.length === 0 && transactions.length > 0) {
+      const dates = transactions
+        .filter(t => t.status === "completed")
+        .map(t => t.meal_date || (t.created_at ? t.created_at.substring(0, 10) : ""))
+        .filter(Boolean)
+        .sort();
+      if (dates.length > 0) {
+        const latestDate = dates[dates.length - 1];
+        dayTxs = transactions.filter((t) => {
+          if (t.status && t.status !== "completed") return false;
+          const date = t.meal_date || (t.created_at ? t.created_at.substring(0, 10) : "");
+          return date === latestDate;
+        });
+      }
     }
   }
 
-  // Initialize hourly buckets
+  // Initialize hourly buckets for 00:00 to 23:00
   const buckets: Record<number, { volume: number; paidSum: number; paidCount: number }> = {};
-  hourSlots.forEach((h) => {
+  for (let h = 0; h < 24; h++) {
     buckets[h] = { volume: 0, paidSum: 0, paidCount: 0 };
-  });
+  }
 
   dayTxs.forEach((t) => {
-    let hour = -1;
-    if (t.meal_time) {
-      const parts = t.meal_time.split(":");
-      hour = parseInt(parts[0], 10);
-    } else if (t.created_at) {
-      try {
-        const d = new Date(t.created_at);
-        if (!isNaN(d.getTime())) hour = d.getHours();
-      } catch (_e) {}
-    }
-
-    if (hour >= 0 && hour <= 23) {
-      // Slot bucket: find matching 2-hour window slot
-      const slot = hourSlots.reduce((prev, curr) => (curr <= hour ? curr : prev), hourSlots[0]);
-      if (buckets[slot]) {
-        buckets[slot].volume += 1;
-        const amount = Number(t.meal_amount) || 0;
-        if (!t.is_free && amount > 0) {
-          buckets[slot].paidSum += amount;
-          buckets[slot].paidCount += 1;
-        }
+    const hour = getTransactionHour(t);
+    if (hour >= 0 && hour <= 23 && buckets[hour]) {
+      buckets[hour].volume += 1;
+      const amount = Number(t.meal_amount) || 0;
+      if (!t.is_free && amount > 0) {
+        buckets[hour].paidSum += amount;
+        buckets[hour].paidCount += 1;
       }
     }
   });
 
   return hourSlots.map((h) => {
     const timeLabel = `${String(h).padStart(2, "0")}:00`;
-    const b = buckets[h];
+    const b = buckets[h] || { volume: 0, paidSum: 0, paidCount: 0 };
     const avgPrice = b.paidCount > 0 ? Math.round((b.paidSum / b.paidCount) * 100) / 100 : 0;
     return {
       time: timeLabel,

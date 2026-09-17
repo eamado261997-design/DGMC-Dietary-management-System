@@ -456,7 +456,20 @@ html.high-contrast-dark .recharts-text {
 
 html.high-contrast-dark .recharts-cartesian-grid-horizontal line,
 html.high-contrast-dark .recharts-cartesian-grid-vertical line {
-  stroke: #52525b !important;
+  stroke: #27272a !important;
+}
+
+html.high-contrast-dark .recharts-legend-item-text {
+  color: #e4e4e7 !important;
+}
+
+html.high-contrast-dark .recharts-tooltip-cursor {
+  stroke: #3f3f46 !important;
+}
+
+.dgmc-responsive-container {
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 
