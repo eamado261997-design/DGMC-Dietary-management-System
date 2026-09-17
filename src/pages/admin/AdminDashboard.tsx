@@ -7,7 +7,6 @@ import SystemDiagnostics from "../../components/admin/SystemDiagnostics.js";
 import OperationalSummaryCard from "../../components/OperationalSummaryCard.js";
 import PaymentOverviewWidget from "../../components/admin/PaymentOverviewWidget.js";
 import TransactionSummaryWidget from "../../components/TransactionSummaryWidget.js";
-import RBACPermissionMatrix from "../../components/admin/RBACPermissionMatrix.js";
 import LatencyPercentilePanel from "../../components/admin/LatencyPercentilePanel.js";
 import DiagnosticChart from "../../components/admin/DiagnosticChart.js";
 import { Users, Building, Activity, Coins, ClipboardList, TrendingUp, Settings, Clock, Utensils, Cpu, Server, Database, Zap, RefreshCw } from "lucide-react";
@@ -1223,7 +1222,6 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
 
             {/* System Diagnostics & Cache Layering Widget */}
             <SystemDiagnostics />
-            <RBACPermissionMatrix />
 
             {/* Quick Admin Navigation Blocks */}
             <div className="bg-white rounded-3xl border border-zinc-200 p-6 md:p-8">

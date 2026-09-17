@@ -398,7 +398,8 @@ export const schemas: Record<string, Record<string, SchemaFieldRule>> = {
     name: { type: "string", required: true, trim: true, min: 1, max: 100 }
   },
   "POST:/api/admin/decrypt-field": {
-    ciphertext: { type: "string", required: true, min: 1 }
+    ciphertext: { type: "string", required: false, min: 1 },
+    fields: { type: "object", required: false }
   },
   "PUT:/api/departments/:id": {
     name: { type: "string", required: true, trim: true, min: 1, max: 100 }

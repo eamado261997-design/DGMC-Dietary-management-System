@@ -23,6 +23,7 @@ export default function ManageEmployees() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [deptFilter, setDeptFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
 
   // Editor Modal
   const [editorOpen, setEditorOpen] = useState(false);
@@ -181,11 +182,15 @@ export default function ManageEmployees() {
     setFormEmpNo(p.employee_no && (p.employee_no.startsWith("enc:") || p.employee_no.startsWith("enc_det:")) ? "Decrypting..." : p.employee_no || "");
     setFormQrCode(p.qr_code && (p.qr_code.startsWith("enc:") || p.qr_code.startsWith("enc_det:")) ? "Decrypting..." : p.qr_code || "");
 
+    const decryptedFirstName = await decryptIfEncrypted(p.first_name);
+    const decryptedLastName = await decryptIfEncrypted(p.last_name);
     const decryptedEmail = await decryptIfEncrypted(p.email);
     const decryptedPhone = await decryptIfEncrypted(p.phone);
     const decryptedEmpNo = await decryptIfEncrypted(p.employee_no);
     const decryptedQrCode = await decryptIfEncrypted(p.qr_code);
 
+    setFormFirstName(decryptedFirstName);
+    setFormLastName(decryptedLastName);
     setFormEmail(decryptedEmail);
     setFormPhone(decryptedPhone);
     setFormEmpNo(decryptedEmpNo);
@@ -193,18 +198,61 @@ export default function ManageEmployees() {
   };
 
   const handleDelete = async (id: number) => {
-    openModal(
-        "Confirm Deletion",
-        "Are you sure you want to delete or deactivate this employee profile record? This is irreversible.",
-        async () => {
-            try {
-              await apiFetch(`/api/admin/people/${id}`, { method: "DELETE" });
-              loadData();
-            } catch (err: any) {
-              alert(err.message || "Failed to delete record.");
-            }
+    const person = employees.find((e) => e.id === id);
+    const fullName = person ? `${person.first_name} ${person.last_name}` : "this employee";
+
+    openModal({
+      title: "Remove Employee Record",
+      message: (
+        <div className="space-y-3 text-xs text-zinc-600">
+          <p>
+            Are you sure you want to remove <strong className="text-zinc-900">{fullName}</strong>?
+          </p>
+          <div className="p-3 bg-teal-50/70 border border-teal-200 rounded-xl text-teal-900 text-[11px] leading-relaxed">
+            <strong>System Audit Protection:</strong> If this employee has past cafeteria meal transactions, their account will be safely set to <strong>Inactive</strong> to preserve financial accounting. If no transactions exist, their profile will be deleted permanently.
+          </div>
+        </div>
+      ),
+      type: "danger",
+      confirmLabel: "Proceed",
+      cancelLabel: "Cancel",
+      onConfirm: async () => {
+        try {
+          const res = await apiFetch(`/api/admin/people/${id}`, { method: "DELETE" });
+          await loadData();
+          if (res?.deactivated) {
+            openModal({
+              title: "Employee Set to Inactive",
+              message: (
+                <div className="space-y-2 text-xs text-zinc-600">
+                  <p>{res.message || `${fullName} has recorded transactions. The profile was marked Inactive and future meal schedules were cancelled.`}</p>
+                  <p className="text-zinc-500">You can use the Status filter to show only active employees or view inactive records anytime.</p>
+                </div>
+              ),
+              type: "info",
+              confirmLabel: "Got It",
+              showCancel: false,
+            });
+          } else {
+            openModal({
+              title: "Record Deleted",
+              message: `${fullName}'s employee profile and credentials have been permanently deleted.`,
+              type: "success",
+              confirmLabel: "Done",
+              showCancel: false,
+            });
+          }
+        } catch (err: any) {
+          openModal({
+            title: "Deletion Error",
+            message: err.message || "Failed to remove employee record.",
+            type: "danger",
+            confirmLabel: "Dismiss",
+            showCancel: false,
+          });
         }
-    );
+      },
+    });
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -451,7 +499,12 @@ export default function ManageEmployees() {
       (p.username && p.username.toLowerCase().includes(debouncedSearch.toLowerCase()));
 
     const matchDept = deptFilter === "" || p.department_id?.toString() === deptFilter;
-    return matchSearch && matchDept;
+    const matchStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && (p.employee_status === "active" || (!p.employee_status && p.is_active))) ||
+      (statusFilter === "inactive" && (p.employee_status === "inactive" || !p.is_active));
+
+    return matchSearch && matchDept && matchStatus;
   });
 
   return (
@@ -508,7 +561,7 @@ export default function ManageEmployees() {
             className="w-full h-10 pl-10 pr-4 rounded-xl border border-zinc-200 bg-zinc-50 text-xs focus:ring-1 focus:ring-teal-700 outline-none text-zinc-900"
           />
         </div>
-        <div className="w-full md:w-60">
+        <div className="w-full md:w-56">
           <select
             value={deptFilter}
             onChange={(e) => setDeptFilter(e.target.value)}
@@ -520,6 +573,17 @@ export default function ManageEmployees() {
                 {d.name}
               </option>
             ))}
+          </select>
+        </div>
+        <div className="w-full md:w-40">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+            className="w-full h-10 px-3.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs focus:ring-1 focus:ring-teal-700 outline-none text-zinc-600 font-bold"
+          >
+            <option value="all">All Statuses</option>
+            <option value="active">Active Only</option>
+            <option value="inactive">Inactive Only</option>
           </select>
         </div>
       </div>

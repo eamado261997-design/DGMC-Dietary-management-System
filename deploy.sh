@@ -15,7 +15,7 @@ echo "Step 3: Creating logs directory..."
 mkdir -p logs
 
 echo "Step 4: Starting app with PM2 using ecosystem config..."
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.cjs
 
 echo "Step 5: Saving PM2 process list..."
 pm2 save

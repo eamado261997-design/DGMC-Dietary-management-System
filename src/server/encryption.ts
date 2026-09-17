@@ -1,8 +1,10 @@
 import crypto from "crypto";
 import { Person } from "../types.js";
 
+const ALGORITHM = "aes-256-gcm";
+
 // 32-byte encryption key derivation
-const getEncryptionKey = (): Buffer => {
+export const getEncryptionKey = (): Buffer => {
   const keyEnv = process.env.ENCRYPTION_KEY;
   if (keyEnv) {
     if (keyEnv.length === 64) {
@@ -10,42 +12,82 @@ const getEncryptionKey = (): Buffer => {
     }
     return crypto.createHash("sha256").update(keyEnv).digest();
   }
-  // Fallback derived securely from JWT_SECRET or default secret
+  // Primary derived securely from JWT_SECRET or default secret
   const secret = process.env.JWT_SECRET || "dgmc_dietary_secret_jwt_key_9501";
   return crypto.createHash("sha256").update(secret + "_encryption_salt").digest();
 };
 
-const ALGORITHM = "aes-256-gcm";
+/**
+ * Returns all historical and fallback candidate encryption keys.
+ * This allows decrypting records encrypted across secret migrations and seeds.
+ */
+function getCandidateKeys(): Buffer[] {
+  const keys: Buffer[] = [];
+  const primary = getEncryptionKey();
+  keys.push(primary);
+
+  const addKeyFromSecret = (sec?: string | null) => {
+    if (!sec) return;
+    keys.push(crypto.createHash("sha256").update(sec + "_encryption_salt").digest());
+    keys.push(crypto.createHash("sha256").update(sec).digest());
+  };
+
+  const keyEnv = process.env.ENCRYPTION_KEY;
+  if (keyEnv) {
+    if (keyEnv.length === 64) {
+      keys.push(Buffer.from(keyEnv, "hex"));
+    }
+    keys.push(crypto.createHash("sha256").update(keyEnv).digest());
+  }
+
+  addKeyFromSecret(process.env.JWT_SECRET);
+  addKeyFromSecret("dgmc_dietary_secret_jwt_key_9501");
+  addKeyFromSecret("123456789");
+
+  // Deduplicate keys
+  const uniqueKeys: Buffer[] = [];
+  const seen = new Set<string>();
+  for (const k of keys) {
+    const hex = k.toString("hex");
+    if (!seen.has(hex)) {
+      seen.add(hex);
+      uniqueKeys.push(k);
+    }
+  }
+  return uniqueKeys;
+}
 
 /**
  * Encrypts a string deterministically using AES-256-GCM.
  * This ensures that the same plaintext always produces the same ciphertext,
  * allowing index scans and exact match queries in databases.
+ * Automatically unwraps existing encryption to prevent multi-layer double encryption.
  */
 export function encryptDeterministic(text: string | null | undefined): string {
   if (text === null || text === undefined) return "";
+  // Fully unwrap if already encrypted
+  const cleanText = decrypt(text);
+  if (cleanText === "") return "";
   try {
     const key = getEncryptionKey();
-    // Derive a 12-byte IV deterministically from the key and the text itself
-    const iv = crypto.createHmac("sha256", key).update(text).digest().slice(0, 12);
+    // Derive a 12-byte IV deterministically from the key and the clean text itself
+    const iv = crypto.createHmac("sha256", key).update(cleanText).digest().slice(0, 12);
     const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-    let encrypted = cipher.update(text, "utf8", "hex");
+    let encrypted = cipher.update(cleanText, "utf8", "hex");
     encrypted += cipher.final("hex");
     const authTag = cipher.getAuthTag().toString("hex");
     return `enc_det:${iv.toString("hex")}:${encrypted}:${authTag}`;
   } catch (_err) {
-    return text;
+    return cleanText;
   }
 }
 
 /**
- * Decrypts a string encrypted with either randomized or deterministic AES-256-GCM.
- * Seamlessly passes through unencrypted text for backwards-compatibility.
+ * Single-pass decryption attempt trying primary key first, then all candidate keys.
  */
-export function decrypt(cipherText: string | null | undefined): string {
-  if (!cipherText) return "";
-  if (!cipherText.startsWith("enc:") && !cipherText.startsWith("enc_det:")) {
-    return cipherText; // Pass through legacy plain text / hashed values
+function decryptSingle(cipherText: string): string {
+  if (!cipherText || (!cipherText.startsWith("enc:") && !cipherText.startsWith("enc_det:"))) {
+    return cipherText;
   }
   try {
     const parts = cipherText.split(":");
@@ -55,24 +97,56 @@ export function decrypt(cipherText: string | null | undefined): string {
     const iv = Buffer.from(parts[1], "hex");
     const encryptedText = parts[2];
     const authTag = Buffer.from(parts[3], "hex");
-    const key = getEncryptionKey();
-    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-    decipher.setAuthTag(authTag);
-    let decrypted = decipher.update(encryptedText, "hex", "utf8");
-    decrypted += decipher.final("utf8");
-    return decrypted;
-  } catch (_err) {
+
+    for (const key of getCandidateKeys()) {
+      try {
+        const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+        decipher.setAuthTag(authTag);
+        let decrypted = decipher.update(encryptedText, "hex", "utf8");
+        decrypted += decipher.final("utf8");
+        return decrypted;
+      } catch {
+        // Try next candidate key
+      }
+    }
+    return cipherText;
+  } catch {
     return cipherText;
   }
+}
+
+/**
+ * Decrypts a string encrypted with either randomized or deterministic AES-256-GCM.
+ * Recursively unwraps any nested or double-encrypted values.
+ * Seamlessly passes through unencrypted text for backwards-compatibility.
+ */
+export function decrypt(cipherText: string | null | undefined): string {
+  if (!cipherText) return "";
+  let current = String(cipherText);
+  let depth = 0;
+  while ((current.startsWith("enc:") || current.startsWith("enc_det:")) && depth < 10) {
+    const next = decryptSingle(current);
+    if (next === current) break;
+    current = next;
+    depth++;
+  }
+  return current;
 }
 
 /**
  * Encrypts sensitive fields (PII & password hashes) of a Person object.
  */
 export function encryptPerson(p: Person): Person {
+  // Passwords are cryptographically secure one-way PBKDF2 hashes; do not double-encrypt with AES
+  const cleanPassword = p.password
+    ? (p.password.startsWith("enc:") || p.password.startsWith("enc_det:")
+        ? decrypt(p.password) || p.password
+        : p.password)
+    : undefined;
+
   return {
     ...p,
-    password: p.password ? encryptDeterministic(p.password) : undefined,
+    password: cleanPassword,
     first_name: encryptDeterministic(p.first_name),
     last_name: encryptDeterministic(p.last_name),
     email: p.email ? encryptDeterministic(p.email) : undefined,

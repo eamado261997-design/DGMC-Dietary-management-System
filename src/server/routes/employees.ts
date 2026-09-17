@@ -1,6 +1,7 @@
 import { jsonResponse, ApiResponse } from "../utils/apiUtils.js";
 import { readDatabase, writeDatabase, hashPassword } from "../db.js";
 import { isMysqlConnected, query, execute } from "../mysql.js";
+import { decryptPerson } from "../encryption.js";
 import { DEFAULT_MIN_PASSWORD_LENGTH } from "../../utils/password.js";
 import { validatePasswordComplexity } from "../../utils/password.js";
 import { Person } from "../../types.js";
@@ -278,6 +279,7 @@ export async function handleEmployeeRoutes(
     if (!authUser) return jsonResponse(401, { error: "Authentication required" });
     if (!requireRole(["admin", "dietary_admin"])) return jsonResponse(403, { error: "Admin privilege required" });
     const targetId = parseInt(personMatch[1], 10);
+    const isForce = queryParams?.force === "true" || queryParams?.force === true;
 
     if (isMysqlConnected()) {
       const rows = await query("SELECT * FROM people WHERE id = ?", [targetId]);
@@ -292,24 +294,44 @@ export async function handleEmployeeRoutes(
         }
       }
 
+      // Check for associated transaction or meal history records
       const hasTransactionsRows = await query(
         "SELECT id FROM transactions WHERE person_id = ? OR cashier_person_id = ? LIMIT 1",
         [targetId, targetId]
       );
+      const hasFreeMealRows = await query(
+        "SELECT id FROM free_meal_logs WHERE person_id = ? LIMIT 1",
+        [targetId]
+      );
+      const hasMealHistory = hasTransactionsRows.length > 0 || hasFreeMealRows.length > 0;
 
-      if (hasTransactionsRows.length > 0) {
+      if (hasMealHistory && !isForce) {
+        // Soft delete: deactivate user to preserve accounting & meal history
         await execute("UPDATE people SET is_active = 0, employee_status = 'inactive' WHERE id = ?", [targetId]);
         const todayStr = new Date().toISOString().split('T')[0];
         await execute("DELETE FROM employee_schedules WHERE person_id = ? AND work_date >= ?", [targetId, todayStr]);
-        await logToAudit("EMPLOYEE_DEACTIVATE", "people", targetId, null, "Account deactivated gracefully due to active transaction receipts. Future schedules purged.");
-        return jsonResponse(200, { message: "Person has active transaction receipts. Gracefully deactivated account and purged future schedules to preserve database integrity." });
+        await logToAudit("EMPLOYEE_DEACTIVATE", "people", targetId, null, "Account deactivated gracefully due to active transaction/meal receipts. Future schedules purged.");
+        return jsonResponse(200, {
+          success: true,
+          deactivated: true,
+          message: "Employee has recorded meal transactions or free meal history. To protect accounting records, their profile was deactivated (status: inactive) and future schedules were removed."
+        });
       }
 
-      await execute("DELETE FROM people WHERE id = ?", [targetId]);
-      await execute("DELETE FROM employee_schedules WHERE person_id = ?", [targetId]);
+      // If force delete or no meal history:
+      // Cascading deletion of all child and related references in proper foreign key order
+      await execute("DELETE FROM employee_schedules WHERE person_id = ? OR created_by = ?", [targetId, targetId]);
       await execute("DELETE FROM free_meal_logs WHERE person_id = ?", [targetId]);
+      if (isForce) {
+        await execute("DELETE FROM transactions WHERE person_id = ? OR cashier_person_id = ?", [targetId, targetId]);
+      }
+      try {
+        await execute("UPDATE audit_logs SET user_id = NULL WHERE user_id = ?", [targetId]);
+        await execute("UPDATE system_settings SET updated_by = NULL WHERE updated_by = ?", [targetId]);
+      } catch (_fkIgnore) {}
+      await execute("DELETE FROM people WHERE id = ?", [targetId]);
       await logToAudit("EMPLOYEE_DELETE", "people", targetId, null, "Employee record deleted permanently from database.");
-      return jsonResponse(200, { message: "Person deleted successfully" });
+      return jsonResponse(200, { success: true, deleted: true, message: "Employee profile deleted permanently." });
     } else {
       const db = readDatabase();
       const index = db.people.findIndex(item => item.id === targetId);
@@ -325,24 +347,45 @@ export async function handleEmployeeRoutes(
         }
       }
 
-      const hasTransactions = db.transactions.some(t => t.person_id === targetId || t.cashier_person_id === targetId);
-      if (hasTransactions) {
+      const hasTransactions = (db.transactions || []).some(t => t.person_id === targetId || t.cashier_person_id === targetId);
+      const hasFreeMeals = (db.free_meal_log || []).some(f => f.person_id === targetId);
+      const hasMealHistory = hasTransactions || hasFreeMeals;
+
+      if (hasMealHistory && !isForce) {
+        // Soft delete: deactivate user to preserve accounting & meal history
         db.people[index].is_active = false;
         db.people[index].employee_status = "inactive";
         const todayStr = new Date().toISOString().split('T')[0];
-        db.employee_schedules = db.employee_schedules.filter(s => !(s.person_id === targetId && s.work_date >= todayStr));
+        db.employee_schedules = (db.employee_schedules || []).filter(s => !(s.person_id === targetId && s.work_date >= todayStr));
         writeDatabase(db);
-        await logToAudit("EMPLOYEE_DEACTIVATE", "people", targetId, null, "Account deactivated gracefully due to active transaction receipts. Future schedules purged.");
-        return jsonResponse(200, { message: "Person has active transaction receipts. Gracefully deactivated account and purged future schedules to preserve database integrity." });
+        await logToAudit("EMPLOYEE_DEACTIVATE", "people", targetId, null, "Account deactivated gracefully due to active transaction/meal receipts. Future schedules purged.");
+        return jsonResponse(200, {
+          success: true,
+          deactivated: true,
+          message: "Employee has recorded meal transactions or free meal history. To protect accounting records, their profile was deactivated (status: inactive) and future schedules were removed."
+        });
       }
 
+      // Cascading deletion of all child and related references in proper foreign key order
+      db.employee_schedules = (db.employee_schedules || []).filter(s => s.person_id !== targetId && s.created_by !== targetId);
+      db.free_meal_log = (db.free_meal_log || []).filter(f => f.person_id !== targetId);
+      if (isForce) {
+        db.transactions = (db.transactions || []).filter(t => t.person_id !== targetId && t.cashier_person_id !== targetId);
+      }
+      if (db.audit_logs) {
+        db.audit_logs.forEach(a => {
+          if (a.user_id === targetId) a.user_id = null as any;
+        });
+      }
+      if (db.system_settings) {
+        db.system_settings.forEach(s => {
+          if (s.updated_by === targetId) s.updated_by = null as any;
+        });
+      }
       db.people.splice(index, 1);
-      db.employee_schedules = db.employee_schedules.filter(s => s.person_id !== targetId);
-      db.free_meal_log = db.free_meal_log.filter(f => f.person_id !== targetId);
-      
       writeDatabase(db);
       await logToAudit("EMPLOYEE_DELETE", "people", targetId, null, "Employee record deleted permanently from database.");
-      return jsonResponse(200, { message: "Person deleted successfully" });
+      return jsonResponse(200, { success: true, deleted: true, message: "Employee profile deleted permanently." });
     }
   }
 
@@ -397,7 +440,12 @@ export async function handleEmployeeRoutes(
         warnings
       });
 
-      return jsonResponse(200, rows, undefined, getPerfHeaders(metric));
+      const decryptedRows = rows.map(r => {
+        const dec = decryptPerson(r);
+        delete dec.password;
+        return dec;
+      });
+      return jsonResponse(200, decryptedRows, undefined, getPerfHeaders(metric));
     } else {
       const dbTimer = startTimer();
       const db = readDatabase();
@@ -417,7 +465,7 @@ export async function handleEmployeeRoutes(
           unmatchedDepartments++;
           warnings.push(`User ${p.id} (${p.username}) has department_id ${p.department_id} but no matching department in db.departments`);
         }
-        const cp = { ...p };
+        const cp = decryptPerson({ ...p });
         delete cp.password;
         return { ...cp, department_name: dept ? dept.name : "N/A" };
       });
@@ -762,14 +810,14 @@ export async function handleEmployeeRoutes(
           SELECT p.*, d.name AS department_name 
           FROM people p 
           LEFT JOIN departments d ON p.department_id = d.id 
-          WHERE p.role = 'employee'
+          WHERE p.role = 'employee' AND p.is_active = 1
         `);
       } else {
         rows = await query(`
           SELECT p.*, d.name AS department_name 
           FROM people p 
           LEFT JOIN departments d ON p.department_id = d.id 
-          WHERE p.role = 'employee' AND p.department_id = ?
+          WHERE p.role = 'employee' AND p.department_id = ? AND p.is_active = 1
         `, [managedDepartmentId]);
       }
       dbLatencyMs = dbTimer();
@@ -801,14 +849,19 @@ export async function handleEmployeeRoutes(
         warnings
       });
 
-      return jsonResponse(200, rows, undefined, getPerfHeaders(metric));
+      const decryptedRows = rows.map(r => {
+        const dec = decryptPerson(r);
+        delete dec.password;
+        return dec;
+      });
+      return jsonResponse(200, decryptedRows, undefined, getPerfHeaders(metric));
     } else {
       const dbTimer = startTimer();
       const db = readDatabase();
       dbLatencyMs = dbTimer();
 
       const joinTimer = startTimer();
-      const filtered = db.people.filter(p => p.role === "employee" && (authUser.role === "admin" || p.department_id === managedDepartmentId));
+      const filtered = db.people.filter(p => p.is_active && p.role === "employee" && (authUser.role === "admin" || p.department_id === managedDepartmentId));
       recordsProcessed = filtered.length;
       const emps = filtered.map(p => {
         const dept = p.department_id ? db.departments?.find(d => Number(d.id) === Number(p.department_id)) : null;
@@ -818,7 +871,7 @@ export async function handleEmployeeRoutes(
           unmatchedDepartments++;
           warnings.push(`User ${p.id} (${p.username}) missing dept in JSON db`);
         }
-        const cp = { ...p };
+        const cp = decryptPerson({ ...p });
         delete cp.password;
         return { ...cp, department_name: dept ? dept.name : "N/A" };
       });
@@ -893,7 +946,7 @@ export async function handleEmployeeRoutes(
         } else if (action === "add" || action === "update") {
           const p = await query("SELECT is_active FROM people WHERE id = ?", [person_id]);
           if (p.length === 0 || !p[0].is_active) {
-             return jsonResponse(400, { error: "Cannot schedule inactive employee" });
+             return jsonResponse(400, { error: "Cannot schedule inactive or non-existent employee" });
           }
           const check = await query("SELECT id FROM employee_schedules WHERE person_id = ? AND work_date = ?", [person_id, work_date]);
           if (check.length > 0) {
@@ -915,14 +968,14 @@ export async function handleEmployeeRoutes(
         if (action === "remove") {
           db.employee_schedules = db.employee_schedules.filter(s => !(s.person_id === person_id && s.work_date === work_date));
         } else {
+          const p = db.people.find(person => person.id === person_id);
+          if (!p || !p.is_active) {
+              return jsonResponse(400, { error: "Cannot schedule inactive or non-existent employee" });
+          }
           const existing = db.employee_schedules.find(s => s.person_id === person_id && s.work_date === work_date);
           if (existing) {
             existing.shift_type = shift_type || "day";
           } else {
-            const p = db.people.find(person => person.id === person_id);
-            if (!p || !p.is_active) {
-                return jsonResponse(400, { error: "Cannot schedule inactive employee" });
-            }
             const nextId = db.employee_schedules.length > 0 ? Math.max(...db.employee_schedules.map(s => s.id)) + 1 : 1;
             db.employee_schedules.push({
               id: nextId,

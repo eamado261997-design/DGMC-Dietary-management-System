@@ -32,17 +32,19 @@ export async function handleDepartmentRoutes(
     const nowStr = new Date().toISOString();
     if (isMysqlConnected()) {
       const exists = await query("SELECT id FROM departments WHERE LOWER(name) = ?", [name.trim().toLowerCase()]);
-      if (exists.length > 0) return jsonResponse(400, { error: "Department already exists" });
+      if (exists.length > 0) return jsonResponse(400, { error: "Department with this name already exists" });
 
-      await execute("INSERT INTO departments (id, name, created_at) VALUES (NULL, ?, ?)", [name.trim(), nowStr]);
-      const newRows = await query("SELECT * FROM departments ORDER BY id DESC LIMIT 1");
-      await logToAudit("DEPARTMENT_CREATE", "departments", newRows[0]?.id, null, newRows[0]);
+      const maxRows = await query("SELECT MAX(id) as maxId FROM departments");
+      const nextId = (maxRows[0]?.maxId || 0) + 1;
+      await execute("INSERT INTO departments (id, name, created_at) VALUES (?, ?, ?)", [nextId, name.trim(), nowStr]);
+      const newRows = await query("SELECT * FROM departments WHERE id = ?", [nextId]);
+      await logToAudit("DEPARTMENT_CREATE", "departments", nextId, null, newRows[0]);
       return jsonResponse(201, { success: true, department: newRows[0] });
     } else {
       const db = readDatabase();
       if (!db.departments) db.departments = [];
       const exists = db.departments.some((d: any) => d.name.toLowerCase() === name.trim().toLowerCase());
-      if (exists) return jsonResponse(400, { error: "Department already exists" });
+      if (exists) return jsonResponse(400, { error: "Department with this name already exists" });
 
       const nextId = db.departments.length > 0 ? Math.max(...db.departments.map((d: any) => d.id)) + 1 : 1;
       const newDept = { id: nextId, name: name.trim(), created_at: nowStr };
@@ -54,6 +56,39 @@ export async function handleDepartmentRoutes(
   }
 
   const deptMatch = path.match(/^\/api\/departments\/(\d+)$/);
+  if (deptMatch && method === "PUT") {
+    if (!authUser) return jsonResponse(401, { error: "Authentication required" });
+    if (!requireRole(["admin", "dietary_admin"])) return jsonResponse(403, { error: "Admin privilege required" });
+    const deptId = parseInt(deptMatch[1], 10);
+    const { name } = body || {};
+    if (!name || !name.trim()) return jsonResponse(400, { error: "Department name is required" });
+
+    if (isMysqlConnected()) {
+      const exists = await query("SELECT id FROM departments WHERE LOWER(name) = ? AND id != ?", [name.trim().toLowerCase(), deptId]);
+      if (exists.length > 0) return jsonResponse(400, { error: "Department with this name already exists" });
+
+      const deptRows = await query("SELECT * FROM departments WHERE id = ?", [deptId]);
+      if (deptRows.length === 0) return jsonResponse(404, { error: "Department not found" });
+
+      await execute("UPDATE departments SET name = ? WHERE id = ?", [name.trim(), deptId]);
+      const updatedRows = await query("SELECT * FROM departments WHERE id = ?", [deptId]);
+      await logToAudit("DEPARTMENT_UPDATE", "departments", deptId, deptRows[0], updatedRows[0]);
+      return jsonResponse(200, { success: true, department: updatedRows[0] });
+    } else {
+      const db = readDatabase();
+      const exists = (db.departments || []).some((d: any) => d.name.toLowerCase() === name.trim().toLowerCase() && d.id !== deptId);
+      if (exists) return jsonResponse(400, { error: "Department with this name already exists" });
+
+      const index = (db.departments || []).findIndex((d: any) => d.id === deptId);
+      if (index === -1) return jsonResponse(404, { error: "Department not found" });
+
+      const oldDept = { ...db.departments[index] };
+      db.departments[index].name = name.trim();
+      writeDatabase(db);
+      await logToAudit("DEPARTMENT_UPDATE", "departments", deptId, oldDept, db.departments[index]);
+      return jsonResponse(200, { success: true, department: db.departments[index] });
+    }
+  }
   if (deptMatch && method === "DELETE") {
     if (!authUser) return jsonResponse(401, { error: "Authentication required" });
     if (!requireRole(["admin", "dietary_admin"])) return jsonResponse(403, { error: "Admin privilege required" });

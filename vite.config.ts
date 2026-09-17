@@ -29,6 +29,24 @@ export default defineConfig(() => {
             const executeRequest = async (body: any) => {
               let status = 200;
               try {
+                // Intercept the Prometheus metrics endpoint in Vite middleware
+                if (pathOnly === '/api/metrics') {
+                  const { isInternalIpAllowed } = await import('./src/server/utils/ipSecurity');
+                  
+                  if (!isInternalIpAllowed(String(ip))) {
+                    res.writeHead(403, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: "Forbidden: Telemetry access restricted to internal monitoring systems." }));
+                    return;
+                  }
+
+                  // Dynamically import to ensure we get the latest compiled logic in dev
+                  const { getPrometheusMetrics } = await import('./src/server/utils/performanceTracker');
+                  const metrics = getPrometheusMetrics();
+                  res.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4' });
+                  res.end(metrics);
+                  return;
+                }
+
                 const result = await handleApiRequest(
                   req.method || 'GET',
                   pathOnly,

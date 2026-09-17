@@ -384,38 +384,44 @@ export async function syncStateToSqlite(data: DatabaseSchema): Promise<void> {
       }
     }
 
-    // Perform sync deletions if elements were deleted from memory cached state
-    if (data.departments.length > 0) {
-      const ids = data.departments.map(x => x.id);
-      sqliteDb!.prepare(`DELETE FROM departments WHERE id NOT IN (${ids.join(",")})`).run();
-    }
-    if (data.people.length > 0) {
-      const ids = data.people.map(x => x.id);
-      sqliteDb!.prepare(`DELETE FROM people WHERE id NOT IN (${ids.join(",")})`).run();
-    }
-    if (data.employee_schedules.length > 0) {
-      const ids = data.employee_schedules.map(x => x.id);
-      sqliteDb!.prepare(`DELETE FROM employee_schedules WHERE id NOT IN (${ids.join(",")})`).run();
+    // Perform sync deletions in reverse dependency order (child records first, parent records last)
+    if (data.free_meal_log.length > 0) {
+      const ids = data.free_meal_log.map(x => x.id);
+      sqliteDb!.prepare(`DELETE FROM free_meal_logs WHERE id NOT IN (${ids.join(",")})`).run();
+    } else {
+      sqliteDb!.prepare("DELETE FROM free_meal_logs").run();
     }
     if (data.transactions.length > 0) {
       const ids = data.transactions.map(x => x.id);
       sqliteDb!.prepare(`DELETE FROM transactions WHERE id NOT IN (${ids.join(",")})`).run();
+    } else {
+      sqliteDb!.prepare("DELETE FROM transactions").run();
     }
-    if (data.free_meal_log.length > 0) {
-      const ids = data.free_meal_log.map(x => x.id);
-      sqliteDb!.prepare(`DELETE FROM free_meal_logs WHERE id NOT IN (${ids.join(",")})`).run();
+    if (data.employee_schedules.length > 0) {
+      const ids = data.employee_schedules.map(x => x.id);
+      sqliteDb!.prepare(`DELETE FROM employee_schedules WHERE id NOT IN (${ids.join(",")})`).run();
+    } else {
+      sqliteDb!.prepare("DELETE FROM employee_schedules").run();
     }
-    if (data.system_settings && data.system_settings.length > 0) {
-      const ids = data.system_settings.map(x => x.id);
-      sqliteDb!.prepare(`DELETE FROM system_settings WHERE id NOT IN (${ids.join(",")})`).run();
+    if (data.login_attempts && data.login_attempts.length > 0) {
+      const ids = data.login_attempts.map(x => x.id);
+      sqliteDb!.prepare(`DELETE FROM login_attempts WHERE id NOT IN (${ids.join(",")})`).run();
     }
     if (data.audit_logs && data.audit_logs.length > 0) {
       const ids = data.audit_logs.map(x => x.id);
       sqliteDb!.prepare(`DELETE FROM audit_logs WHERE id NOT IN (${ids.join(",")})`).run();
     }
-    if (data.login_attempts && data.login_attempts.length > 0) {
-      const ids = data.login_attempts.map(x => x.id);
-      sqliteDb!.prepare(`DELETE FROM login_attempts WHERE id NOT IN (${ids.join(",")})`).run();
+    if (data.system_settings && data.system_settings.length > 0) {
+      const ids = data.system_settings.map(x => x.id);
+      sqliteDb!.prepare(`DELETE FROM system_settings WHERE id NOT IN (${ids.join(",")})`).run();
+    }
+    if (data.people.length > 0) {
+      const ids = data.people.map(x => x.id);
+      sqliteDb!.prepare(`DELETE FROM people WHERE id NOT IN (${ids.join(",")})`).run();
+    }
+    if (data.departments.length > 0) {
+      const ids = data.departments.map(x => x.id);
+      sqliteDb!.prepare(`DELETE FROM departments WHERE id NOT IN (${ids.join(",")})`).run();
     }
   });
 
