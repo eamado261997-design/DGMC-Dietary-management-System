@@ -180,7 +180,10 @@ export function checkEndpointAuthorization(
 
   // 5. General Admin Endpoints (/api/admin/* and /api/audit-logs/*)
   if (normalizedPath.startsWith("/api/admin/") || normalizedPath.startsWith("/api/audit-logs")) {
-    const allowedRoles: UserRole[] = ["admin", "dietary_admin"];
+    let allowedRoles: UserRole[] = ["admin", "dietary_admin"];
+    if (normalizedPath === "/api/admin/reports/meals") {
+      allowedRoles = ["admin", "dietary_admin", "cashier", "manager"];
+    }
     if (!allowedRoles.includes(role)) {
       return {
         authorized: false,

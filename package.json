@@ -9,9 +9,9 @@
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "pm2:start": "pm2 start ecosystem.config.cjs",
-    "pm2:stop": "pm2 stop dgmc-app",
-    "pm2:logs": "pm2 logs dgmc-app",
-    "pm2:restart": "pm2 restart dgmc-app",
+    "pm2:stop": "pm2 stop dgmc-hospital-app",
+    "pm2:logs": "pm2 logs dgmc-hospital-app",
+    "pm2:restart": "pm2 restart dgmc-hospital-app",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "test": "vitest run",
@@ -46,7 +46,7 @@
     "recharts": "^3.10.1",
     "vite": "^6.2.3",
     "winston": "^3.19.0",
-    "zod": "^4.4.3"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
