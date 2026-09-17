@@ -5,22 +5,25 @@
 set -e
 
 echo "=== DGMC Hospital Server Deployment ==="
-echo "Step 1: Installing PM2 globally..."
-npm install -g pm2
+echo "Step 1: Installing dependencies safely..."
+npm install --legacy-peer-deps
 
-echo "Step 2: Building the application..."
-npm run build
+echo "Step 2: Building the frontend assets..."
+npx vite build
 
-echo "Step 3: Creating logs directory..."
+echo "Step 3: Compiling the backend server..."
+npx esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs
+
+echo "Step 4: Creating logs directory..."
 mkdir -p logs
 
-echo "Step 4: Starting app with PM2 using ecosystem config..."
+echo "Step 5: Starting app with PM2 using ecosystem config..."
 pm2 start ecosystem.config.cjs
 
-echo "Step 5: Saving PM2 process list..."
+echo "Step 6: Saving PM2 process list..."
 pm2 save
 
-echo "Step 6: Setting up PM2 to start on server reboot..."
+echo "Step 7: Setting up PM2 to start on server reboot..."
 pm2 startup
 
 echo ""
