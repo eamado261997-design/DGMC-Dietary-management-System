@@ -107,14 +107,15 @@ async function startServer() {
         imgSrc: ["'self'", "data:", "blob:", "https://*"],
         connectSrc: [
           "'self'",
+          "ws:",
           "wss:",
-          "https://*",
-          "http://*",
-          "ws://*",
+          "http:",
+          "https:",
           "ws://localhost:*",
           "ws://127.0.0.1:*",
           "http://localhost:*",
-          "http://127.0.0.1:*"
+          "http://127.0.0.1:*",
+          "*"
         ],
         frameAncestors: ["'self'", "https://*", "http://*", "*"],
       },
