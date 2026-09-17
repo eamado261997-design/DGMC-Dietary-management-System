@@ -22,6 +22,9 @@ chmod +x deploy.sh
 ### On Windows:
 
 ```cmd
+# Ensure .env is configured first
+copy .env.example .env
+
 deploy.bat
 ```
 
@@ -32,21 +35,33 @@ This will automatically:
 4. Configure PM2 to auto-start on server reboot
 5. Save the PM2 process list
 
+### Troubleshooting Node-Gyp (Windows)
+If you encounter errors during installation related to `node-gyp` or `python`:
+```cmd
+npm install --ignore-scripts
+```
+
 ## Manual Deployment Steps
 
 If you prefer to run commands individually:
 
 ```bash
-# Step 1: Install PM2
+# Step 1: Install dependencies
+npm install
+
+# If you see C++ build errors on Windows:
+# npm install --ignore-scripts
+
+# Step 2: Install PM2
 npm install -g pm2
 
-# Step 2: Build the app
+# Step 3: Build the app
 npm run build
 
-# Step 3: Start with PM2 using ecosystem config
-pm2 start ecosystem.config.js
+# Step 4: Start with PM2 using ecosystem config
+pm2 start ecosystem.config.cjs
 
-# Step 4: Save and enable startup
+# Step 5: Save and enable startup
 pm2 save
 pm2 startup
 ```
@@ -106,8 +121,8 @@ curl http://localhost:3000/api/health
 
 Returns:
 - **status**: "healthy" or "degraded"
-- **databases**: MySQL and SQLite connection status
-- **cache**: Redis cache stats
+- **databases**: MySQL and Cache connection status
+- **cache**: Redis connectivity and stats
 - **system**: CPU, memory, uptime
 
 ## Auto-Start on Reboot
@@ -136,8 +151,19 @@ kill -9 <PID>           # Kill it
 
 ### MySQL connection errors
 - Verify MySQL is running: `mysql -uroot -p`
-- Update `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD` in `ecosystem.config.js`
+- Update `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD` in `ecosystem.config.cjs`
 - Restart: `pm2 restart dgmc-hospital-app`
+
+### Redis / Cache connection errors
+- Ensure Redis is running if configured
+- Check `REDIS_URL` or `REDIS_HOST` in `ecosystem.config.cjs`
+- The system will automatically fall back to memory cache if Redis is unavailable.
+
+### Esbuild / Binary Mismatch (Windows)
+If you see `Host version does not match binary version`:
+```cmd
+npm rebuild esbuild
+```
 
 ### Memory issues
 Increase `max_memory_restart` in `ecosystem.config.js`, then restart.

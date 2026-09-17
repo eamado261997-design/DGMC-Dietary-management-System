@@ -14,7 +14,9 @@
     "pm2:restart": "pm2 restart dgmc-app",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "docker:cleanup": "docker rm -f dgmc_mysql dgmc_redis",
+    "docker:up": "docker compose up -d mysql redis"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
