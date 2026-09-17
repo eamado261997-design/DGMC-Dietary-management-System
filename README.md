@@ -1,332 +1,124 @@
-# DGMC - Dietary Management System
-## Complete Hospital Deployment & Operations Guide
+# DGMC Dietary Management System
+
+A robust, enterprise-grade full-stack hospital dietary and meal management platform built with React 18, TypeScript, Tailwind CSS, Express, MySQL, SQLite, Redis caching, PM2 clustering, Nginx reverse proxy, and Docker.
 
 ---
 
-## 📋 Table of Contents
+## 1. System Overview & Core Features
 
-1. [System Overview](#system-overview)
-2. [Architecture](#architecture)
-3. [Quick Start](#quick-start)
-4. [Docker Deployment](#docker-deployment)
-5. [PM2 Hospital Server Deployment](#pm2-hospital-server-deployment)
-6. [Database Setup](#database-setup)
-7. [Configuration](#configuration)
-8. [Monitoring & Health Checks](#monitoring--health-checks)
-9. [Operations & Troubleshooting](#operations--troubleshooting)
-10. [Security](#security)
-11. [Backup & Recovery](#backup--recovery)
-12. [Performance Tuning](#performance-tuning)
-13. [API Documentation](#api-documentation)
-14. [Support & Logging](#support--logging)
+- **Role-Based Access Control (RBAC)**: Dedicated secure dashboards and workflows for **Admins**, **Managers**, **Cashiers**, and **Employees**.
+- **Dietary & Meal Management**: Schedule, track, and manage specialized hospital meal plans, dietary restrictions, and patient/staff preferences.
+- **QR Code Verification**: Instant cryptographic QR code generation and live scanning check-ins for cafeteria transactions.
+- **Analytics & Reporting**: Real-time transaction volume curves, gross revenue tracking, and average meal pricing trends powered by Recharts.
+- **Dual-Mode Storage Engine**: Intelligent dual-mode database architecture supporting MySQL / SQLite / JSON file fallback.
+- **Audit Logging & Telemetry**: Comprehensive system audit trail, performance benchmarking, and Prometheus / Grafana metrics integration.
 
 ---
 
-## 🏥 System Overview
+## 2. Prerequisites
 
-DGMC (Dietary Management System) is a full-stack hospital application for managing meal allowances, employee scheduling, and dietary tracking built for Divine Grace Medical Center.
+To run and deploy the DGMC Dietary Management System, ensure your environment has the following software installed:
 
-- **Frontend:** React 18 with Vite
-- **Backend:** Node.js 22 with Express
-- **Database:** MySQL 8.0 + SQLite (WAL backup)
-- **Caching:** Redis 7
-- **Monitoring:** Prometheus + Grafana
-- **Process Manager:** PM2 (production cluster) or Docker (containerized)
-
-### Key Features
-- ✅ Multi-user role-based access (Admin, Manager, Cashier, Employee)
-- ✅ Real-time meal transaction tracking
-- ✅ Employee schedule management
-- ✅ Free meal allowance logging
-- ✅ System performance monitoring
-- ✅ Audit logs & login tracking
-- ✅ Automatic database sync & backup
-- ✅ Health check endpoints
-- ✅ Rate limiting & CORS security
-- ✅ Encrypted sensitive data (passwords, QR codes, employee info)
+- **Node.js**: Version 18+ (Node 22 LTS recommended)
+- **MySQL**: Version 8.0+ (for relational data storage)
+- **Redis**: Version 7.0+ (for caching and session / rate-limit stores)
+- **Docker & Docker Compose** (Optional, for containerized deployments)
+- **Nginx** (Optional, for production reverse proxy setup)
 
 ---
 
-## 🏗️ Architecture
+## 3. Local Development Steps
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Hospital Network                              │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
-│  │   Browser    │    │   Mobile     │    │   Tablet     │      │
-│  │   (React)    │    │   App        │    │   (iPad)     │      │
-│  └──────┬───────┘    └──────┬───────┘    └──────┬───────┘      │
-│         │                   │                    │               │
-│         └───────────────────┼────────────────────┘               │
-│                             │                                     │
-│                    ┌────────▼────────┐                           │
-│                    │  Node.js Server │ (Port 3000)              │
-│                    │  Express + API  │                           │
-│                    └────────┬────────┘                           │
-│                             │                                     │
-│         ┌───────────────────┼───────────────────┐               │
-│         │                   │                   │               │
-│    ┌────▼────┐         ┌───▼───┐         ┌────▼────┐          │
-│    │ MySQL   │         │Redis  │         │SQLite   │          │
-│    │(Primary)│         │(Cache)│         │(Backup) │          │
-│    └─────────┘         └───────┘         └─────────┘          │
-│                                                                   │
-│    ┌─────────────────────────────────────────────────────────┐ │
-│    │  Monitoring Stack                                       │ │
-│    │  ├─ Prometheus (Metrics Collection)                    │ │
-│    │  └─ Grafana (Visualization Dashboard)                  │ │
-│    └─────────────────────────────────────────────────────────┘ │
-│                                                                   │
-└─────────────────────────────────────────────────────────────────┘
-```
+1. **Clone the Repository & Install Dependencies**:
+   ```bash
+   git clone https://github.com/eamado261997-design/DGMC-Dietary-management-System.git
+   cd DGMC-Dietary-management-System
+   npm install
+   ```
+
+2. **Configure Environment Variables**:
+   Copy `.env.example` to `.env` and configure your local settings:
+   ```bash
+   cp .env.example .env
+   ```
+   *Example `.env` parameters:*
+   ```env
+   NODE_ENV=development
+   PORT=3000
+   MYSQL_HOST=127.0.0.1
+   MYSQL_PORT=3306
+   MYSQL_USER=root
+   MYSQL_PASSWORD=rootpassword
+   MYSQL_DATABASE=dgmc_meals
+   REDIS_URL=redis://127.0.0.1:6379
+   JWT_SECRET=your_jwt_secret_key_here
+   ```
+
+3. **Start the Development Server**:
+   ```bash
+   npm run dev
+   ```
+   This boots the unified Express backend and Vite middleware on `http://localhost:3000`.
 
 ---
 
-## 🚀 Quick Start
+## 4. Production Setup (Nginx, PM2 & Environment Variables)
 
-### Option 1: Docker (Recommended for Containerized Deployments)
+### Environment Variables
+For production, ensure all secret keys (`JWT_SECRET`, database credentials, Redis connection strings) are securely populated in `.env` or set in your hosting provider's environment manager.
 
+### PM2 Process Management (Cluster Mode)
+PM2 runs the application in cluster mode across multiple CPU cores for high availability and zero downtime.
+
+1. **Build the Production Bundle**:
+   ```bash
+   npm run build
+   ```
+   *(Compiles React frontend via `vite build` and bundles the Express server into `dist/server.cjs` via `esbuild`).*
+
+2. **Start the PM2 Cluster**:
+   ```bash
+   npm run pm2:start
+   ```
+   *(Managed by `ecosystem.config.cjs`, spawning instances across available CPU cores).*
+
+3. **PM2 Management Commands**:
+   - Status: `npx pm2 status`
+   - Logs: `npx pm2 logs dgmc-hospital-app`
+   - Monitor: `npx pm2 monit`
+   - Zero-Downtime Reload: `npx pm2 reload dgmc-hospital-app`
+   - Stop: `npm run pm2:stop`
+
+### Nginx Reverse Proxy Configuration
+A production-ready `nginx.conf` is provided at the root of the repository. It maps public web traffic on **ports 80 (HTTP)** and **443 (HTTPS)** to the local PM2-managed server cluster on port `3000`.
+
+- **Upstream Load Balancing (`dgmc_cluster`)**: Distributes traffic to `127.0.0.1:3000` with least-connection routing and keepalive.
+- **SSL / TLS & ACME**: Configured for TLS 1.2/1.3 and Let's Encrypt challenge routing (`/.well-known/acme-challenge/`).
+- **Security Headers**: Includes HSTS (`preload`), CSP, X-Frame-Options (`SAMEORIGIN`), X-Content-Type-Options (`nosniff`), Referrer-Policy, and Permissions-Policy.
+- **Gzip Compression**: Compresses text, JSON, CSS, and JS assets.
+
+To deploy Nginx on your Linux server:
 ```bash
-# Clone and navigate to project
-git clone <repo-url>
-cd DGMC-Dietary-management-system
-
-# Build and start all services
-docker compose up -d
-
-# Verify all containers are running
-docker ps
-
-# Check health
-curl http://localhost:3000/api/health
-
-# Open application
-# Navigate to http://localhost:3000 in browser
-```
-
-**Services running:**
-- App: http://localhost:3000
-- Grafana Dashboard: http://localhost:3001 (admin/admin)
-- Prometheus: http://localhost:9090
-- MySQL: localhost:3311 (root/root)
-- Redis: localhost:6379
-
-### Option 2: PM2 on Hospital Server
-
-```bash
-# On Ubuntu/Linux
-chmod +x deploy.sh
-./deploy.sh
-
-# On Windows
-deploy.bat
-
-# Check status
-pm2 status
-pm2 logs dgmc-hospital-app
+sudo cp nginx.conf /etc/nginx/sites-available/dgmc
+sudo ln -s /etc/nginx/sites-available/dgmc /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
 ---
 
-## 🐳 Docker Deployment
+## 5. Deployment Guide (Docker & Docker Compose)
 
-### Prerequisites
-- Docker Desktop 4.0+
-- docker-compose 2.0+
-- 4GB RAM minimum, 2 CPU cores
+The project includes an optimized multi-stage `Dockerfile`, a robust `.dockerignore`, and a complete `docker-compose.yml` orchestrating the App, MySQL, Redis, Prometheus, and Grafana.
 
-### Full Setup Instructions
-
+### Running with Docker Compose:
 ```bash
-# 1. Navigate to project directory
-cd DGMC-Dietary-management-system
-
-# 2. Build the application locally first
-npm run build
-
-# 3. Start all containers
-docker compose up -d
-
-# 4. Monitor startup
-docker compose logs -f dgmc_app
-
-# 5. Verify all services are healthy
-docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+docker compose up --build -d
 ```
 
-### Expected Output
-```
-NAMES             STATUS                PORTS
-dgmc_app          Up 2 minutes          0.0.0.0:3000->3000/tcp
-dgmc_mysql        Up 2 minutes (healthy) 0.0.0.0:3311->3306/tcp
-dgmc_redis        Up 2 minutes (healthy) 0.0.0.0:6379->6379/tcp
-dgmc_prometheus   Up 2 minutes          0.0.0.0:9090->9090/tcp
-dgmc_grafana      Up 2 minutes          0.0.0.0:3001->3000/tcp
-```
+### Multi-Stage Dockerfile Architecture:
+- **Build Stage**: Installs dependencies and compiles both the frontend and backend bundle into `dist/server.cjs`.
+- **Production Stage**: Uses a lightweight `node:22-bookworm-slim` base image, copying only production dependencies and compiled artifacts for a secure, minimal image footprint.
 
-### Docker Management
-
-```bash
-# View container logs
-docker logs dgmc_app              # Latest logs
-docker logs -f dgmc_app           # Follow live logs
-docker logs --tail 50 dgmc_app    # Last 50 lines
-
-# Stop / Restart services
-docker compose stop
-docker compose restart
-
-# Access MySQL directly
-docker exec -it dgmc_mysql mysql -uroot -proot dgmc
-
-# Backup database
-docker exec dgmc_mysql mysqldump -uroot -proot dgmc > backup.sql
-
-# Restore database
-docker exec -i dgmc_mysql mysql -uroot -proot dgmc < backup.sql
-```
-
----
-
-## 🏥 PM2 Hospital Server Deployment
-
-### Prerequisites
-- Ubuntu 20.04+ or Windows Server 2019+
-- Node.js 22.x LTS
-- npm 10+
-- MySQL 8.0 running on server
-- Redis 7 (optional, for caching)
-
-### Installation
-
-```bash
-# Ubuntu/Linux deployment
-chmod +x deploy.sh
-./deploy.sh
-```
-
-```cmd
-:: Windows deployment
-deploy.bat
-```
-
-### Verify Installation
-
-```bash
-# Check PM2 status
-pm2 status
-
-# View process details
-pm2 info dgmc-hospital-app
-
-# Monitor in real-time
-pm2 monit
-
-# View logs
-pm2 logs dgmc-hospital-app
-```
-
-### PM2 Process Configuration
-
-**`ecosystem.config.cjs` includes:**
-- `instances: "max"` — Utilizes all available CPU cores automatically
-- `exec_mode: "cluster"` — Enables local HTTP load balancing
-- `kill_timeout: 4000` — Graceful 4-second request draining window
-- `max_memory_restart: "500M"` — Auto-restart threshold per worker instance
-- `max_restarts: 10` — Prevents infinite restart loops
-- `min_uptime: "10s"` — Stability baseline
-
----
-
-## 🗄️ Database Setup
-
-### Connection Details (Default)
-```
-Host:     localhost (Docker) or server IP (PM2)
-Port:     3311 (Docker) or 3306 (PM2)
-Username: root
-Password: root
-Database: dgmc
-```
-
-### Key Database Tables
-- `departments` — Hospital departments and meal entitlement rules
-- `people` — Employee & staff accounts
-- `employee_schedules` — Shift duty schedules
-- `transactions` — Meal claims & cashier POS transactions
-- `free_meal_logs` — Complimentary meal allowance records
-- `system_settings` — System branding & shift configurations
-- `audit_logs` — Security action logs
-
----
-
-## 📊 Monitoring & Health Checks
-
-### Health Endpoint
-
-```bash
-curl http://localhost:3000/api/health | jq '.'
-```
-
-**Response includes:**
-```json
-{
-  "status": "healthy",
-  "uptime": "2h 15m 30s",
-  "databases": {
-    "mysql": {
-      "connected": true,
-      "health": {
-        "healthy": true,
-        "latencyMs": 2,
-        "error": null
-      }
-    },
-    "sqlite": {
-      "connected": true,
-      "mode": "WAL"
-    }
-  },
-  "system": {
-    "memory": {
-      "heapUsedFormatted": "125.45 MB",
-      "heapTotalFormatted": "256.00 MB"
-    },
-    "cpu": {
-      "usage": "12%"
-    }
-  }
-}
-```
-
-### Grafana Dashboard
-- **URL:** http://localhost:3001
-- **Credentials:** `admin` / `admin`
-
----
-
-## 🔐 Security
-
-1. **Role-Based Access Control (RBAC):** Session roles (`admin`, `dietary_admin`, `manager`, `cashier`, `employee`) strictly enforced on all API routes.
-2. **Field Encryption:** Sensitive user fields, employee numbers, and passwords are encrypted using bcrypt & AES.
-3. **Rate Limiting:** Integrated Express rate limiting (500 requests/min per IP) to prevent brute-force attacks.
-
----
-
-## 💾 Backup & Recovery
-
-### Daily Backup Script
-```bash
-#!/bin/bash
-DATE=$(date +%Y%m%d_%H%M%S)
-docker exec dgmc_mysql mysqldump -uroot -proot dgmc | gzip > backups/dgmc_$DATE.sql.gz
-echo "Backup saved to backups/dgmc_$DATE.sql.gz"
-```
-
----
-
-**Version:** 1.0.0  
-**Last Updated:** September 2026  
-**Maintained By:** DGMC Development Team
+### Automated CI/CD (GitHub Actions):
+The workflow at `.github/workflows/deploy.yml` automatically builds and pushes the Docker container image to **GitHub Container Registry (GHCR)** on every push to `main`.

@@ -7,20 +7,22 @@ services:
     container_name: dgmc_app
     restart: always
     ports:
+      - "80:3000"
+      - "443:3000"
       - "3000:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - MYSQL_HOST=dgmc_mysql
+      - MYSQL_HOST=db
       - MYSQL_PORT=3306
       - MYSQL_USER=root
       - MYSQL_PASSWORD=rootpassword
       - MYSQL_DATABASE=dgmc_meals
-      - REDIS_URL=redis://dgmc_redis:6379
+      - REDIS_URL=redis://cache:6379
     depends_on:
-      mysql:
+      db:
         condition: service_healthy
-      redis:
+      cache:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/api/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));\""]
@@ -29,9 +31,9 @@ services:
       retries: 3
       start_period: 15s
 
-  mysql:
+  db:
     image: mysql:8.0
-    container_name: dgmc_mysql
+    container_name: dgmc_db
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
@@ -41,7 +43,7 @@ services:
     ports:
       - "3311:3306"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - db_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
@@ -50,56 +52,21 @@ services:
       retries: 5
       start_period: 10s
 
-  redis:
+  cache:
     image: redis:7
-    container_name: dgmc_redis
+    container_name: dgmc_cache
     restart: always
     ports:
       - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - cache_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
 
-  prometheus:
-    image: prom/prometheus:v2.54.1
-    container_name: dgmc_prometheus
-    restart: always
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-
-  grafana:
-    image: grafana/grafana:11.1.0
-    container_name: dgmc_grafana
-    restart: always
-    ports:
-      - "3001:3000"
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana.ini:/etc/grafana/grafana.ini
-      - ./grafana/provisioning:/etc/grafana/provisioning
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    depends_on:
-      prometheus:
-        condition: service_started
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-
 volumes:
-  mysql_data:
-  grafana_data:
-  prometheus_data:
+  db_data:
+  cache_data:

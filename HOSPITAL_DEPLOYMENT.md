@@ -1,194 +1,96 @@
-# DGMC Hospital Server Deployment Guide
+# DGMC Hospital Server & Production Deployment Guide
 
-This guide explains how to deploy the DGMC Dietary Management System on a hospital Ubuntu or Windows server using PM2.
+This guide explains how to deploy the DGMC Dietary Management System in a production hospital environment using **PM2 Cluster Mode**, **Nginx Reverse Proxy**, and **Docker Compose**.
+
+---
 
 ## Prerequisites
 
-- Node.js 22+ installed on the server
-- npm installed
-- MySQL 8.0+ running on the server
-- Redis installed (optional, for caching)
-- Terminal/SSH access to the server
+- Node.js 22 LTS installed on the server
+- Docker Desktop / Docker Engine & Docker Compose (for containerized setup)
+- MySQL 8.0+ and Redis 7
+- Terminal / SSH access to the hospital server
 
-## Quick Deployment (5 minutes)
+---
 
-### On Ubuntu/Linux:
+## Option A: Containerized Deployment (Recommended)
 
+Using Docker Compose ensures consistency across hospital servers, automatically orchestrating the App, MySQL, Redis, Prometheus, and Grafana.
+
+1. **Clone and Configure**:
+   ```bash
+   git clone https://github.com/eamado261997-design/DGMC-Dietary-management-System.git
+   cd DGMC-Dietary-management-System
+   cp .env.example .env
+   # Edit .env with your production database credentials
+   ```
+
+2. **Start the Stack**:
+   ```bash
+   docker compose up --build -d
+   ```
+
+3. **Verify Containers**:
+   ```bash
+   docker compose ps
+   ```
+
+---
+
+## Option B: Native Host Deployment with PM2 & Nginx
+
+If running natively on Linux/Windows host servers:
+
+### 1. Build the Production Bundle
 ```bash
-chmod +x deploy.sh
-./deploy.sh
-```
-
-### On Windows:
-
-```cmd
-# Ensure .env is configured first
-copy .env.example .env
-
-deploy.bat
-```
-
-This will automatically:
-1. Install PM2 globally
-2. Build the application (`npm run build`)
-3. Start the app with PM2
-4. Configure PM2 to auto-start on server reboot
-5. Save the PM2 process list
-
-### Troubleshooting Node-Gyp (Windows)
-If you encounter errors during installation related to `node-gyp` or `python`:
-```cmd
-npm install --ignore-scripts
-```
-
-## Manual Deployment Steps
-
-If you prefer to run commands individually:
-
-```bash
-# Step 1: Install dependencies
 npm install
-
-# If you see C++ build errors on Windows:
-# npm install --ignore-scripts
-
-# Step 2: Install PM2
-npm install -g pm2
-
-# Step 3: Build the app
 npm run build
+```
+*(Compiles the React frontend and bundles the Express server into `dist/server.cjs` via `esbuild`).*
 
-# Step 4: Start with PM2 using ecosystem config
-pm2 start ecosystem.config.cjs
-
-# Step 5: Save and enable startup
+### 2. Start PM2 in Cluster Mode
+```bash
+npm run pm2:start
 pm2 save
 pm2 startup
 ```
+*Managed by `ecosystem.config.cjs`, PM2 clusters worker instances across all CPU cores with zero-downtime reloads (`wait_ready: true`) and automatic memory limits (`450M`).*
 
-## Managing the App
+---
 
-### Check Status
-```bash
-pm2 status
-pm2 info dgmc-hospital-app
-```
+## Nginx Reverse Proxy Setup
 
-### View Logs
-```bash
-pm2 logs dgmc-hospital-app          # Real-time logs
-pm2 logs dgmc-hospital-app --lines 100  # Last 100 lines
-```
+To route public traffic from ports **80 (HTTP)** and **443 (HTTPS)** to PM2 on port `3000`:
 
-### Restart After Updates
-```bash
-npm run build                       # Rebuild
-pm2 restart dgmc-hospital-app       # Restart with PM2
-```
+1. Copy `nginx.conf` to your Nginx sites directory:
+   ```bash
+   sudo cp nginx.conf /etc/nginx/sites-available/dgmc
+   sudo ln -s /etc/nginx/sites-available/dgmc /etc/nginx/sites-enabled/
+   ```
+2. Test configuration and reload Nginx:
+   ```bash
+   sudo nginx -t
+   sudo systemctl reload nginx
+   ```
 
-### Monitor Resources
-```bash
-pm2 monit                           # Interactive CPU/Memory monitor
-```
+---
 
-### Stop or Remove
-```bash
-pm2 stop dgmc-hospital-app
-pm2 delete dgmc-hospital-app
-pm2 kill                            # Stop all PM2 processes
-```
+## Managing PM2 Processes
 
-## Configuration
+- **Status**: `pm2 status`
+- **Real-time logs**: `npx pm2 logs dgmc-hospital-app`
+- **Metrics monitor**: `npx pm2 monit`
+- **Zero-downtime reload**: `npx pm2 reload dgmc-hospital-app`
+- **Restart**: `npx pm2 restart dgmc-hospital-app`
+- **Stop**: `npm run pm2:stop`
 
-The `ecosystem.config.js` file controls how PM2 runs your app. Key settings:
+---
 
-- **instances**: Number of worker processes (set to 1 for hospital use)
-- **exec_mode**: "cluster" for multi-core load balancing
-- **max_memory_restart**: Restart if using >500MB RAM
-- **MYSQL_HOST**: Point to your hospital MySQL server
-- **REDIS_URL**: Cache server (optional)
-- **error_file** and **out_file**: Log file locations
+## Health Check & Telemetry
 
-Edit these values before deployment if needed.
-
-## Health Check
-
-The app provides a health endpoint:
-
-```bash
-curl http://localhost:3000/api/health
-```
-
-Returns:
-- **status**: "healthy" or "degraded"
-- **databases**: MySQL and Cache connection status
-- **cache**: Redis connectivity and stats
-- **system**: CPU, memory, uptime
-
-## Auto-Start on Reboot
-
-After running `pm2 startup`, PM2 will auto-start on server reboot. To verify:
-
-```bash
-pm2 list            # Shows startup command
-sudo systemctl list-unit-files | grep pm2  # Verify systemd service (Linux)
-```
-
-## Troubleshooting
-
-### App won't start
-```bash
-pm2 logs dgmc-hospital-app  # Check error messages
-pm2 restart dgmc-hospital-app  # Force restart
-```
-
-### Port 3000 already in use
-Edit `ecosystem.config.js` to change the port, or kill the process using port 3000:
-```bash
-lsof -i :3000           # Find process
-kill -9 <PID>           # Kill it
-```
-
-### MySQL connection errors
-- Verify MySQL is running: `mysql -uroot -p`
-- Update `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD` in `ecosystem.config.cjs`
-- Restart: `pm2 restart dgmc-hospital-app`
-
-### Redis / Cache connection errors
-- Ensure Redis is running if configured
-- Check `REDIS_URL` or `REDIS_HOST` in `ecosystem.config.cjs`
-- The system will automatically fall back to memory cache if Redis is unavailable.
-
-### Esbuild / Binary Mismatch (Windows)
-If you see `Host version does not match binary version`:
-```cmd
-npm rebuild esbuild
-```
-
-### Memory issues
-Increase `max_memory_restart` in `ecosystem.config.js`, then restart.
-
-## Logs Location
-
-- Standard output: `logs/out.log`
-- Error output: `logs/err.log`
-
-View live:
-```bash
-tail -f logs/out.log
-tail -f logs/err.log
-```
-
-## Next Steps
-
-1. Set up a reverse proxy (Nginx) for HTTPS
-2. Configure firewall rules to allow hospital network access
-3. Set up automated backups for MySQL
-4. Monitor system performance with Prometheus/Grafana (already included)
-
-## Support
-
-For issues, check:
-1. PM2 logs: `pm2 logs dgmc-hospital-app`
-2. System logs (Linux): `journalctl -u pm2`
-3. App health: `curl http://localhost:3000/api/health`
+- **API Health Check**:
+  ```bash
+  curl http://localhost:3000/api/health
+  ```
+- **Prometheus Metrics**: `http://localhost:3000/api/metrics`
+- **Grafana Dashboards**: Available on port `3001` (default admin credentials: `admin` / `admin`).

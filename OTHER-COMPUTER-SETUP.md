@@ -1,182 +1,107 @@
 # DGMC Setup on Another Computer
 
-Use this checklist to install and run the DGMC Dietary Management System on another Windows computer.
+Use this checklist to install and run the DGMC Dietary Management System on another computer (Windows/Linux/macOS) using Docker and PM2.
 
-## 1. Install prerequisites
+## 1. Install Prerequisites
 
-Install the following:
-
-- Node.js (use the same major version as the current computer)
-- Docker Desktop with WSL2 enabled
+Install the following tools:
+- Node.js (Version 18+ or 22 LTS)
+- Docker Desktop with WSL2 enabled (or Docker Engine + Docker Compose on Linux)
 - Git
-- PM2:
+- PM2 (global install):
+  ```powershell
+  npm install -g pm2
+  ```
 
+Ensure Docker Desktop is running before continuing.
+
+---
+
+## 2. Clone the Repository
+
+Clone your repository on the target computer:
 ```powershell
-npm install -g pm2
+git clone https://github.com/eamado261997-design/DGMC-Dietary-management-System.git
+cd DGMC-Dietary-management-System
 ```
 
-Make sure Docker Desktop is running before continuing.
+Copy your production `.env` file securely from the original computer into the project root (or create it based on `.env.example`).
 
-## 2. Copy or clone the project
+---
 
-Clone the repository:
+## 3. Start Multi-Container Infrastructure via Docker Compose
 
-```powershell
-git clone <REPOSITORY_URL>
-cd DGMC-Dietary-management-system-2026-08-10-f3094
-```
+Our unified `docker-compose.yml` orchestrates **MySQL (`db`)**, **Redis (`cache`)**, **Prometheus**, **Grafana**, and the **App (`app`)** with persistent data volumes.
 
-Or copy the project folder manually.
+1. **Build and start all containers**:
+   ```powershell
+   docker compose up --build -d
+   ```
 
-Do not copy `node_modules`. It will be installed again. Copy `.env` securely from the original computer, or create it from `.env.example`.
+2. **Verify container health**:
+   ```powershell
+   docker compose ps
+   ```
 
-## 3. Configure `.env`
-
-Use the local Docker service ports:
-
-```env
-NODE_ENV=production
-MYSQL_HOST=127.0.0.1
-MYSQL_PORT=3311
-MYSQL_USER=dgmc_user
-MYSQL_PASSWORD=dgmc_password
-MYSQL_DATABASE=dgmc_meals
-REDIS_HOST=127.0.0.1
-REDIS_PORT=6379
-REDIS_PASSWORD=
-```
-
-Keep secrets such as `JWT_SECRET` and `GEMINI_API_KEY` private. Do not commit `.env`.
-
-## 4. Start Docker services
-
-From the project root:
-
-```powershell
-docker compose up -d
-docker compose ps
-```
-
-The computer must have these ports available:
-
-- App: `3000`
-- MySQL: `3311`
-- Redis: `6379`
+All required ports:
+- App / Nginx: `3000` (or `80`/`443` if mapped)
+- MySQL (`db`): `3311` (internal `3306`)
+- Redis (`cache`): `6379`
 - Prometheus: `9090`
 - Grafana: `3001`
 
-### Redis note
+---
 
-The current `docker-compose.yml` does not define Redis. Create it separately on the new computer:
+## 4. Install Dependencies & Build Production Bundle
 
-```powershell
-docker run -d --name dgmc_redis --restart unless-stopped -p 6379:6379 redis:7-alpine
-```
-
-Verify Redis:
+If running the app alongside or outside Docker with PM2:
 
 ```powershell
-docker exec dgmc_redis redis-cli ping
-```
-
-Expected result:
-
-```text
-PONG
-```
-
-## 5. Install dependencies and build
-
-```powershell
-npm ci
+npm install
 npm run build
 ```
+*(This compiles the React frontend via Vite and bundles the Node.js server into `dist/server.cjs`)*
 
-If no lockfile is available, use `npm install` instead of `npm ci`.
+---
 
-## 6. Start the production app with PM2
+## 5. Start with PM2 Cluster Mode
 
 ```powershell
-pm2 start ecosystem.config.cjs
+npm run pm2:start
 pm2 save
 pm2 status
 ```
 
-The app should show as `online` and listen on port `3000`.
-
-## 7. Verify the installation
-
+Monitor logs or metrics:
 ```powershell
-$health = Invoke-WebRequest http://localhost:3000/api/health -UseBasicParsing
-$health.Content
+npx pm2 logs dgmc-hospital-app
+npx pm2 monit
 ```
 
-Confirm that the response reports:
+---
 
-- `status`: `healthy`
-- MySQL connected
-- SQLite connected
+## 6. Verify the Installation
 
-Also check:
-
+Check health status:
 ```powershell
-docker compose ps
-docker ps --filter "name=dgmc_"
+Invoke-WebRequest http://localhost:3000/api/health -UseBasicParsing
 ```
 
-Open the app:
-
+Open in your browser:
 ```text
 http://localhost:3000
 ```
 
-## 8. Preserve existing database data
+---
 
-A new computer creates a new empty MySQL Docker volume. Export data from the original computer if existing records must be preserved:
+## 7. Database Migration & Backup (Optional)
 
-```powershell
-docker exec dgmc_mysql mysqldump -uroot -prootpassword dgmc_meals > dgmc_backup.sql
-```
-
-Copy `dgmc_backup.sql` to the new computer. Start MySQL first, then restore it:
-
-```powershell
-Get-Content .\dgmc_backup.sql | docker exec -i dgmc_mysql mysql -uroot -prootpassword dgmc_meals
-```
-
-Only copy `db.json` if the local JSON fallback data is also needed. Production mode uses MySQL when `MYSQL_HOST` is configured.
-
-## 9. Enable automatic startup
-
-In Docker Desktop settings, enable starting Docker Desktop with Windows.
-
-PM2 process persistence:
-
-```powershell
-pm2 save
-```
-
-PM2 must also be configured to run `pm2 resurrect` when the Windows user logs in. A Windows Task Scheduler entry is preferred; a per-user startup entry can also be used if administrator access is unavailable.
-
-After Windows login, verify:
-
-```powershell
-pm2 status
-Invoke-WebRequest http://localhost:3000/api/health -UseBasicParsing
-```
-
-## 10. Optional phone access on the same Wi-Fi
-
-Find the new computer's Wi-Fi IPv4 address:
-
-```powershell
-Get-NetIPAddress -AddressFamily IPv4
-```
-
-From a phone connected to the same Wi-Fi network, open:
-
-```text
-http://<COMPUTER_WIFI_IP>:3000
-```
-
-If it does not connect, allow inbound TCP port `3000` through Windows Firewall and make sure the phone is not using guest Wi-Fi or mobile data.
+To migrate an existing database from your original computer:
+1. **Export on original PC**:
+   ```powershell
+   docker exec dgmc_db mysqldump -uroot -prootpassword dgmc_meals > dgmc_backup.sql
+   ```
+2. **Import on new PC**:
+   ```powershell
+   Get-Content .\dgmc_backup.sql | docker exec -i dgmc_db mysql -uroot -prootpassword dgmc_meals
+   ```
