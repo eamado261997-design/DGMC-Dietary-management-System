@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import dgmcLogoAsset from "../../assets/dgmc-logo.png";
 import { MIN_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH_LIMITS } from "../../constants/security.js";
 import { DEFAULT_MIN_PASSWORD_LENGTH } from "../../utils/password.js";
 import { useAuth } from "../../context/AuthContext.js";
@@ -637,7 +638,7 @@ export default function SystemSettings() {
                     {/* Official Logo Display */}
                     <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 flex items-center justify-center mx-auto overflow-hidden">
                       <img
-                        src="/src/assets/dgmc-logo.png?v=3"
+                        src={dgmcLogoAsset}
                         alt="Divine Grace Medical Center Logo"
                         className="max-h-28 max-w-full object-contain"
                         referrerPolicy="no-referrer"

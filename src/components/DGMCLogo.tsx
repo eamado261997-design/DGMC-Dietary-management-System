@@ -115,13 +115,18 @@ export default function DGMCLogo({ variant = "full", className = "", height }: D
         style={{ height: height || "auto", minHeight: height ? undefined : "80px" }}
       >
         {!imgError ? (
-          <img 
-            src={logoSrc} 
-            alt="Divine Grace Medical Center Logo" 
-            onError={handleImageError}
-            className="max-h-24 md:max-h-32 w-auto max-w-full object-contain p-1"
-            referrerPolicy="no-referrer"
-          />
+          <div className="flex flex-col items-center">
+            <img 
+              src={logoSrc} 
+              alt="Divine Grace Medical Center Logo" 
+              onError={handleImageError}
+              className="max-h-24 md:max-h-32 w-auto max-w-full object-contain p-1"
+              referrerPolicy="no-referrer"
+            />
+            <span className="text-[9px] font-bold text-[#003299]/80 uppercase tracking-wider mt-1.5 font-sans">
+              A Mount Grace Hospital
+            </span>
+          </div>
         ) : (
           <div className="flex flex-col items-center p-2">
             <span className="text-3xl font-black text-[#003299] tracking-tight font-sans">
