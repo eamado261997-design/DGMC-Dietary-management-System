@@ -192,6 +192,7 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
 
   try {
     // 1. Establish connection to ensure database exists, wrapped in retry backoff
+    // Increased retries to 10 and delay to 2000ms to allow Docker MySQL 8.0 enough time to initialize
     const adminConnection = await connectWithRetry(async () => {
       return await mysql.createConnection({
         host,
@@ -200,7 +201,7 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
         port,
         ssl: sslOptions
       });
-    }, 3, 500);
+    }, 10, 2000);
 
     await adminConnection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
     await adminConnection.end();
