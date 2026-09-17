@@ -106,12 +106,12 @@ async function startServer() {
         styleSrc: ["'self'", "'unsafe-inline'", "https://*", "http://localhost:*"],
         imgSrc: ["'self'", "data:", "blob:", "https://*"],
         connectSrc: [
-          "'self'", 
-          "wss:", 
-          "https://*", 
-          "http://*", 
-          "ws://*", 
-          "ws://localhost:*", 
+          "'self'",
+          "wss:",
+          "https://*",
+          "http://*",
+          "ws://*",
+          "ws://localhost:*",
           "ws://127.0.0.1:*",
           "http://localhost:*",
           "http://127.0.0.1:*"
@@ -411,10 +411,7 @@ async function startServer() {
     const vite = await createViteServer({
       server: { 
         middlewareMode: true,
-        hmr: {
-          port: 3000,
-          clientPort: 3000
-        }
+        hmr: true
       },
       appType: 'spa',
     });
