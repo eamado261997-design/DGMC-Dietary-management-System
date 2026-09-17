@@ -30,7 +30,7 @@
     {
       "id": 1,
       "username": "admin",
-      "password": "enc_det:80856e2fd9d72bf3cb9767e5:90f70a7ac2a5a8cff1a27b1540dfa4effedb6bbe83007cfb92db6b1fb85cfbf7762c3b18a446da80f64f7a06527b601712e55d5e7cff066c74dd27f764b8b567f06201ece983ae08f822c334908cc7545d1ca3e1918f408bb3570ccf40266ee166bb6aa2c7e9fe5cce8c0b7cbc58e87690d510df85b5210641d07240605d517f78835ff33f4c4eccf89e5011027b8cbdd7131fb80c87a145f2127b88130fa5b0241099d56078f7b18bbbee2e4b42:419de6b6605a603cb699c5e28106de77",
+      "password": "enc_det:11f9326b3342c5abab970ed5:c8884d88f356d313d4f4df286c69a3e5b6c3c800dbaf61897bac80facc9f7c8e2ebe48800572200fcf9ccb2055c2915600bf7fd77de042af5e4059c253e09a8e073d7ee46b482b192a0f44cc00707b80d2db927aefc8a9cfaf732680948ae4690b41c4712e3a93f8a8951a3cb0609e5461ece6970011b791b93df550392befdb68600a0df129aa18f681c598297c7c40a326e2f20e50abe74fb94cca9077e990fe6aa8d9932358e1792215f14ee7:79a5091709cd12128ed88293b3bcdf74",
       "role": "admin",
       "first_name": "enc_det:68f3cca718fecb844a667e3e:8605750a2a70:28e406ba282ff49a890b75e9f383eeda",
       "last_name": "enc_det:d3dcc4c0b42dd8e4c59a0022:0b75e721e0408a23636afa44be:d4e2fe3a44940cfe1af8c62bfbf5b9b5",
@@ -58,8 +58,62 @@
       "employee_status": "active"
     }
   ],
-  "employee_schedules": [],
-  "transactions": [],
+  "employee_schedules": [
+    {
+      "id": 1,
+      "person_id": 101,
+      "work_date": "2026-08-12",
+      "shift_type": "night",
+      "created_by": 100,
+      "created_at": "2026-08-12T11:27:38.074Z"
+    },
+    {
+      "id": 2,
+      "person_id": 101,
+      "work_date": "2026-08-13",
+      "shift_type": "day",
+      "created_by": 100,
+      "created_at": "2026-08-12T11:27:38.074Z"
+    }
+  ],
+  "transactions": [
+    {
+      "id": 1,
+      "person_id": 103,
+      "cashier_person_id": 104,
+      "meal_date": "2026-09-10",
+      "meal_time": "13:13:34",
+      "is_free": false,
+      "meal_amount": 150,
+      "status": "cancelled",
+      "meal_type": "paid",
+      "created_at": "2026-09-10T05:13:34.372Z"
+    },
+    {
+      "id": 2,
+      "person_id": 103,
+      "cashier_person_id": 104,
+      "meal_date": "2026-09-10",
+      "meal_time": "13:14:13",
+      "is_free": false,
+      "meal_amount": 150,
+      "status": "completed",
+      "meal_type": "paid",
+      "created_at": "2026-09-10T05:14:13.150Z"
+    },
+    {
+      "id": 3,
+      "person_id": 103,
+      "cashier_person_id": 104,
+      "meal_date": "2026-09-10",
+      "meal_time": "19:58:21",
+      "is_free": false,
+      "meal_amount": 350,
+      "status": "completed",
+      "meal_type": "paid",
+      "created_at": "2026-09-10T11:58:21.291Z"
+    }
+  ],
   "free_meal_log": [],
   "system_settings": [
     {
@@ -159,6 +213,240 @@
       "updated_at": "2026-09-10T13:28:28.673Z"
     }
   ],
-  "audit_logs": [],
-  "login_attempts": []
+  "audit_logs": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "action": "DEPARTMENT_CREATE",
+      "entity_type": "departments",
+      "entity_id": "2",
+      "old_value": null,
+      "new_value": "{\"id\":2,\"name\":\"ICT\",\"created_at\":\"2026-09-10T05:05:12.725Z\"}",
+      "ip_address": "127.0.0.1",
+      "created_at": "2026-09-10T05:05:12.745Z"
+    },
+    {
+      "id": 2,
+      "user_id": 1,
+      "action": "EMPLOYEE_CREATE",
+      "entity_type": "people",
+      "entity_id": "102",
+      "old_value": null,
+      "new_value": "{\"id\":102,\"username\":\"ICT_manager\",\"role\":\"manager\",\"first_name\":\"ICT\",\"last_name\":\"Dept\",\"email\":null,\"phone\":null,\"is_active\":1,\"last_login\":null,\"created_at\":\"2026-09-10T05:06:02.864Z\",\"updated_at\":\"2026-09-10T05:06:02.864Z\",\"employee_no\":\"EMP4912\",\"position\":null,\"department_id\":2,\"qr_code\":\"EMP4912\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":2}",
+      "ip_address": "127.0.0.1",
+      "created_at": "2026-09-10T05:06:02.927Z"
+    },
+    {
+      "id": 3,
+      "user_id": 1,
+      "action": "EMPLOYEE_CREATE",
+      "entity_type": "people",
+      "entity_id": "103",
+      "old_value": null,
+      "new_value": "{\"id\":103,\"username\":\"emp123456\",\"role\":\"employee\",\"first_name\":\"Grant\",\"last_name\":\"mantilla\",\"email\":null,\"phone\":null,\"is_active\":1,\"last_login\":null,\"created_at\":\"2026-09-10T05:07:01.039Z\",\"updated_at\":\"2026-09-10T05:07:01.039Z\",\"employee_no\":\"123456\",\"position\":\"ICT Assistant\",\"department_id\":2,\"qr_code\":\"123456\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":null}",
+      "ip_address": "127.0.0.1",
+      "created_at": "2026-09-10T05:07:01.081Z"
+    },
+    {
+      "id": 4,
+      "user_id": 1,
+      "action": "EMPLOYEE_CREATE",
+      "entity_type": "people",
+      "entity_id": "104",
+      "old_value": null,
+      "new_value": "{\"id\":104,\"username\":\"rediswan\",\"role\":\"cashier\",\"first_name\":\"cash\",\"last_name\":\"ier\",\"email\":null,\"phone\":null,\"is_active\":1,\"last_login\":null,\"created_at\":\"2026-09-10T05:09:16.879Z\",\"updated_at\":\"2026-09-10T05:09:16.879Z\",\"employee_no\":\"EMP4323\",\"position\":null,\"department_id\":null,\"qr_code\":\"EMP4323\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":null}",
+      "ip_address": "127.0.0.1",
+      "created_at": "2026-09-10T05:09:16.936Z"
+    },
+    {
+      "id": 5,
+      "user_id": 104,
+      "action": "MEAL_SCAN_PAID",
+      "entity_type": "transactions",
+      "entity_id": "1",
+      "old_value": null,
+      "new_value": "{\"id\":1,\"person_id\":103,\"employee_name\":\"Grant mantilla\",\"employee_no\":\"123456\",\"department_name\":\"ICT\",\"meal_date\":\"2026-09-10\",\"meal_time\":\"13:13:34\",\"is_free\":false,\"meal_amount\":150,\"status\":\"completed\",\"meal_type\":\"paid\",\"cashier_name\":\"cash ier\"}",
+      "ip_address": "127.0.0.1",
+      "created_at": "2026-09-10T05:13:34.398Z"
+    },
+    {
+      "id": 6,
+      "user_id": 104,
+      "action": "TRANSACTION_VOID",
+      "entity_type": "transactions",
+      "entity_id": "1",
+      "old_value": "{\"id\":1,\"person_id\":103,\"cashier_person_id\":104,\"meal_date\":\"2026-09-10\",\"meal_time\":\"13:13:34\",\"is_free\":0,\"meal_amount\":\"150.00\",\"status\":\"completed\",\"meal_type\":\"paid\",\"created_at\":\"2026-09-10T05:13:34.372Z\"}",
+      "new_value": "{\"id\":1,\"person_id\":103,\"cashier_person_id\":104,\"meal_date\":\"2026-09-10\",\"meal_time\":\"13:13:34\",\"is_free\":0,\"meal_amount\":\"150.00\",\"status\":\"cancelled\",\"meal_type\":\"paid\",\"created_at\":\"2026-09-10T05:13:34.372Z\"}",
+      "ip_address": "127.0.0.1",
+      "created_at": "2026-09-10T05:14:04.767Z"
+    },
+    {
+      "id": 7,
+      "user_id": 104,
+      "action": "MEAL_SCAN_PAID",
+      "entity_type": "transactions",
+      "entity_id": "2",
+      "old_value": null,
+      "new_value": "{\"id\":2,\"person_id\":103,\"employee_name\":\"Grant mantilla\",\"employee_no\":\"123456\",\"department_name\":\"ICT\",\"meal_date\":\"2026-09-10\",\"meal_time\":\"13:14:13\",\"is_free\":false,\"meal_amount\":150,\"status\":\"completed\",\"meal_type\":\"paid\",\"cashier_name\":\"cash ier\"}",
+      "ip_address": "127.0.0.1",
+      "created_at": "2026-09-10T05:14:13.170Z"
+    },
+    {
+      "id": 8,
+      "user_id": 1,
+      "action": "EMPLOYEE_UPDATE",
+      "entity_type": "people",
+      "entity_id": "104",
+      "old_value": "{\"id\":104,\"username\":\"rediswan\",\"role\":\"cashier\",\"first_name\":\"cash\",\"last_name\":\"ier\",\"email\":null,\"phone\":null,\"is_active\":1,\"last_login\":\"2026-09-10T05:17:05.852Z\",\"created_at\":\"2026-09-10T05:09:16.879Z\",\"updated_at\":\"2026-09-10T05:09:16.879Z\",\"employee_no\":\"EMP4323\",\"position\":null,\"department_id\":null,\"qr_code\":\"EMP4323\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":null}",
+      "new_value": "{\"id\":104,\"username\":\"rediswan\",\"role\":\"cashier\",\"first_name\":\"cash\",\"last_name\":\"ier\",\"email\":null,\"phone\":null,\"is_active\":true,\"last_login\":\"2026-09-10T05:17:05.852Z\",\"created_at\":\"2026-09-10T05:09:16.879Z\",\"updated_at\":\"2026-09-10T11:51:32.773Z\",\"employee_no\":\"EMP4323\",\"position\":null,\"department_id\":null,\"qr_code\":\"EMP4323\",\"employee_status\":\"active\",\"hire_date\":\"2026-09-10\",\"managed_department_id\":null}",
+      "ip_address": "127.0.0.1",
+      "created_at": "2026-09-10T11:51:32.820Z"
+    },
+    {
+      "id": 9,
+      "user_id": 104,
+      "action": "MEAL_SCAN_PAID",
+      "entity_type": "transactions",
+      "entity_id": "3",
+      "old_value": null,
+      "new_value": "{\"id\":3,\"person_id\":103,\"employee_name\":\"Grant mantilla\",\"employee_no\":\"123456\",\"meal_date\":\"2026-09-10\",\"meal_time\":\"19:58:21\",\"is_free\":false,\"meal_amount\":350,\"status\":\"completed\",\"meal_type\":\"paid\"}",
+      "ip_address": "127.0.0.1",
+      "created_at": "2026-09-10T11:58:21.319Z"
+    }
+  ],
+  "login_attempts": [
+    {
+      "id": 1,
+      "username": "admin",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T04:42:11.588Z",
+      "success": true
+    },
+    {
+      "id": 2,
+      "username": "admin",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T04:43:20.470Z",
+      "success": true
+    },
+    {
+      "id": 3,
+      "username": "admin",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T04:47:30.252Z",
+      "success": true
+    },
+    {
+      "id": 4,
+      "username": "rediswan",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T05:12:15.507Z",
+      "success": true
+    },
+    {
+      "id": 5,
+      "username": "admin",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T05:13:06.338Z",
+      "success": true
+    },
+    {
+      "id": 6,
+      "username": "rediswan",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T05:13:26.790Z",
+      "success": true
+    },
+    {
+      "id": 7,
+      "username": "rediswan",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T05:17:05.852Z",
+      "success": true
+    },
+    {
+      "id": 8,
+      "username": "emp123456",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T05:20:28.053Z",
+      "success": true
+    },
+    {
+      "id": 9,
+      "username": "admin",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T09:54:42.605Z",
+      "success": true
+    },
+    {
+      "id": 10,
+      "username": "EMP654321",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T09:55:22.116Z",
+      "success": false
+    },
+    {
+      "id": 11,
+      "username": "EMP123456",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T09:55:35.920Z",
+      "success": false
+    },
+    {
+      "id": 12,
+      "username": "EMP123456",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T09:55:48.323Z",
+      "success": true
+    },
+    {
+      "id": 13,
+      "username": "admin",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T11:49:35.848Z",
+      "success": true
+    },
+    {
+      "id": 14,
+      "username": "rediswan",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T11:50:21.936Z",
+      "success": false
+    },
+    {
+      "id": 15,
+      "username": "rediswan",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T11:50:28.580Z",
+      "success": false
+    },
+    {
+      "id": 16,
+      "username": "admin",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T11:50:40.108Z",
+      "success": true
+    },
+    {
+      "id": 17,
+      "username": "rediswan",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T11:51:39.342Z",
+      "success": true
+    },
+    {
+      "id": 18,
+      "username": "rediswan",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-10T11:57:00.761Z",
+      "success": true
+    },
+    {
+      "id": 19,
+      "username": "admin",
+      "ip_address": "127.0.0.1",
+      "timestamp": "2026-09-11T04:32:19.378Z",
+      "success": true
+    }
+  ]
 }
