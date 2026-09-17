@@ -7,6 +7,7 @@ import { initializeMysql, syncStateToMySQL, getMysqlPool } from "./mysql.js";
 import { initializeSqlite, syncStateToSqlite, isSqliteConnected, getSqliteDb } from "./sqlite.js";
 import { encryptPerson, decryptPerson, decrypt } from "./encryption.js";
 import { cacheLayer } from "./cache.js";
+import { logger } from "./utils/logger.js";
 
 const DB_FILE_PATH = path.join(process.cwd(), "db.json");
 
@@ -301,7 +302,11 @@ export function writeDatabase(data: DatabaseSchema): void {
   }
 
   // 2. Synchronize in lockstep to SQLite
-  syncStateToSqlite(data).catch(() => {});
+  if (isSqliteConnected()) {
+    syncStateToSqlite(data).catch((err) => {
+      logger.error("[Database] Failed to sync to SQLite:", err);
+    });
+  }
 
   // 3. Asynchronously synchronizes in lockstep to active MySQL tables
   const pool = getMysqlPool();

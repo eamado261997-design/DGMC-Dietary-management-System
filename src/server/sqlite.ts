@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { DatabaseSchema } from "./db.js";
 import { encryptPerson, decryptPerson } from "./encryption.js";
+import { logger } from "./utils/logger.js";
 
 const SQLITE_DB_PATH = path.join(process.cwd(), "dgmc_meals.db");
 
@@ -137,9 +138,11 @@ export async function initializeSqlite(defaultDb: DatabaseSchema): Promise<Datab
     const count = result?.cnt || 0;
 
     if (count === 0) {
+      logger.info("[SQLite] Database is empty. Seeding with default state...");
       await syncStateToSqlite(defaultDb);
       return defaultDb;
     } else {
+      logger.info(`[SQLite] Found ${count} records. Loading persisted data from ${SQLITE_DB_PATH}...`);
       const loaded = await loadFromSqlite();
       return loaded;
     }
@@ -427,7 +430,8 @@ export async function syncStateToSqlite(data: DatabaseSchema): Promise<void> {
 
   try {
     syncTx();
-  } catch (_err: any) {
-    // Suppress SQLite sync error in production
+    logger.debug(`[SQLite] Successfully synchronized ${data.people.length} people and ${data.departments.length} departments to local database.`);
+  } catch (err: any) {
+    logger.error("[SQLite] Synchronization failed:", err);
   }
 }

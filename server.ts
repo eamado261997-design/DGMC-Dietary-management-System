@@ -91,9 +91,12 @@ async function startServer() {
   // 1. Response compression (Very Safe)
   app.use(compression());
 
+  const isProd = process.env.NODE_ENV === 'production';
+
   // 2. Configure Helmet Security Headers (OWASP compliant, AI Studio iframe preview compatible)
+  // Dev approach: Skip CSP in development entirely to allow Vite HMR WebSockets without friction, enforce strictly in production.
   app.use(helmet({
-    contentSecurityPolicy: {
+    contentSecurityPolicy: isProd ? {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: [
@@ -105,21 +108,10 @@ async function startServer() {
         ],
         styleSrc: ["'self'", "'unsafe-inline'", "https://*", "http://localhost:*"],
         imgSrc: ["'self'", "data:", "blob:", "https://*"],
-        connectSrc: [
-          "'self'",
-          "ws:",
-          "wss:",
-          "http:",
-          "https:",
-          "ws://localhost:*",
-          "ws://127.0.0.1:*",
-          "http://localhost:*",
-          "http://127.0.0.1:*",
-          "*"
-        ],
+        connectSrc: ["'self'", "wss:", "https://*", "http://*"],
         frameAncestors: ["'self'", "https://*", "http://*", "*"],
       },
-    },
+    } : false,
     frameguard: false, // Critical: Disables X-Frame-Options: SAMEORIGIN to allow AI Studio preview iframe embedding
     crossOriginEmbedderPolicy: false,
     crossOriginOpenerPolicy: false,
@@ -395,8 +387,6 @@ async function startServer() {
       res.status(appErr.statusCode).json(appErr.toJSON());
     }
   });
-
-  const isProd = process.env.NODE_ENV === 'production';
 
   // Robust path discovery for compiled dist files
   // Prioritize the local project dist over parent directories to avoid picking up stale builds
