@@ -1,5 +1,8 @@
 import Redis, { RedisOptions } from "ioredis";
 import zlib from "zlib";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 interface CacheItem {
   value: any;
@@ -56,56 +59,133 @@ export class CacheLayer {
   }
 
   private initRedis(): void {
-    const redisUrl = process.env.REDIS_URL;
-    const redisHost = process.env.REDIS_HOST;
-    const redisPort = process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT, 10) : 6379;
-    const redisPassword = process.env.REDIS_PASSWORD;
+    const isInvalid = (v?: string | null) =>
+      !v ||
+      typeof v !== "string" ||
+      v.trim() === "" ||
+      v === "EMPTY" ||
+      v === "YOUR_REDIS_HOST" ||
+      v === "YOUR_REDIS_URL" ||
+      v === "undefined" ||
+      v === "null" ||
+      v === '""' ||
+      v === "''";
 
-    // Connect if REDIS_URL or REDIS_HOST is specified and valid
-    if (redisUrl || (redisHost && redisHost !== "EMPTY" && redisHost !== "YOUR_REDIS_HOST")) {
-      try {
-        const options: RedisOptions = {
-          lazyConnect: true,
-          maxRetriesPerRequest: 2,
-          retryStrategy(times) {
-            if (times > 3) return null; // Stop retrying after 3 attempts
-            return Math.min(times * 200, 1000);
-          },
-          enableOfflineQueue: false,
-          connectTimeout: 2000
-        };
+    const rawUrl = process.env.REDIS_URL ? process.env.REDIS_URL.trim() : "";
+    const rawHost = process.env.REDIS_HOST ? process.env.REDIS_HOST.trim() : "";
+    const rawPort = process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT, 10) : 6379;
+    const rawPassword = process.env.REDIS_PASSWORD ? process.env.REDIS_PASSWORD.trim() : undefined;
 
-        if (redisUrl) {
-          this.redisClient = new Redis(redisUrl, options);
-        } else if (redisHost) {
-          this.redisClient = new Redis({
-            host: redisHost,
-            port: redisPort,
-            password: redisPassword || undefined,
-            ...options
-          });
-        }
+    let targetUrl: string | null = null;
+    let targetHost: string | null = null;
+    let targetPort: number = isNaN(rawPort) ? 6379 : rawPort;
 
-        if (this.redisClient) {
-          this.redisClient.on("connect", () => {
-            this.isRedisConnected = true;
-            this.redisErrorMsg = null;
-          });
-
-          this.redisClient.on("error", (err) => {
-            this.isRedisConnected = false;
-            this.redisErrorMsg = err.message;
-          });
-
-          this.redisClient.connect().catch((err) => {
-            this.isRedisConnected = false;
-            this.redisErrorMsg = err.message;
-          });
-        }
-      } catch (err: any) {
-        this.isRedisConnected = false;
-        this.redisErrorMsg = err.message;
+    // 1. Process REDIS_URL if provided
+    if (!isInvalid(rawUrl)) {
+      let formattedUrl = rawUrl;
+      if (!formattedUrl.startsWith("redis://") && !formattedUrl.startsWith("rediss://")) {
+        formattedUrl = `redis://${formattedUrl}`;
       }
+      try {
+        const parsed = new URL(formattedUrl);
+        if (parsed.hostname) {
+          targetUrl = formattedUrl;
+        }
+      } catch {
+        const cleanUrl = rawUrl.replace(/^(redis|rediss):\/\//, "");
+        const parts = cleanUrl.split(":");
+        if (parts[0] && !isInvalid(parts[0])) {
+          targetHost = parts[0];
+          if (parts[1]) targetPort = parseInt(parts[1], 10);
+        }
+      }
+    }
+
+    // 2. Process REDIS_HOST if no valid URL found
+    if (!targetUrl && !targetHost && !isInvalid(rawHost)) {
+      if (rawHost.startsWith("redis://") || rawHost.startsWith("rediss://")) {
+        try {
+          const parsed = new URL(rawHost);
+          if (parsed.hostname) {
+            targetUrl = rawHost;
+          }
+        } catch {
+          const clean = rawHost.replace(/^(redis|rediss):\/\//, "");
+          const parts = clean.split(":");
+          targetHost = parts[0];
+          if (parts[1]) targetPort = parseInt(parts[1], 10);
+        }
+      } else if (rawHost.includes(":")) {
+        const parts = rawHost.split(":");
+        targetHost = parts[0];
+        if (parts[1]) targetPort = parseInt(parts[1], 10);
+      } else {
+        targetHost = rawHost;
+      }
+    }
+
+    // If neither URL nor Host is configured, silently keep in-memory cache
+    if (!targetUrl && !targetHost) {
+      return;
+    }
+
+    try {
+      const options: RedisOptions = {
+        lazyConnect: true,
+        maxRetriesPerRequest: 2,
+        retryStrategy(times) {
+          if (times > 3) return null; // Stop retrying after 3 attempts
+          return Math.min(times * 200, 1000);
+        },
+        enableOfflineQueue: false,
+        connectTimeout: 2000
+      };
+
+      if (targetUrl) {
+        this.redisClient = new Redis(targetUrl, options);
+      } else if (targetHost) {
+        this.redisClient = new Redis({
+          host: targetHost,
+          port: targetPort,
+          password: rawPassword || undefined,
+          ...options
+        });
+      }
+
+      if (this.redisClient) {
+        this.redisClient.on("connect", () => {
+          this.isRedisConnected = true;
+          this.redisErrorMsg = null;
+          console.log(`[Redis] Client connected.`);
+        });
+
+        this.redisClient.on("ready", () => {
+          this.isRedisConnected = true;
+          this.redisErrorMsg = null;
+          console.log(`[Redis] Ready to accept commands.`);
+        });
+
+        this.redisClient.on("close", () => {
+          this.isRedisConnected = false;
+        });
+
+        this.redisClient.on("reconnecting", () => {
+          console.log(`[Redis] Reconnecting to server...`);
+        });
+
+        this.redisClient.on("error", (err: any) => {
+          this.isRedisConnected = false;
+          this.redisErrorMsg = err?.message || String(err);
+        });
+
+        this.redisClient.connect().catch((err) => {
+          this.isRedisConnected = false;
+          this.redisErrorMsg = err?.message || String(err);
+        });
+      }
+    } catch (err: any) {
+      this.isRedisConnected = false;
+      this.redisErrorMsg = err.message;
     }
   }
 
@@ -660,6 +740,9 @@ export class CacheLayer {
   }
 
   public getIsRedisConnected(): boolean {
+    if (this.redisClient && (this.redisClient.status === "ready" || this.redisClient.status === "connect")) {
+      return true;
+    }
     return this.isRedisConnected;
   }
 

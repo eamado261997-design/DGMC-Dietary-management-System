@@ -24,6 +24,7 @@ const __dirname = path.dirname(__filename);
 function validateEnvironment() {
   logger.info(`[EnvCheck] NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`[EnvCheck] MYSQL_HOST: ${process.env.MYSQL_HOST ? 'Configured (' + process.env.MYSQL_HOST + ')' : 'Not configured (using file-backed JSON fallback)'}`);
+  logger.info(`[EnvCheck] REDIS: ${process.env.REDIS_URL || process.env.REDIS_HOST ? 'Configured (' + (process.env.REDIS_URL || process.env.REDIS_HOST) + ')' : 'Not configured (using in-memory L1 cache)'}`);
 }
 
 import { getPrometheusMetrics } from './src/server/utils/performanceTracker.js';
