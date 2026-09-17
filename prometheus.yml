@@ -3,6 +3,6 @@ global:
 
 scrape_configs:
   - job_name: 'dgmc_app'
-    metrics_path: '/api/admin/sys-perf'
+    metrics_path: '/api/metrics'
     static_configs:
       - targets: ['dgmc_app:3000']

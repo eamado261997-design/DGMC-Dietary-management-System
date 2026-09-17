@@ -810,14 +810,14 @@ export async function handleEmployeeRoutes(
           SELECT p.*, d.name AS department_name 
           FROM people p 
           LEFT JOIN departments d ON p.department_id = d.id 
-          WHERE p.role = 'employee'
+          WHERE p.role = 'employee' AND p.is_active = 1
         `);
       } else {
         rows = await query(`
           SELECT p.*, d.name AS department_name 
           FROM people p 
           LEFT JOIN departments d ON p.department_id = d.id 
-          WHERE p.role = 'employee' AND p.department_id = ?
+          WHERE p.role = 'employee' AND p.department_id = ? AND p.is_active = 1
         `, [managedDepartmentId]);
       }
       dbLatencyMs = dbTimer();
@@ -861,7 +861,7 @@ export async function handleEmployeeRoutes(
       dbLatencyMs = dbTimer();
 
       const joinTimer = startTimer();
-      const filtered = db.people.filter(p => p.role === "employee" && (authUser.role === "admin" || p.department_id === managedDepartmentId));
+      const filtered = db.people.filter(p => p.is_active && p.role === "employee" && (authUser.role === "admin" || p.department_id === managedDepartmentId));
       recordsProcessed = filtered.length;
       const emps = filtered.map(p => {
         const dept = p.department_id ? db.departments?.find(d => Number(d.id) === Number(p.department_id)) : null;
@@ -946,7 +946,7 @@ export async function handleEmployeeRoutes(
         } else if (action === "add" || action === "update") {
           const p = await query("SELECT is_active FROM people WHERE id = ?", [person_id]);
           if (p.length === 0 || !p[0].is_active) {
-             return jsonResponse(400, { error: "Cannot schedule inactive employee" });
+             return jsonResponse(400, { error: "Cannot schedule inactive or non-existent employee" });
           }
           const check = await query("SELECT id FROM employee_schedules WHERE person_id = ? AND work_date = ?", [person_id, work_date]);
           if (check.length > 0) {
@@ -968,14 +968,14 @@ export async function handleEmployeeRoutes(
         if (action === "remove") {
           db.employee_schedules = db.employee_schedules.filter(s => !(s.person_id === person_id && s.work_date === work_date));
         } else {
+          const p = db.people.find(person => person.id === person_id);
+          if (!p || !p.is_active) {
+              return jsonResponse(400, { error: "Cannot schedule inactive or non-existent employee" });
+          }
           const existing = db.employee_schedules.find(s => s.person_id === person_id && s.work_date === work_date);
           if (existing) {
             existing.shift_type = shift_type || "day";
           } else {
-            const p = db.people.find(person => person.id === person_id);
-            if (!p || !p.is_active) {
-                return jsonResponse(400, { error: "Cannot schedule inactive employee" });
-            }
             const nextId = db.employee_schedules.length > 0 ? Math.max(...db.employee_schedules.map(s => s.id)) + 1 : 1;
             db.employee_schedules.push({
               id: nextId,

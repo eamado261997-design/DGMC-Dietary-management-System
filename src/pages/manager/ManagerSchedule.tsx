@@ -387,70 +387,84 @@ export default function ManagerSchedule() {
                     </td>
                   </tr>
                 ) : (
-                  employees.map((p) => (
-                    <tr key={p.id} className="hover:bg-zinc-50/30 transition-colors">
-                      <td className="px-6 py-4">
-                        <span className="font-bold text-zinc-900 block">
-                          {p.first_name} {p.last_name}
-                        </span>
-                        <span className="text-[10px] text-zinc-450 block font-mono">{p.position || "Resident"}</span>
-                      </td>
-
-                      {dates.map((d) => {
-                        const key = `${p.id}_${d.iso}`;
-                        const shift = draftMap[key] || "off";
-                        
-                        const mathReal = realSchedules.find((s) => s.person_id === p.id && s.work_date === d.iso);
-                        const realVal = mathReal ? mathReal.shift_type : "off";
-                        const isDraft = shift !== realVal;
-
-                        const isPast = d.iso < todayStr;
-
-                        return (
-                          <td
-                            key={d.iso}
-                            className={`p-2.5 text-center transition-colors ${
-                              d.iso === todayStr ? "bg-teal-50/10 border-x border-teal-100/40" : ""
-                            }`}
-                          >
-                            <button
-                              disabled={isPast}
-                              onClick={() => handleCellToggle(p.id, d.iso)}
-                              className={`w-full py-4 px-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-1 min-h-[70px] outline-none ${
-                                isPast
-                                  ? "bg-zinc-50 border-zinc-200 text-zinc-350 cursor-not-allowed"
-                                  : shift === "day"
-                                  ? "bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100/60"
-                                  : shift === "night"
-                                  ? "bg-indigo-50 border-indigo-300 text-indigo-950 hover:bg-indigo-100/60"
-                                  : "bg-white border-zinc-205 border-dashed hover:border-teal-400 hover:bg-teal-50/10"
-                              } ${isDraft ? "ring-2 ring-teal-500 animate-pulse text-zinc-900" : ""}`}
-                            >
-                              {isPast ? (
-                                <Lock className="w-3.5 h-3.5 text-zinc-300 shrink-0" />
-                              ) : shift === "day" ? (
-                                <Sun className="w-4 h-4 text-amber-500 shrink-0" />
-                              ) : shift === "night" ? (
-                                <Moon className="w-4 h-4 text-indigo-500 shrink-0" />
-                              ) : (
-                                <ToggleLeft className="w-4 h-4 text-zinc-300 shrink-0" />
-                              )}
-
-                              <span className="text-[10px] uppercase font-bold tracking-wider font-mono">
-                                {isPast ? (shift === "off" ? "Off" : shift) : shift}
+                    employees.map((p) => {
+                      const isDisabled = p.is_active === false || p.employee_status === "inactive";
+                      
+                      return (
+                        <tr key={p.id} className={`hover:bg-zinc-50/30 transition-colors ${isDisabled ? "opacity-60 bg-zinc-50/50" : ""}`}>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold block ${isDisabled ? "text-zinc-500" : "text-zinc-900"}`}>
+                                {p.first_name} {p.last_name}
                               </span>
-
-                              {isDraft && !isPast && (
-                                <span className="text-[8px] bg-teal-600 text-white rounded font-mono px-1 font-bold">
-                                  DRAFT
+                              {isDisabled && (
+                                <span className="px-1.5 py-0.5 bg-zinc-200 text-zinc-600 rounded text-[8px] font-bold uppercase tracking-tighter">
+                                  Inactive
                                 </span>
                               )}
-                            </button>
+                            </div>
+                            <span className="text-[10px] text-zinc-450 block font-mono">{p.position || "Resident"}</span>
                           </td>
-                        );
-                      })}
-                    </tr>
-                  ))
+
+                          {dates.map((d) => {
+                            const key = `${p.id}_${d.iso}`;
+                            const shift = draftMap[key] || "off";
+                            
+                            const mathReal = realSchedules.find((s) => s.person_id === p.id && s.work_date === d.iso);
+                            const realVal = mathReal ? mathReal.shift_type : "off";
+                            const isDraft = shift !== realVal;
+
+                            const isPast = d.iso < todayStr;
+                            const cannotEdit = isPast || isDisabled;
+
+                            return (
+                              <td
+                                key={d.iso}
+                                className={`p-2.5 text-center transition-colors ${
+                                  d.iso === todayStr ? "bg-teal-50/10 border-x border-teal-100/40" : ""
+                                }`}
+                              >
+                                <button
+                                  disabled={cannotEdit}
+                                  onClick={() => handleCellToggle(p.id, d.iso)}
+                                  className={`w-full py-4 px-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-1 min-h-[70px] outline-none ${
+                                    cannotEdit
+                                      ? "bg-zinc-50 border-zinc-200 text-zinc-350 cursor-not-allowed"
+                                      : shift === "day"
+                                      ? "bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100/60"
+                                      : shift === "night"
+                                      ? "bg-indigo-50 border-indigo-300 text-indigo-950 hover:bg-indigo-100/60"
+                                      : "bg-white border-zinc-205 border-dashed hover:border-teal-400 hover:bg-teal-50/10"
+                                  } ${isDraft ? "ring-2 ring-teal-500 animate-pulse text-zinc-900" : ""}`}
+                                >
+                                  {isPast ? (
+                                    <Lock className="w-3.5 h-3.5 text-zinc-300 shrink-0" />
+                                  ) : isDisabled ? (
+                                    <AlertCircle className="w-3.5 h-3.5 text-zinc-300 shrink-0" />
+                                  ) : shift === "day" ? (
+                                    <Sun className="w-4 h-4 text-amber-500 shrink-0" />
+                                  ) : shift === "night" ? (
+                                    <Moon className="w-4 h-4 text-indigo-500 shrink-0" />
+                                  ) : (
+                                    <ToggleLeft className="w-4 h-4 text-zinc-300 shrink-0" />
+                                  )}
+
+                                  <span className="text-[10px] uppercase font-bold tracking-wider font-mono">
+                                    {cannotEdit ? (shift === "off" ? "Off" : shift) : shift}
+                                  </span>
+
+                                  {isDraft && !cannotEdit && (
+                                    <span className="text-[8px] bg-teal-600 text-white rounded font-mono px-1 font-bold">
+                                      DRAFT
+                                    </span>
+                                  )}
+                                </button>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })
                 )}
               </tbody>
             </table>

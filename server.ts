@@ -6,6 +6,7 @@ import compression from 'compression';
 import crypto from 'crypto';
 import cors from 'cors';
 import helmet from 'helmet';
+import { fileURLToPath } from 'url';
 import { rateLimit } from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
 import { cacheLayer } from './src/server/cache.ts';
@@ -15,6 +16,9 @@ import { loadAndInitDatabase } from './src/server/db.ts';
 import { checkMysqlHealth, getPoolStats, isMysqlConnected, getMysqlPool } from './src/server/mysql.ts';
 import { isSqliteConnected } from './src/server/sqlite.ts';
 import { getOpenApiSpec } from './src/server/services/openapiService.ts';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Environment validation
 function validateEnvironment() {
@@ -177,11 +181,12 @@ async function startServer() {
 
   app.use(express.json({ limit: '10mb' }));
 
-  // Force HTTPS in production
+  // Force HTTPS in production (exclude localhost and internal private network IPs)
   app.use((req, res, next) => {
     if (process.env.NODE_ENV === 'production') {
+      const isLocalHost = req.hostname === 'localhost' || req.hostname === '127.0.0.1' || req.hostname.startsWith('192.168.') || req.hostname.startsWith('10.');
       // Check for x-forwarded-proto (standard for reverse proxies/load balancers)
-      if (req.headers['x-forwarded-proto'] !== 'https' && req.secure === false) {
+      if (!isLocalHost && req.headers['x-forwarded-proto'] !== 'https' && req.secure === false) {
         return res.redirect(301, `https://${req.hostname}${req.url}`);
       }
     }
@@ -379,7 +384,15 @@ async function startServer() {
 
   const isProd = process.env.NODE_ENV === 'production';
 
-  if (!isProd) {
+  // Robust path discovery for compiled dist files in Docker / container / host environments
+  const possibleDistPaths = [
+    path.join(process.cwd(), 'dist'),
+    path.join(__dirname, 'dist'),
+    path.join(__dirname, '../dist')
+  ];
+  const distPath = possibleDistPaths.find(p => fs.existsSync(path.join(p, 'index.html'))) || path.join(process.cwd(), 'dist');
+
+  if (!isProd && !fs.existsSync(path.join(distPath, 'index.html'))) {
     logger.info('Starting server in DEVELOPMENT mode with Vite integration...');
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
@@ -391,11 +404,19 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    logger.info('Starting server in PRODUCTION mode with static file hosting...');
-    const distPath = path.join(process.cwd(), 'dist');
+    logger.info(`Starting server in PRODUCTION mode with static file hosting from: ${distPath}`);
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    app.get('*', (req, res, next) => {
+      // Don't intercept API routes with HTML fallback
+      if (req.path.startsWith('/api')) {
+        return next();
+      }
+      const indexPath = path.join(distPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).send('Application UI is building or index.html was not found.');
+      }
     });
   }
 
