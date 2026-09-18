@@ -250,6 +250,20 @@ export const parseCookies = (cookieHeader: string | undefined): Record<string, s
   return cookies;
 };
 
+export function getTodayDateStr(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function getCurrentTimeStr(date: Date = new Date()): string {
+  const hours = String(date.getHours()).padStart(2, "0");
+  const mins = String(date.getMinutes()).padStart(2, "0");
+  const secs = String(date.getSeconds()).padStart(2, "0");
+  return `${hours}:${mins}:${secs}`;
+}
+
 import { Person } from "../../types.js";
 
 export interface ApiContext {

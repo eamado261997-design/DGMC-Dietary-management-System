@@ -1,4 +1,4 @@
-import { jsonResponse, ApiResponse } from "../utils/apiUtils.js";
+import { jsonResponse, ApiResponse, getTodayDateStr } from "../utils/apiUtils.js";
 import { readDatabase, writeDatabase } from "../db.js";
 import { isMysqlConnected, query } from "../mysql.js";
 import { cacheLayer } from "../cache.js";
@@ -59,7 +59,7 @@ export async function handleAdminRoutes(
     let mealPrice = 150.00;
     let itSupportPhone = "Medical arts Bldg. 5th floor/ICT dept. / 2568";
 
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = getTodayDateStr();
 
     if (isMysqlConnected()) {
       const staffRows = await query("SELECT COUNT(*) as cnt FROM people WHERE role = 'employee' AND is_active = 1");
@@ -131,7 +131,7 @@ export async function handleAdminRoutes(
     if (!authUser) return jsonResponse(401, { error: "Authentication required" });
     if (!requireRole(["admin", "dietary_admin"])) return jsonResponse(403, { error: "Admin privilege required" });
 
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = getTodayDateStr();
 
     let totalPeople = 0;
     let totalEmployees = 0;

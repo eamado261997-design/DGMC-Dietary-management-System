@@ -1,4 +1,4 @@
-import { jsonResponse, ApiResponse } from "../utils/apiUtils.js";
+import { jsonResponse, ApiResponse, getTodayDateStr, getCurrentTimeStr } from "../utils/apiUtils.js";
 import { readDatabase, writeDatabase } from "../db.js";
 import { isMysqlConnected, query, execute } from "../mysql.js";
 import { Person, Transaction } from "../../types.js";
@@ -97,7 +97,7 @@ export async function handleTransactionRoutes(
     if (path === "/api/cashier/stats" && method === "GET") {
       if (!authUser) return jsonResponse(401, { error: "Authentication required" });
       if (!requireRole(["cashier", "admin"])) return jsonResponse(403, { error: "Cashier privilege required" });
-      const todayStr = new Date().toISOString().split("T")[0];
+      const todayStr = getTodayDateStr();
       let freeCount = 0;
       let paidCount = 0;
       let totalRevenue = 0;
@@ -167,8 +167,8 @@ export async function handleTransactionRoutes(
       const { qr_code } = body || {};
       if (!qr_code) return jsonResponse(400, { error: "QR code is required" });
 
-      const todayStr = new Date().toISOString().split("T")[0];
-      const timeStr = new Date().toTimeString().split(" ")[0];
+      const todayStr = getTodayDateStr();
+      const timeStr = getCurrentTimeStr();
 
       let person: any = null;
       if (isMysqlConnected()) {
@@ -298,8 +298,8 @@ export async function handleTransactionRoutes(
       const { person_id, is_free, meal_amount } = body || {};
       if (!person_id) return jsonResponse(400, { error: "Person ID is required" });
 
-      const todayStr = new Date().toISOString().split("T")[0];
-      const timeStr = new Date().toTimeString().split(" ")[0];
+      const todayStr = getTodayDateStr();
+      const timeStr = getCurrentTimeStr();
 
       let person: any = null;
       if (isMysqlConnected()) {

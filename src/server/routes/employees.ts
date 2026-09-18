@@ -1,4 +1,4 @@
-import { jsonResponse, ApiResponse } from "../utils/apiUtils.js";
+import { jsonResponse, ApiResponse, getTodayDateStr } from "../utils/apiUtils.js";
 import { readDatabase, writeDatabase, hashPassword } from "../db.js";
 import { isMysqlConnected, query, execute } from "../mysql.js";
 import { decryptPerson } from "../encryption.js";
@@ -604,7 +604,7 @@ export async function handleEmployeeRoutes(
   // Employee Individual Dashboard APIs
   if (path === "/api/employee/dashboard-data" && method === "GET") {
     if (!authUser) return jsonResponse(401, { error: "Authentication required" });
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = getTodayDateStr();
     let freeClaimedToday = false;
     let totalFreeClaimed = 0;
     let totalPaidPurchased = 0;
@@ -716,7 +716,7 @@ export async function handleEmployeeRoutes(
     let todayFreeCount = 0;
     let scheduledToday = 0;
     let consumedToday = 0;
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = getTodayDateStr();
 
     if (isMysqlConnected()) {
       if (authUser.role === "admin") {
