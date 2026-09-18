@@ -4,6 +4,7 @@ import { isMysqlConnected, query, execute } from "../mysql.js";
 import { cacheLayer } from "../cache.js";
 import { DEFAULT_MIN_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH_LIMITS } from "../../utils/password.js";
 import { Person, AuditLog } from "../../types.js";
+import { decrypt } from "../encryption.js";
 import JSZip from "jszip";
 
 export async function handleSettingsRoutes(
@@ -124,7 +125,7 @@ export async function handleSettingsRoutes(
 
     if (isMysqlConnected()) {
       let q = `
-        SELECT a.*, CONCAT(p.first_name, ' ', p.last_name) AS user_name, p.username AS user_handle
+        SELECT a.*, p.first_name, p.last_name, p.username AS user_handle
         FROM audit_logs a
         LEFT JOIN people p ON a.user_id = p.id
         WHERE 1=1
@@ -140,7 +141,15 @@ export async function handleSettingsRoutes(
       }
       q += " ORDER BY a.id DESC LIMIT 500";
       const rows = await query(q, params);
-      return jsonResponse(200, rows);
+      const decryptedRows = rows.map((l: any) => {
+        const fName = decrypt(l.first_name);
+        const lName = decrypt(l.last_name);
+        return {
+          ...l,
+          user_name: (fName || lName) ? `${fName || ''} ${lName || ''}`.trim() : "System / Unauthenticated"
+        };
+      });
+      return jsonResponse(200, decryptedRows);
     } else {
       const db = readDatabase();
       let list = [...(db.audit_logs || [])];
@@ -148,9 +157,11 @@ export async function handleSettingsRoutes(
       if (entity_type) list = list.filter((l: AuditLog) => l.entity_type === entity_type);
       const logs = list.reverse().slice(0, 500).map((l: AuditLog) => {
         const p = l.user_id ? (db.people || []).find((user: Person) => user.id === l.user_id) : null;
+        const fName = p ? decrypt(p.first_name) : "";
+        const lName = p ? decrypt(p.last_name) : "";
         return {
           ...l,
-          user_name: p ? `${p.first_name} ${p.last_name}` : "System / Unauthenticated",
+          user_name: (fName || lName) ? `${fName} ${lName}`.trim() : "System / Unauthenticated",
           user_handle: p ? p.username : "system"
         };
       });

@@ -1,13 +1,13 @@
-const CACHE_NAME = 'dgmc-static-cache-v2';
+const CACHE_NAME = 'dgmc-static-cache-v3';
 const PRE_CACHE_ASSETS = [
   '/',
   '/manifest.json',
-  '/assets/dgmc_logo.png',
-  '/assets/pwa_icon.jpg'
+  '/assets/dgmc-logo-U59A0q9C.png'
 ];
 
 // Install Event: Pre-cache core offline assets
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
       for (const asset of PRE_CACHE_ASSETS) {
@@ -17,7 +17,7 @@ self.addEventListener('install', (event) => {
           // Skip optional pre-cache assets
         }
       }
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
@@ -56,7 +56,10 @@ self.addEventListener('fetch', (event) => {
       fetch(event.request).catch(async () => {
         const cached = await caches.match('/');
         if (cached) return cached;
-        return new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
+        return new Response('<!DOCTYPE html><html><head><meta charset="utf-8"><title>DGMC Offline</title></head><body style="font-family:sans-serif;text-align:center;padding:50px;"><h2>DGMC Hospital System</h2><p>Connecting to hospital network server...</p><button onclick="location.reload()" style="padding:10px 20px;font-size:16px;cursor:pointer;">Retry</button></body></html>', {
+          status: 200,
+          headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        });
       })
     );
     return;
@@ -75,7 +78,7 @@ self.addEventListener('fetch', (event) => {
     }).catch(async () => {
       const cached = await caches.match(event.request);
       if (cached) return cached;
-      return new Response('/* Asset Offline */', {
+      return new Response('/* Asset Unavailable Offline */', {
         status: 404,
         headers: { 'Content-Type': 'text/plain' }
       });

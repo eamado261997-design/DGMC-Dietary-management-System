@@ -125,28 +125,30 @@ async function startServer() {
     next();
   });
 
-  // 3. Configure CORS Policy (OWASP compliant with local hospital LAN support)
+  // 3. Configure CORS Policy (OWASP compliant with local hospital LAN & multi-subnet support)
   const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',')
+    ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
     : [
         'http://localhost:3000',
         'https://ais-dev-2ymn52j2l5tejuq3jdq65c-542216201555.asia-southeast1.run.app',
         'https://ais-pre-2ymn52j2l5tejuq3jdq65c-542216201555.asia-southeast1.run.app'
       ];
 
-  app.use(cors({
+  const corsOptions: cors.CorsOptions = {
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, curl, or server-to-server)
       if (!origin) return callback(null, true);
       const isAllowed = 
         allowedOrigins.includes(origin) || 
         origin.endsWith('.run.app') || 
-        origin.startsWith('http://localhost:') || 
-        origin.startsWith('http://127.0.0.1:') ||
-        origin.startsWith('http://192.168.') ||
-        origin.startsWith('http://10.') ||
-        /^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./.test(origin) ||
-        origin.includes('192.168.');
+        origin.startsWith('http://localhost') || 
+        origin.startsWith('https://localhost') ||
+        origin.startsWith('http://127.0.0.1') || 
+        origin.startsWith('https://127.0.0.1') ||
+        origin.includes('192.168.') ||
+        origin.includes('10.') ||
+        /^https?:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./.test(origin) ||
+        origin.includes('localhost');
         
       if (isAllowed) {
         callback(null, true);
@@ -156,9 +158,13 @@ async function startServer() {
       }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Requested-With'],
-  }));
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Requested-With', 'X-Request-ID', 'Accept'],
+    optionsSuccessStatus: 204
+  };
+
+  app.use(cors(corsOptions));
+  app.options('*', cors(corsOptions));
 
   // 4. Request Timeout Safety
   app.use((req, res, next) => {

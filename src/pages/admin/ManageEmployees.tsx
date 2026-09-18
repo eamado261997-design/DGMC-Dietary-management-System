@@ -4,11 +4,12 @@ import { useModal } from "../../context/ModalContext.js";
 import PageHeader from "../../components/PageHeader.js";
 import VitalSignsLoader from "../../components/VitalSignsLoader.js";
 import { Person, Department } from "../../types.js";
-import { Search, Plus, Edit2, Trash2, ShieldAlert, User, Check, X, Building, Upload, FileText, Download, CheckCircle2, AlertCircle, Lock as LockIcon, Bug, Terminal, Activity, Zap, Database, Cpu, Clock, RefreshCw } from "lucide-react";
+import { Search, Plus, Edit2, Trash2, ShieldAlert, User, Check, X, Building, Upload, FileText, Download, CheckCircle2, AlertCircle, Lock as LockIcon, Bug, Terminal, Activity, Zap, Database, Cpu, Clock, RefreshCw, BookOpen, Sparkles } from "lucide-react";
 import { MIN_PASSWORD_LENGTH } from "../../constants/security.js";
 import { validatePasswordComplexity } from "../../utils/password.js";
 import { SecureField } from "../../components/SecureField.js";
 import { useDebounce } from "../../hooks/useDebounce.js";
+import EmployeeLifecycleDocsModal from "../../components/EmployeeLifecycleDocsModal.js";
 
 export default function ManageEmployees() {
   const { apiFetch } = useAuth();
@@ -18,6 +19,7 @@ export default function ManageEmployees() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lifecycleDocsOpen, setLifecycleDocsOpen] = useState(false);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -515,6 +517,14 @@ export default function ManageEmployees() {
         actions={
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setLifecycleDocsOpen(true)}
+              className="h-10 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-xl text-xs font-bold px-3.5 flex items-center gap-1.5 transition-colors"
+              title="View Employee Lifecycle, Status Transitions & Department Entitlement Policy"
+            >
+              <BookOpen className="w-4 h-4 text-teal-700" />
+              Lifecycle &amp; Entitlements Policy
+            </button>
+            <button
               onClick={() => {
                 fetchPerfData();
                 setPerfModalOpen(true);
@@ -523,7 +533,7 @@ export default function ManageEmployees() {
               title="View Server-Side Lookup Latency & Join Telemetry"
             >
               <Activity className="w-4 h-4 text-indigo-600" />
-              Latency & Join Diagnostics
+              Latency &amp; Join Diagnostics
             </button>
             <button
               onClick={() => {
@@ -876,6 +886,14 @@ export default function ManageEmployees() {
                     <option value="active">Active (Permit Cafeteria Access)</option>
                     <option value="inactive">Inactive Employee (Suspended Accounts)</option>
                   </select>
+                  {editPerson && (!editPerson.is_active || editPerson.employee_status === "inactive") && formStatus === "active" && (
+                    <div className="mt-2 p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-xl text-[10px] text-emerald-900 leading-relaxed flex items-start gap-2">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Reactivation Entitlements Engine:</strong> Saving will automatically clear stale inactive holds, re-initialize daily free meal credits, and re-enable duty roster shift allocations under their assigned hospital department.
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-zinc-600 block mb-1">Date of Hire</label>
@@ -1286,6 +1304,14 @@ export default function ManageEmployees() {
           </div>
         </div>
       )}
+
+      {/* Employee Lifecycle & Entitlement Policy Modal */}
+      <EmployeeLifecycleDocsModal
+        isOpen={lifecycleDocsOpen}
+        onClose={() => setLifecycleDocsOpen(false)}
+        departments={departments}
+        employees={employees}
+      />
     </div>
   );
 }

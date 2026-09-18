@@ -5,7 +5,7 @@ import { cacheLayer } from "../cache.js";
 import { isRedisClientConnected } from "../redis.js";
 import { Person } from "../../types.js";
 import { getEmployeePerfSummary } from "../utils/performanceTracker.js";
-import { decrypt } from "../encryption.js";
+import { decrypt, decryptAny } from "../encryption.js";
 
 export async function handleAdminRoutes(
   method: string,
@@ -159,7 +159,7 @@ export async function handleAdminRoutes(
 
       const todayTrans = await query(`
         SELECT t.*, 
-               CONCAT(p.first_name, ' ', p.last_name) AS employee_name,
+               p.first_name AS p_first_name, p.last_name AS p_last_name,
                p.employee_no,
                d.name AS department_name
         FROM transactions t
@@ -178,9 +178,9 @@ export async function handleAdminRoutes(
         }
       });
 
-      const recTrans = await query(`
+      const recTransRaw = await query(`
         SELECT t.*, 
-               CONCAT(p.first_name, ' ', p.last_name) AS employee_name,
+               p.first_name AS p_first_name, p.last_name AS p_last_name,
                p.employee_no,
                d.name AS department_name
         FROM transactions t
@@ -189,7 +189,16 @@ export async function handleAdminRoutes(
         ORDER BY t.id DESC
         LIMIT 10
       `);
-      recentTransactions = recTrans;
+      recentTransactions = recTransRaw.map((t: any) => {
+        const pFirst = decrypt(t.p_first_name);
+        const pLast = decrypt(t.p_last_name);
+        const empNo = decrypt(t.employee_no) || t.employee_no;
+        return {
+          ...t,
+          employee_name: (pFirst || pLast) ? `${pFirst || ''} ${pLast || ''}`.trim() : "Unknown Employee",
+          employee_no: empNo || "N/A"
+        };
+      });
 
       const auditRows = await query("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 10");
       recentActivities = auditRows;
@@ -314,10 +323,10 @@ export async function handleAdminRoutes(
     if (isMysqlConnected()) {
       let q = `
         SELECT t.*, 
-               CONCAT(p.first_name, ' ', p.last_name) AS employee_name,
+               p.first_name AS p_first_name, p.last_name AS p_last_name,
                p.employee_no,
                d.name AS department_name,
-               CONCAT(c.first_name, ' ', c.last_name) AS cashier_name
+               c.first_name AS c_first_name, c.last_name AS c_last_name
         FROM transactions t
         LEFT JOIN people p ON t.person_id = p.id
         LEFT JOIN departments d ON p.department_id = d.id
@@ -344,7 +353,20 @@ export async function handleAdminRoutes(
       }
       q += " ORDER BY t.id DESC LIMIT 500";
       const rows = await query(q, params);
-      return jsonResponse(200, rows);
+      const decryptedRows = rows.map((r: any) => {
+        const pFirst = decrypt(r.p_first_name);
+        const pLast = decrypt(r.p_last_name);
+        const cFirst = decrypt(r.c_first_name);
+        const cLast = decrypt(r.c_last_name);
+        const empNo = decrypt(r.employee_no) || r.employee_no;
+        return {
+          ...r,
+          employee_name: (pFirst || pLast) ? `${pFirst || ''} ${pLast || ''}`.trim() : "Unknown Employee",
+          employee_no: empNo || "N/A",
+          cashier_name: (cFirst || cLast) ? `${cFirst || ''} ${cLast || ''}`.trim() : "System"
+        };
+      });
+      return jsonResponse(200, decryptedRows);
     } else {
       const db = readDatabase();
       let list = [...db.transactions];
@@ -359,13 +381,18 @@ export async function handleAdminRoutes(
         const p = db.people.find(item => item.id === t.person_id);
         const cashier = db.people.find(item => item.id === t.cashier_person_id);
         const dept = p && p.department_id ? db.departments.find(d => d.id === p.department_id) : null;
+        const pFirst = p ? decrypt(p.first_name) : "";
+        const pLast = p ? decrypt(p.last_name) : "";
+        const cFirst = cashier ? decrypt(cashier.first_name) : "";
+        const cLast = cashier ? decrypt(cashier.last_name) : "";
+        const empNo = p ? (decrypt(p.employee_no) || p.employee_no) : "N/A";
         return {
           ...t,
-          employee_name: p ? `${p.first_name} ${p.last_name}` : "Unknown Employee",
-          employee_no: p ? p.employee_no : "N/A",
+          employee_name: p ? `${pFirst} ${pLast}`.trim() : "Unknown Employee",
+          employee_no: empNo,
           department_name: dept ? dept.name : "N/A",
           department_id: p ? p.department_id : null,
-          cashier_name: cashier ? `${cashier.first_name} ${cashier.last_name}` : "System"
+          cashier_name: cashier ? `${cFirst} ${cLast}`.trim() : "System"
         };
       });
 
@@ -385,7 +412,7 @@ export async function handleAdminRoutes(
 
     if (isMysqlConnected()) {
       const rows = await query(`
-        SELECT p.employee_no, CONCAT(p.first_name, ' ', p.last_name) AS name,
+        SELECT p.employee_no, p.first_name, p.last_name,
                d.name AS department_name, p.position, p.is_active,
                COUNT(CASE WHEN t.is_free = 1 AND t.status = 'completed' THEN 1 END) AS freeMealsClaimed,
                COUNT(CASE WHEN (t.is_free = 0 OR t.is_free IS NULL) AND t.status = 'completed' THEN 1 END) AS paidMealsPurchased,
@@ -397,7 +424,17 @@ export async function handleAdminRoutes(
         GROUP BY p.id
         ORDER BY p.id ASC
       `);
-      return jsonResponse(200, rows);
+      const decryptedRows = rows.map((p: any) => {
+        const fName = decrypt(p.first_name);
+        const lName = decrypt(p.last_name);
+        const empNo = decrypt(p.employee_no) || p.employee_no;
+        return {
+          ...p,
+          employee_no: empNo || "N/A",
+          name: (fName || lName) ? `${fName || ''} ${lName || ''}`.trim() : "Unknown Staff"
+        };
+      });
+      return jsonResponse(200, decryptedRows);
     } else {
       const db = readDatabase();
       const results = db.people.filter(p => p.role === "employee").map(p => {
@@ -406,9 +443,12 @@ export async function handleAdminRoutes(
         const paidClaims = empTrans.filter(t => !t.is_free).length;
         const totalSpent = empTrans.filter(t => !t.is_free).reduce((sum, t) => sum + Number(t.meal_amount), 0);
         const dept = p.department_id ? db.departments.find(d => d.id === p.department_id) : null;
+        const fName = decrypt(p.first_name);
+        const lName = decrypt(p.last_name);
+        const empNo = decrypt(p.employee_no) || p.employee_no;
         return {
-          employee_no: p.employee_no || "N/A",
-          name: `${p.first_name} ${p.last_name}`,
+          employee_no: empNo || "N/A",
+          name: `${fName} ${lName}`.trim() || "Unknown Staff",
           department_name: dept ? dept.name : "N/A",
           position: p.position || "Staff",
           freeMealsClaimed: freeClaims,
@@ -465,15 +505,22 @@ export async function handleAdminRoutes(
     if (!requireRole(["admin", "manager"])) return jsonResponse(403, { error: "Admin or Manager privilege required" });
     if (isMysqlConnected()) {
       const rows = await query("SELECT id, employee_no, first_name, last_name, qr_code FROM people WHERE role = 'employee'");
-      return jsonResponse(200, rows);
+      const decryptedRows = rows.map((p: any) => ({
+        id: p.id,
+        employee_no: decrypt(p.employee_no) || p.employee_no,
+        first_name: decrypt(p.first_name) || p.first_name,
+        last_name: decrypt(p.last_name) || p.last_name,
+        qr_code: decrypt(p.qr_code) || p.qr_code
+      }));
+      return jsonResponse(200, decryptedRows);
     } else {
       const db = readDatabase();
       const rows = db.people.filter(p => p.role === "employee").map(p => ({
         id: p.id,
-        employee_no: p.employee_no,
-        first_name: p.first_name,
-        last_name: p.last_name,
-        qr_code: p.qr_code
+        employee_no: decrypt(p.employee_no) || p.employee_no,
+        first_name: decrypt(p.first_name) || p.first_name,
+        last_name: decrypt(p.last_name) || p.last_name,
+        qr_code: decrypt(p.qr_code) || p.qr_code
       }));
       return jsonResponse(200, rows);
     }
@@ -501,10 +548,10 @@ export async function handleAdminRoutes(
         csvContent = "Transaction ID,Meal Date,Meal Time,Employee Name,Employee No,Department,Free Claim?,Amount,Status,Cashier\n";
         let q = `
           SELECT t.*, 
-                 CONCAT(p.first_name, ' ', p.last_name) AS employee_name,
+                 p.first_name AS p_first_name, p.last_name AS p_last_name,
                  p.employee_no,
                  d.name AS department_name,
-                 CONCAT(c.first_name, ' ', c.last_name) AS cashier_name
+                 c.first_name AS c_first_name, c.last_name AS c_last_name
           FROM transactions t
           LEFT JOIN people p ON t.person_id = p.id
           LEFT JOIN departments d ON p.department_id = d.id
@@ -528,15 +575,22 @@ export async function handleAdminRoutes(
         const rows = await query(q, params);
         rows.forEach((t: any) => {
           const isFreeYesNo = (t.is_free === 1 || t.is_free === true) ? "YES" : "NO";
+          const pFirst = decrypt(t.p_first_name);
+          const pLast = decrypt(t.p_last_name);
+          const cFirst = decrypt(t.c_first_name);
+          const cLast = decrypt(t.c_last_name);
+          const empNo = decrypt(t.employee_no) || t.employee_no;
+          const empName = (pFirst || pLast) ? `${pFirst || ''} ${pLast || ''}`.trim() : "Unknown";
+          const cashName = (cFirst || cLast) ? `${cFirst || ''} ${cLast || ''}`.trim() : "System";
           csvContent += [
-            t.id, t.meal_date, t.meal_time, t.employee_name || "Unknown", t.employee_no || "N/A",
-            t.department_name || "N/A", isFreeYesNo, Number(t.meal_amount || 0).toFixed(2), t.status, t.cashier_name || "System"
+            t.id, t.meal_date, t.meal_time, empName, empNo || "N/A",
+            t.department_name || "N/A", isFreeYesNo, Number(t.meal_amount || 0).toFixed(2), t.status, cashName
           ].map(escapeCsv).join(",") + "\n";
         });
       } else if (type === "employees") {
         csvContent = "Employee No,Name,Department,Position,Free Meals Claimed,Salary Deductions,Total Salary Deductions,Status\n";
         const rows = await query(`
-          SELECT p.employee_no, CONCAT(p.first_name, ' ', p.last_name) AS name,
+          SELECT p.employee_no, p.first_name, p.last_name,
                  d.name AS department_name, p.position, p.is_active,
                  COUNT(CASE WHEN t.is_free = 1 AND t.status = 'completed' THEN 1 END) AS freeMealsClaimed,
                  COUNT(CASE WHEN (t.is_free = 0 OR t.is_free IS NULL) AND t.status = 'completed' THEN 1 END) AS paidMealsPurchased,
@@ -550,8 +604,12 @@ export async function handleAdminRoutes(
         `);
         rows.forEach((p: any) => {
           const statusStr = (p.is_active === 1 || p.is_active === true) ? "Active" : "Inactive";
+          const fName = decrypt(p.first_name);
+          const lName = decrypt(p.last_name);
+          const empNo = decrypt(p.employee_no) || p.employee_no;
+          const name = (fName || lName) ? `${fName || ''} ${lName || ''}`.trim() : "Unknown";
           csvContent += [
-            p.employee_no || "N/A", p.name || "Unknown", p.department_name || "N/A", p.position || "Staff",
+            empNo || "N/A", name, p.department_name || "N/A", p.position || "Staff",
             Number(p.freeMealsClaimed || 0), Number(p.paidMealsPurchased || 0), Number(p.totalPaidAmount || 0).toFixed(2), statusStr
           ].map(escapeCsv).join(",") + "\n";
         });

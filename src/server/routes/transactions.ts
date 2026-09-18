@@ -3,6 +3,7 @@ import { readDatabase, writeDatabase } from "../db.js";
 import { isMysqlConnected, query, execute } from "../mysql.js";
 import { Person, Transaction } from "../../types.js";
 import { mapDatabaseError } from "../errors.js";
+import { decrypt } from "../encryption.js";
 
 const getSystemSettings = async () => {
   let settings: any[] = [];
@@ -131,29 +132,48 @@ export async function handleTransactionRoutes(
       if (isMysqlConnected()) {
         const rows = await query(`
           SELECT t.*, 
-                 CONCAT(p.first_name, ' ', p.last_name) AS employee_name,
+                 p.first_name AS p_first_name, p.last_name AS p_last_name,
                  p.employee_no,
                  d.name AS department_name,
-                 CONCAT(c.first_name, ' ', c.last_name) AS cashier_name
+                 c.first_name AS c_first_name, c.last_name AS c_last_name
           FROM transactions t
           LEFT JOIN people p ON t.person_id = p.id
           LEFT JOIN departments d ON p.department_id = d.id
           LEFT JOIN people c ON t.cashier_person_id = c.id
           ORDER BY t.id DESC LIMIT 100
         `);
-        return jsonResponse(200, rows);
+        const decryptedRows = rows.map((t: any) => {
+          const pFirst = decrypt(t.p_first_name);
+          const pLast = decrypt(t.p_last_name);
+          const cFirst = decrypt(t.c_first_name);
+          const cLast = decrypt(t.c_last_name);
+          const empNo = decrypt(t.employee_no) || t.employee_no;
+          return {
+            ...t,
+            employee_name: (pFirst || pLast) ? `${pFirst || ''} ${pLast || ''}`.trim() : "Unknown",
+            employee_no: empNo || "N/A",
+            department_name: t.department_name || "N/A",
+            cashier_name: (cFirst || cLast) ? `${cFirst || ''} ${cLast || ''}`.trim() : "System"
+          };
+        });
+        return jsonResponse(200, decryptedRows);
       } else {
         const db = readDatabase();
         const enriched = (db.transactions || []).slice(-100).reverse().map(t => {
           const p = (db.people || []).find(item => item.id === t.person_id);
           const cashier = (db.people || []).find(item => item.id === t.cashier_person_id);
           const dept = p && p.department_id ? (db.departments || []).find(d => d.id === p.department_id) : null;
+          const pFirst = p ? decrypt(p.first_name) : "";
+          const pLast = p ? decrypt(p.last_name) : "";
+          const cFirst = cashier ? decrypt(cashier.first_name) : "";
+          const cLast = cashier ? decrypt(cashier.last_name) : "";
+          const empNo = p ? (decrypt(p.employee_no) || p.employee_no) : "N/A";
           return {
             ...t,
-            employee_name: p ? `${p.first_name} ${p.last_name}` : "Unknown",
-            employee_no: p ? p.employee_no : "N/A",
+            employee_name: (pFirst || pLast) ? `${pFirst} ${pLast}`.trim() : "Unknown",
+            employee_no: empNo,
             department_name: dept ? dept.name : "N/A",
-            cashier_name: cashier ? `${cashier.first_name} ${cashier.last_name}` : "System"
+            cashier_name: (cFirst || cLast) ? `${cFirst} ${cLast}`.trim() : "System"
           };
         });
         return jsonResponse(200, enriched);

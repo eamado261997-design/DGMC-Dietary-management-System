@@ -20,6 +20,33 @@ export default defineConfig(() => {
               return next();
             }
 
+            // Set CORS headers for local hospital intranet and dev environments
+            const origin = req.headers.origin;
+            const isAllowedOrigin = !origin ||
+              origin.includes('localhost') ||
+              origin.includes('127.0.0.1') ||
+              origin.includes('192.168.') ||
+              origin.includes('10.') ||
+              /^https?:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./.test(origin) ||
+              origin.endsWith('.run.app');
+
+            if (isAllowedOrigin && origin) {
+              res.setHeader('Access-Control-Allow-Origin', origin);
+              res.setHeader('Access-Control-Allow-Credentials', 'true');
+            } else if (!origin) {
+              res.setHeader('Access-Control-Allow-Origin', '*');
+            }
+
+            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+            res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRF-Token, X-Requested-With, X-Request-ID, Accept');
+
+            // Handle OPTIONS preflight immediately
+            if (req.method === 'OPTIONS') {
+              res.writeHead(204);
+              res.end();
+              return;
+            }
+
             const parsed = urlHelper.parse(reqUrl, true);
             const queryParams = parsed.query;
             const pathOnly = parsed.pathname || '';

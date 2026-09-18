@@ -1,11 +1,16 @@
 import { jsonResponse, ApiResponse, getTodayDateStr } from "../utils/apiUtils.js";
 import { readDatabase, writeDatabase, hashPassword } from "../db.js";
 import { isMysqlConnected, query, execute } from "../mysql.js";
-import { decryptPerson } from "../encryption.js";
+import { decryptPerson, decrypt } from "../encryption.js";
 import { DEFAULT_MIN_PASSWORD_LENGTH } from "../../utils/password.js";
 import { validatePasswordComplexity } from "../../utils/password.js";
 import { Person } from "../../types.js";
 import { startTimer, recordEmployeePerfMetric, getPerfHeaders } from "../utils/performanceTracker.js";
+import {
+  handleEmployeeStatusTransition,
+  getEmployeeLifecycleDocumentation,
+  reinitializeEmployeeEntitlements
+} from "../utils/employeeLifecycle.js";
 
 function isProtectedUser(user: any): boolean {
   if (!user) return false;
@@ -31,6 +36,36 @@ export async function handleEmployeeRoutes(
   logToAudit: (action: string, entityType: string, entityId: any, oldData: any, newData: any) => Promise<void>,
   getSettingValue: (key: string, defaultVal: string) => Promise<string>
 ): Promise<ApiResponse | null> {
+  // Documentation & Lifecycle Specification Endpoint
+  if (path === "/api/admin/lifecycle-docs" && method === "GET") {
+    if (!authUser) return jsonResponse(401, { error: "Authentication required" });
+    const docs = getEmployeeLifecycleDocumentation();
+    return jsonResponse(200, docs);
+  }
+
+  // Employee Lifecycle & Live Entitlement Status Endpoint
+  const lifecycleMatch = path.match(/^\/api\/admin\/people\/(\d+)\/lifecycle-status$/);
+  if (lifecycleMatch && method === "GET") {
+    if (!authUser) return jsonResponse(401, { error: "Authentication required" });
+    const targetId = parseInt(lifecycleMatch[1], 10);
+    let person: any = null;
+    if (isMysqlConnected()) {
+      const rows = await query("SELECT * FROM people WHERE id = ?", [targetId]);
+      person = rows[0] || null;
+    } else {
+      const db = readDatabase();
+      person = (db.people || []).find((p: any) => p.id === targetId) || null;
+    }
+    if (!person) return jsonResponse(404, { error: "Employee record not found" });
+
+    const statusInfo = await reinitializeEmployeeEntitlements(
+      targetId,
+      person.department_id,
+      (person.is_active === 1 || person.is_active === true) ? "active" : "inactive"
+    );
+    return jsonResponse(200, statusInfo);
+  }
+
   // Reset Password (Admin / Dietary Admin)
   const resetPassMatch = path.match(/^\/api\/admin\/people\/(\d+)\/reset-password$/);
   if (resetPassMatch && method === "POST") {
@@ -173,6 +208,20 @@ export async function handleEmployeeRoutes(
       updatedPerson.is_active = updatedPerson.is_active === 1 || updatedPerson.is_active === true;
       updatedPerson.department_id = updatedPerson.department_id !== null && updatedPerson.department_id !== undefined ? Number(updatedPerson.department_id) : null;
       updatedPerson.managed_department_id = updatedPerson.managed_department_id !== null && updatedPerson.managed_department_id !== undefined ? Number(updatedPerson.managed_department_id) : null;
+
+      // Handle Lifecycle status & entitlement transitions (Inactive <-> Active)
+      const entitlementResult = await handleEmployeeStatusTransition(
+        targetId,
+        oldPersonCopy,
+        updatedPerson.is_active,
+        updatedPerson.department_id,
+        logToAudit
+      );
+      if (entitlementResult) {
+        (updatedPerson as any).entitlements_reinitialized = true;
+        (updatedPerson as any).entitlement_summary = entitlementResult;
+      }
+
       const roleChanged = role && role !== p.role;
       if (roleChanged) {
         await logToAudit("ROLE_CHANGE", "people", targetId, p.role, role);
@@ -266,6 +315,20 @@ export async function handleEmployeeRoutes(
 
       const safeP = { ...p };
       delete safeP.password;
+
+      // Handle Lifecycle status & entitlement transitions (Inactive <-> Active)
+      const entitlementResult = await handleEmployeeStatusTransition(
+        targetId,
+        oldPersonCopy,
+        Boolean(safeP.is_active),
+        safeP.department_id,
+        logToAudit
+      );
+      if (entitlementResult) {
+        (safeP as any).entitlements_reinitialized = true;
+        (safeP as any).entitlement_summary = entitlementResult;
+      }
+
       const roleChanged = role && role !== oldPersonCopy.role;
       if (roleChanged) {
         await logToAudit("ROLE_CHANGE", "people", targetId, oldPersonCopy.role, role);
@@ -906,31 +969,41 @@ export async function handleEmployeeRoutes(
     if (!requireRole(["manager", "admin"])) return jsonResponse(403, { error: "Manager/Admin privilege required" });
 
     if (isMysqlConnected()) {
+      let rows: any[] = [];
       if (authUser.role === "admin") {
-        const rows = await query(`
-          SELECT s.*, CONCAT(p.first_name, ' ', p.last_name) AS employee_name 
+        rows = await query(`
+          SELECT s.*, p.first_name, p.last_name
           FROM employee_schedules s 
           JOIN people p ON s.person_id = p.id 
           WHERE p.is_active = 1
         `);
-        return jsonResponse(200, rows);
       } else {
-        const rows = await query(`
-          SELECT s.*, CONCAT(p.first_name, ' ', p.last_name) AS employee_name 
+        rows = await query(`
+          SELECT s.*, p.first_name, p.last_name
           FROM employee_schedules s 
           JOIN people p ON s.person_id = p.id 
           WHERE p.department_id = ? AND p.is_active = 1
         `, [managedDepartmentId]);
-        return jsonResponse(200, rows);
       }
+      const decryptedRows = rows.map((s: any) => {
+        const fName = decrypt(s.first_name);
+        const lName = decrypt(s.last_name);
+        return {
+          ...s,
+          employee_name: (fName || lName) ? `${fName || ''} ${lName || ''}`.trim() : "Unknown Staff"
+        };
+      });
+      return jsonResponse(200, decryptedRows);
     } else {
       const db = readDatabase();
       const empIds = new Set(db.people.filter(p => (authUser.role === "admin" || p.department_id === managedDepartmentId) && p.is_active).map(p => p.id));
       const schedules = (db.employee_schedules || []).filter(s => empIds.has(s.person_id)).map(s => {
         const p = db.people.find(item => item.id === s.person_id);
+        const fName = p ? decrypt(p.first_name) : "";
+        const lName = p ? decrypt(p.last_name) : "";
         return {
           ...s,
-          employee_name: p ? `${p.first_name} ${p.last_name}` : "Unknown"
+          employee_name: (fName || lName) ? `${fName} ${lName}`.trim() : "Unknown"
         };
       });
       return jsonResponse(200, schedules);

@@ -565,34 +565,37 @@ export default function AdminReports() {
                       </td>
                     </tr>
                   ) : (
-                    filteredEmpSummaries.map((emp) => (
-                      <tr key={emp.id} className="hover:bg-zinc-50/50 transition-colors">
-                        <td className="px-6 py-4 font-mono font-bold text-zinc-800">{emp.employee_no || "N/A"}</td>
-                        <td className="px-6 py-4 font-bold text-zinc-950">{emp.name}</td>
-                        <td className="px-6 py-4">
-                          <span className="font-bold text-zinc-850 block">{emp.department_name}</span>
-                          <span className="text-[10px] text-zinc-400 block">{emp.position}</span>
-                        </td>
-                        <td className="px-6 py-4 font-mono font-extrabold text-emerald-700">
-                          {emp.freeMealsClaimed} claims
-                        </td>
-                        <td className="px-6 py-4 font-mono font-extrabold text-teal-800">
-                          {emp.paidMealsPurchased} paid
-                        </td>
-                        <td className="px-6 py-4 font-mono font-black text-zinc-900">
-                          ₱{Number(emp.totalPaidAmount).toFixed(2)}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${
-                              emp.is_active ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-rose-50 text-rose-800 border border-rose-200"
-                            }`}
-                          >
-                            {emp.is_active ? "Active" : "Disabled"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
+                    filteredEmpSummaries.map((emp, idx) => {
+                      const isActive = emp.is_active === 1 || emp.is_active === true || emp.is_active === "1";
+                      return (
+                        <tr key={emp.employee_no || idx} className="hover:bg-zinc-50/50 transition-colors">
+                          <td className="px-6 py-4 font-mono font-bold text-zinc-800">{emp.employee_no || "N/A"}</td>
+                          <td className="px-6 py-4 font-bold text-zinc-950">{emp.name}</td>
+                          <td className="px-6 py-4">
+                            <span className="font-bold text-zinc-850 block">{emp.department_name}</span>
+                            <span className="text-[10px] text-zinc-400 block">{emp.position}</span>
+                          </td>
+                          <td className="px-6 py-4 font-mono font-extrabold text-emerald-700">
+                            {emp.freeMealsClaimed || 0} claims
+                          </td>
+                          <td className="px-6 py-4 font-mono font-extrabold text-teal-800">
+                            {emp.paidMealsPurchased || 0} paid
+                          </td>
+                          <td className="px-6 py-4 font-mono font-black text-zinc-900">
+                            ₱{Number(emp.totalPaidAmount || 0).toFixed(2)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                                isActive ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-rose-50 text-rose-800 border border-rose-200"
+                              }`}
+                            >
+                              {isActive ? "Active" : "Inactive"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
