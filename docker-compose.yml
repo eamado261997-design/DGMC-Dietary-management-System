@@ -41,6 +41,7 @@ services:
       MYSQL_DATABASE: dgmc_meals
       MYSQL_USER: dgmc_user
       MYSQL_PASSWORD: dgmc_password
+      MYSQL_INITDB_SKIP_TZINFO: "1"
     ports:
       - "3306:3306"
       - "3311:3306"
@@ -52,7 +53,7 @@ services:
           - dgmc_db
     volumes:
       - db_data:/var/lib/mysql
-      - ./docker/schema.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./schema.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -prootpassword || mysqladmin ping -h localhost -u root -prootpassword"]
       interval: 10s

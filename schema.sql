@@ -2,6 +2,23 @@
 -- Mirrors docker-entrypoint-initdb.d/schema.sql
 
 CREATE DATABASE IF NOT EXISTS `dgmc_meals` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE USER IF NOT EXISTS 'dgmc_user'@'%' IDENTIFIED WITH mysql_native_password BY 'dgmc_password';
+ALTER USER 'dgmc_user'@'%' IDENTIFIED WITH mysql_native_password BY 'dgmc_password';
+CREATE USER IF NOT EXISTS 'dgmc_user'@'localhost' IDENTIFIED WITH mysql_native_password BY 'dgmc_password';
+ALTER USER 'dgmc_user'@'localhost' IDENTIFIED WITH mysql_native_password BY 'dgmc_password';
+GRANT ALL PRIVILEGES ON dgmc_meals.* TO 'dgmc_user'@'%';
+GRANT ALL PRIVILEGES ON dgmc_meals.* TO 'dgmc_user'@'localhost';
+
+CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED WITH mysql_native_password BY 'rootpassword';
+ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY 'rootpassword';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+
+CREATE USER IF NOT EXISTS 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'rootpassword';
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'rootpassword';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+
 USE `dgmc_meals`;
 
 CREATE TABLE IF NOT EXISTS `transactions` (

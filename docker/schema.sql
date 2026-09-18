@@ -12,6 +12,8 @@ CREATE DATABASE IF NOT EXISTS `dgmc_meals` CHARACTER SET utf8mb4 COLLATE utf8mb4
 -- ------------------------------------------------------------------------------
 CREATE USER IF NOT EXISTS 'dgmc_user'@'%' IDENTIFIED WITH mysql_native_password BY 'dgmc_password';
 ALTER USER 'dgmc_user'@'%' IDENTIFIED WITH mysql_native_password BY 'dgmc_password';
+CREATE USER IF NOT EXISTS 'dgmc_user'@'localhost' IDENTIFIED WITH mysql_native_password BY 'dgmc_password';
+ALTER USER 'dgmc_user'@'localhost' IDENTIFIED WITH mysql_native_password BY 'dgmc_password';
 GRANT ALL PRIVILEGES ON dgmc_meals.* TO 'dgmc_user'@'%';
 GRANT ALL PRIVILEGES ON dgmc_meals.* TO 'dgmc_user'@'localhost';
 

@@ -14,7 +14,7 @@ import { cacheLayer } from './src/server/cache.ts';
 import { logger } from './src/server/utils/logger.ts';
 import { handleApiRequest, mapDatabaseError } from './src/server/api.ts';
 import { loadAndInitDatabase } from './src/server/db.ts';
-import { initDatabase } from './src/server/utils/dbInit.ts';
+import { initializeDatabase } from './src/server/utils/dbInit.ts';
 import { checkMysqlHealth, getPoolStats, isMysqlConnected, getMysqlPool } from './src/server/mysql.ts';
 import { isSqliteConnected } from './src/server/sqlite.ts';
 import { getOpenApiSpec } from './src/server/services/openapiService.ts';
@@ -48,9 +48,9 @@ import { getPrometheusMetrics } from './src/server/utils/performanceTracker.js';
 async function startServer() {
   validateEnvironment();
 
-  // Check database existence, execute migrations/indexing, and guarantee ready-to-use state
+  // Verify connection, check for missing tables, execute schema.sql, and ensure ready data state
   try {
-    await initDatabase();
+    await initializeDatabase();
   } catch (dbInitErr: any) {
     logger.error("Critical: Could not initialize storage engine:", { error: dbInitErr.message });
   }

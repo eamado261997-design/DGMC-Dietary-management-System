@@ -2,63 +2,71 @@ import fs from 'fs';
 import path from 'path';
 import mysql from 'mysql2/promise';
 import { logger } from './logger.ts';
-import { loadAndInitDatabase, DatabaseSchema } from '../db.ts';
+import { loadAndInitDatabase } from '../db.ts';
 import { isMysqlConnected, getMysqlPool } from '../mysql.ts';
 import { isSqliteConnected, getSqliteDb } from '../sqlite.ts';
 
-export interface DatabaseInitializationReport {
-  success: boolean;
-  engine: 'mysql' | 'sqlite' | 'json';
-  databaseName: string;
-  tablesVerified: string[];
-  migrationsApplied: string[];
-  indexesVerified: string[];
-  isSeeded: boolean;
-  error?: string;
-  durationMs: number;
-}
+const REQUIRED_TABLES = [
+  'departments',
+  'people',
+  'transactions',
+  'employee_schedules',
+  'free_meal_logs',
+  'system_settings',
+  'audit_logs',
+  'recentActivities'
+];
 
 /**
- * Executes a raw SQL script string line by line or statement by statement,
- * safely ignoring comments, empty lines, and duplicate index errors.
+ * Splits and executes SQL script statements safely.
  */
-export async function executeSqlScript(
-  connectionOrPool: any,
-  sqlScript: string,
-  isMysql: boolean = true
-): Promise<string[]> {
-  const executedStatements: string[] = [];
+export async function executeSqlStatements(
+  executor: (stmt: string) => Promise<any> | any,
+  sqlContent: string
+): Promise<number> {
+  // Strip block comments
+  const cleanContent = sqlContent.replace(/\/\*[\s\S]*?\*\//g, '');
   
-  // Remove multi-line comments
-  const cleanedScript = sqlScript.replace(/\/\*[\s\S]*?\*\//g, '');
-  
-  // Split statements by semicolon while respecting basic blocks
-  const rawStatements = cleanedScript.split(';');
+  // Custom delimiter support (e.g., DELIMITER // ... //)
+  const statements: string[] = [];
+  const lines = cleanContent.split(/\r?\n/);
+  let currentDelimiter = ';';
+  let buffer = '';
 
-  for (let statement of rawStatements) {
-    // Remove single line comments
-    statement = statement
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => !line.startsWith('--') && !line.startsWith('#') && !line.startsWith('DELIMITER'))
-      .join(' ')
-      .trim();
-
-    if (!statement || statement.length < 5) {
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('--') || trimmed.startsWith('#')) {
+      continue;
+    }
+    if (trimmed.toUpperCase().startsWith('DELIMITER ')) {
+      currentDelimiter = trimmed.substring(10).trim();
       continue;
     }
 
-    try {
-      if (isMysql) {
-        await connectionOrPool.query(statement);
-      } else {
-        connectionOrPool.exec(statement);
+    buffer += line + '\n';
+    if (buffer.trim().endsWith(currentDelimiter)) {
+      const statementToExec = buffer.trim().slice(0, -currentDelimiter.length).trim();
+      if (statementToExec.length > 0) {
+        statements.push(statementToExec);
       }
-      executedStatements.push(statement.substring(0, 60) + '...');
+      buffer = '';
+    }
+  }
+
+  if (buffer.trim().length > 0) {
+    statements.push(buffer.trim());
+  }
+
+  let executedCount = 0;
+  for (const stmt of statements) {
+    if (!stmt || stmt.length < 3) continue;
+    try {
+      await executor(stmt);
+      executedCount++;
     } catch (err: any) {
-      // Ignore idempotent errors such as "Duplicate key name", "already exists", etc.
       const msg = (err?.message || '').toLowerCase();
       const code = err?.code || '';
+      // Safe to ignore duplicate indexes/tables/columns
       const isIgnorable = 
         code === 'ER_DUP_KEYNAME' ||
         code === 'ER_TABLE_EXISTS_ERROR' ||
@@ -68,212 +76,123 @@ export async function executeSqlScript(
         msg.includes('index already exists');
 
       if (!isIgnorable) {
-        logger.warn(`[DbInit] Warning executing SQL statement: ${err.message}`, {
-          statementSnippet: statement.substring(0, 100)
+        logger.warn(`[DbInit] Statement warning: ${err.message}`, {
+          snippet: stmt.substring(0, 80)
         });
       }
     }
   }
 
-  return executedStatements;
+  return executedCount;
 }
 
 /**
- * Checks for and applies migration files from disk if present.
+ * Locates the most appropriate schema.sql file in the project.
  */
-export async function applyFileMigrations(connectionOrPool: any, isMysql: boolean): Promise<string[]> {
-  const migrationPaths = [
-    path.join(process.cwd(), 'src/server/database/migrations.sql'),
+function findSchemaSqlFile(): string | null {
+  const candidatePaths = [
+    path.join(process.cwd(), 'schema.sql'),
     path.join(process.cwd(), 'docker/schema.sql'),
+    path.join(process.cwd(), 'docker-entrypoint-initdb.d/schema.sql'),
     path.join(process.cwd(), 'init.sql')
   ];
 
-  const appliedMigrations: string[] = [];
-
-  for (const filePath of migrationPaths) {
-    if (fs.existsSync(filePath)) {
-      try {
-        const fileContent = fs.readFileSync(filePath, 'utf-8');
-        // Only run migrations.sql or schema scripts that match the active engine
-        if (filePath.endsWith('migrations.sql') || isMysql) {
-          logger.info(`[DbInit] Applying migration script: ${path.basename(filePath)}`);
-          await executeSqlScript(connectionOrPool, fileContent, isMysql);
-          appliedMigrations.push(path.basename(filePath));
-        }
-      } catch (err: any) {
-        logger.warn(`[DbInit] Error running migration file ${path.basename(filePath)}: ${err.message}`);
-      }
+  for (const candidate of candidatePaths) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
     }
   }
-
-  return appliedMigrations;
+  return null;
 }
 
 /**
- * Guarantees that all required performance indexes are present on the given connection.
+ * Verifies database connection and checks if required tables are missing.
+ * If tables are missing, executes 'schema.sql' to ensure the database schema is fully present.
  */
-export async function ensureRequiredIndexes(connectionOrPool: any, isMysql: boolean): Promise<string[]> {
-  const verifiedIndexes: string[] = [];
-
-  const indexQueries = [
-    // Transactions
-    { name: 'idx_transactions_created_at', table: 'transactions', cols: 'created_at' },
-    { name: 'idx_transactions_person_id', table: 'transactions', cols: 'person_id' },
-    { name: 'idx_transactions_date', table: 'transactions', cols: 'meal_date' },
-    { name: 'idx_transactions_date_status', table: 'transactions', cols: 'meal_date, status' },
-    { name: 'idx_transactions_person_created', table: 'transactions', cols: 'person_id, created_at' },
-    // Recent Activities
-    { name: 'idx_recent_activities_created_at', table: 'recentActivities', cols: 'created_at' },
-    { name: 'idx_recent_activities_person_id', table: 'recentActivities', cols: 'person_id' },
-    { name: 'idx_recent_activities_user_id', table: 'recentActivities', cols: 'user_id' },
-    // Audit Logs
-    { name: 'idx_audit_logs_created_at', table: 'audit_logs', cols: 'created_at' },
-    { name: 'idx_audit_logs_user', table: 'audit_logs', cols: 'user_id' },
-    // People
-    { name: 'idx_people_dept', table: 'people', cols: 'department_id' },
-    { name: 'idx_people_role_active', table: 'people', cols: 'role, is_active' },
-    // Schedules & Free Meals
-    { name: 'idx_schedules_person_date', table: 'employee_schedules', cols: 'person_id, work_date' },
-    { name: 'idx_free_meals_person_date', table: 'free_meal_logs', cols: 'person_id, meal_date' },
-    // Login attempts
-    { name: 'idx_login_attempts_user', table: 'login_attempts', cols: 'username' }
-  ];
-
-  for (const idx of indexQueries) {
-    try {
-      if (isMysql) {
-        // MySQL 8.0.13+ or safely caught ER_DUP_KEYNAME
-        await connectionOrPool.query(`CREATE INDEX \`${idx.name}\` ON \`${idx.table}\` (${idx.cols})`);
-      } else {
-        // SQLite native syntax
-        connectionOrPool.exec(`CREATE INDEX IF NOT EXISTS "${idx.name}" ON "${idx.table}" (${idx.cols})`);
-      }
-      verifiedIndexes.push(idx.name);
-    } catch (err: any) {
-      // ER_DUP_KEYNAME (error 1061) means the index already exists and is healthy
-      if (err?.code === 'ER_DUP_KEYNAME' || (err?.message || '').includes('already exists')) {
-        verifiedIndexes.push(idx.name);
-      }
-    }
-  }
-
-  return verifiedIndexes;
-}
-
-/**
- * Checks MySQL database existence, creates it if missing, and verifies all required tables.
- */
-async function initializeMysqlDatabase(dbName: string): Promise<boolean> {
-  const host = process.env.MYSQL_HOST;
-  const user = process.env.MYSQL_USER || 'dgmc_user';
-  const password = process.env.MYSQL_PASSWORD || 'dgmc_password';
-  const port = parseInt(process.env.MYSQL_PORT || '3306', 10);
-
-  if (!host || host === 'YOUR_MYSQL_HOST' || host === 'EMPTY') {
-    return false;
-  }
-
-  // Attempt connection to server level to ensure database exists
-  try {
-    const adminConn = await mysql.createConnection({
-      host,
-      user,
-      password,
-      port,
-      connectTimeout: 3000
-    });
-
-    await adminConn.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
-    await adminConn.end();
-    return true;
-  } catch (err: any) {
-    logger.warn(`[DbInit] MySQL database existence check via admin connection skipped or failed: ${err.message}`);
-    return false;
-  }
-}
-
-/**
- * Main Database Initialization Utility.
- * Verifies database existence, applies migration scripts, validates performance indexes,
- * and ensures the application starts in a completely ready-to-use state.
- */
-export async function initDatabase(): Promise<DatabaseInitializationReport> {
+export async function initializeDatabase(): Promise<boolean> {
   const startTime = Date.now();
-  const dbName = process.env.MYSQL_DATABASE || 'dgmc_meals';
-  
-  logger.info('[DbInit] Checking database readiness and executing startup migrations...');
+  logger.info('[DbInit] Verifying database connection and schema state...');
 
-  // 1. If MySQL is configured, ensure database exists
-  if (process.env.MYSQL_HOST) {
-    await initializeMysqlDatabase(dbName);
+  // 1. Establish and verify connection
+  try {
+    await loadAndInitDatabase();
+  } catch (loadErr: any) {
+    logger.warn(`[DbInit] Notice during primary storage init: ${loadErr.message}`);
   }
 
-  // 2. Load and initialize the dual-mode storage engine (MySQL -> SQLite -> JSON fallback)
-  await loadAndInitDatabase();
+  let pool = getMysqlPool();
+  let activeEngine: 'mysql' | 'sqlite' | 'json' = 'json';
+  let existingTables: string[] = [];
 
-  const requiredTables = [
-    'departments',
-    'people',
-    'transactions',
-    'employee_schedules',
-    'free_meal_logs',
-    'system_settings',
-    'audit_logs',
-    'login_attempts',
-    'recentActivities'
-  ];
-
-  let appliedMigrations: string[] = [];
-  let verifiedIndexes: string[] = [];
-  let engine: 'mysql' | 'sqlite' | 'json' = 'json';
-
-  // 3. Apply migrations and ensure performance indexes on the active engine
-  if (isMysqlConnected()) {
-    engine = 'mysql';
-    const pool = getMysqlPool();
-    if (pool) {
-      appliedMigrations = await applyFileMigrations(pool, true);
-      verifiedIndexes = await ensureRequiredIndexes(pool, true);
+  if (isMysqlConnected() && pool) {
+    activeEngine = 'mysql';
+    try {
+      const dbName = process.env.MYSQL_DATABASE || 'dgmc_meals';
+      const [rows]: any = await pool.query(
+        'SELECT TABLE_NAME FROM information_schema.tables WHERE TABLE_SCHEMA = ?',
+        [dbName]
+      );
+      existingTables = Array.isArray(rows) ? rows.map((r: any) => (r.TABLE_NAME || r.table_name || '').toLowerCase()) : [];
+      logger.info(`[DbInit] Connected to MySQL (${dbName}). Found ${existingTables.length} tables.`);
+    } catch (queryErr: any) {
+      logger.warn(`[DbInit] Could not query information_schema: ${queryErr.message}`);
     }
   } else if (isSqliteConnected()) {
-    engine = 'sqlite';
-    const sdb = getSqliteDb();
-    if (sdb) {
-      appliedMigrations = await applyFileMigrations(sdb, false);
-      verifiedIndexes = await ensureRequiredIndexes(sdb, false);
+    activeEngine = 'sqlite';
+    try {
+      const sdb = getSqliteDb();
+      if (sdb) {
+        const rows: any = sdb.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+        existingTables = rows.map((r: any) => (r.name || '').toLowerCase());
+        logger.info(`[DbInit] Connected to SQLite. Found ${existingTables.length} tables.`);
+      }
+    } catch (sErr: any) {
+      logger.warn(`[DbInit] Could not query sqlite_master: ${sErr.message}`);
     }
-  } else {
-    engine = 'json';
   }
 
-  const durationMs = Date.now() - startTime;
-  const report: DatabaseInitializationReport = {
-    success: true,
-    engine,
-    databaseName: dbName,
-    tablesVerified: requiredTables,
-    migrationsApplied: appliedMigrations,
-    indexesVerified: verifiedIndexes,
-    isSeeded: true,
-    durationMs
-  };
+  // 2. Determine Missing Tables
+  const missingTables = REQUIRED_TABLES.filter(tbl => !existingTables.includes(tbl.toLowerCase()));
 
-  logger.info(`[DbInit] Database initialized successfully in ${durationMs}ms`, {
-    engine: report.engine,
-    database: report.databaseName,
-    verifiedTables: report.tablesVerified.length,
-    indexesActive: report.indexesVerified.length,
-    migrationsRun: report.migrationsApplied
-  });
+  // 3. Execute schema.sql if tables are missing or not fully created
+  if (missingTables.length > 0) {
+    logger.info(`[DbInit] Tables missing or needing initialization: [${missingTables.join(', ')}]. Executing schema.sql...`);
+    const schemaFile = findSchemaSqlFile();
 
-  return report;
+    if (schemaFile) {
+      try {
+        const schemaSql = fs.readFileSync(schemaFile, 'utf-8');
+        if (activeEngine === 'mysql' && pool) {
+          const executed = await executeSqlStatements((stmt) => pool!.query(stmt), schemaSql);
+          logger.info(`[DbInit] Successfully applied ${executed} statements from ${path.basename(schemaFile)} to MySQL`);
+        } else if (activeEngine === 'sqlite') {
+          const sdb = getSqliteDb();
+          if (sdb) {
+            const executed = await executeSqlStatements((stmt) => sdb.exec(stmt), schemaSql);
+            logger.info(`[DbInit] Applied ${executed} statements from ${path.basename(schemaFile)} to SQLite`);
+          }
+        }
+      } catch (schemaErr: any) {
+        logger.error(`[DbInit] Error executing ${schemaFile}: ${schemaErr.message}`);
+      }
+    } else {
+      logger.warn('[DbInit] schema.sql file not found on disk; proceeding with ORM/schema loader');
+    }
+  } else {
+    logger.info('[DbInit] All core tables verified successfully.');
+  }
+
+  // 4. Guarantee complete application data seeding (admin accounts, default departments, settings)
+  try {
+    await loadAndInitDatabase();
+    logger.info(`[DbInit] Database state verified and fully initialized in ${Date.now() - startTime}ms`);
+    return true;
+  } catch (seedErr: any) {
+    logger.error(`[DbInit] Error during database load and seeding: ${seedErr.message}`);
+    return false;
+  }
 }
 
-/**
- * Quick status helper to check if database is online and initialized.
- */
-export async function isDatabaseReady(): Promise<boolean> {
-  return isMysqlConnected() || isSqliteConnected();
-}
-
-export default initDatabase;
+// Alias for backwards compatibility
+export const initDatabase = initializeDatabase;
+export default initializeDatabase;
