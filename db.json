@@ -30,7 +30,7 @@
     {
       "id": 1,
       "username": "admin",
-      "password": "pbkdf2$20000$d622323b5038e9954a77d05b388e3e6f$4458e861ca08e2ce0754d4a3bc2d50423d8f1ead6f384cdcaafa2d7b5703d5853b7fb0379a51d74abc4c6e8a7ce6d166221e35dc6588d5c9d25d6e8215565d6a",
+      "password": "pbkdf2$20000$c54a4561d5747cb859a5ea05cb73edbe$0f8647544c6d63b840d6704570fd981dbd07cc704ce04068e1ae3ff332f1fd12bdf2b3b94f084b591d4204191a2e66f21aa21214f27abcd91f185325d7fd01b1",
       "role": "admin",
       "first_name": "enc_det:e9f36b573142b36cff95dade:4b5f0e0551ae:ad58818195e08b93646e2f85af2b3d56",
       "last_name": "enc_det:4eafd5a42ad90ba45197b7eb:51a747125417fadefa34942065:20df7dc5c27d4265380630c0934c2b84",
@@ -46,7 +46,7 @@
     {
       "id": 99,
       "username": "dietary_admin",
-      "password": "pbkdf2$20000$d622323b5038e9954a77d05b388e3e6f$4458e861ca08e2ce0754d4a3bc2d50423d8f1ead6f384cdcaafa2d7b5703d5853b7fb0379a51d74abc4c6e8a7ce6d166221e35dc6588d5c9d25d6e8215565d6a",
+      "password": "pbkdf2$20000$c54a4561d5747cb859a5ea05cb73edbe$0f8647544c6d63b840d6704570fd981dbd07cc704ce04068e1ae3ff332f1fd12bdf2b3b94f084b591d4204191a2e66f21aa21214f27abcd91f185325d7fd01b1",
       "role": "dietary_admin",
       "first_name": "enc_det:4837d52d6785ad1af1b8fece:6f43d805c2fa0e:fea1b222719606be8059762f5d9543dd",
       "last_name": "enc_det:4eafd5a42ad90ba45197b7eb:51a747125417fadefa34942065:20df7dc5c27d4265380630c0934c2b84",
