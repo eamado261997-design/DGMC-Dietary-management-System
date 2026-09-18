@@ -1,11 +1,17 @@
 const path = require('path');
+const os = require('os');
+
+// Scale automatically up to CPU count, but cap at 8 workers to conserve RAM
+const maxInstances = process.env.PM2_INSTANCES 
+  ? parseInt(process.env.PM2_INSTANCES, 10) 
+  : Math.min(os.cpus().length, 8);
 
 module.exports = {
   apps: [
     {
       name: "dgmc-hospital-app",
       script: path.join(__dirname, "dist", "server.cjs"),
-      instances: "max",
+      instances: maxInstances,
       exec_mode: "cluster",
       instance_var: "INSTANCE_ID",
       wait_ready: true,
