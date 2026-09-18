@@ -86,6 +86,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initSession = async () => {
       const storedToken = localStorage.getItem("dgmc_token");
       if (storedToken && storedToken !== "null" && storedToken !== "undefined" && storedToken.trim() !== "") {
+        const decoded = parseJwt(storedToken);
+        if (decoded && decoded.exp && (decoded.exp * 1000 < Date.now())) {
+          localStorage.removeItem("dgmc_token");
+          setAuthState({ token: null, user: null });
+          setLoading(false);
+          return;
+        }
+
         try {
           const baseUrl = getApiBaseUrl();
           const res = await fetch(`${baseUrl}/api/auth/me`, {
@@ -390,8 +398,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ...(stateChangingMethods.includes(method) && xsrfToken ? { "X-XSRF-TOKEN": xsrfToken } : {}),
     } as any;
 
-    if (authState.token) {
-      headers["Authorization"] = `Bearer ${authState.token}`;
+    const token = localStorage.getItem("dgmc_token") || authState.token;
+    if (token && token !== "null" && token !== "undefined") {
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     if (method !== "GET") {

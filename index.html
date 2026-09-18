@@ -10,9 +10,6 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#18181b" />
     <link rel="apple-touch-icon" href="/assets/pwa_icon.jpg" />
-    <!-- Preload critical API routes in document head to eliminate LCP delay -->
-    <link rel="preload" href="/api/auth/me" as="fetch" crossorigin />
-    <link rel="preload" href="/api/public-stats" as="fetch" crossorigin />
     <!-- Early data dispatch to eliminate serial JS execution chaining -->
     <script>
       (function() {
