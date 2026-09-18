@@ -11,7 +11,13 @@ GRANT ALL PRIVILEGES ON dgmc_meals.* TO 'dgmc_user'@'%';
 GRANT ALL PRIVILEGES ON dgmc_meals.* TO 'dgmc_user'@'localhost';
 
 -- Also ensure root can connect if needed for debugging
+CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED WITH mysql_native_password BY 'rootpassword';
 ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY 'rootpassword';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+
+CREATE USER IF NOT EXISTS 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'rootpassword';
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'rootpassword';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
 
 FLUSH PRIVILEGES;
 

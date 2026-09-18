@@ -54,11 +54,11 @@ services:
       - db_data:/var/lib/mysql
       - ./docker/schema.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -prootpassword || mysqladmin ping -h localhost -u root -prootpassword"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 10s
+      retries: 10
+      start_period: 45s
 
   cache:
     image: redis:7
