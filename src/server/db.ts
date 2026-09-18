@@ -66,9 +66,18 @@ export function generateToken(payload: any): string {
 
 export function verifyToken(token: string): any {
   try {
-    return jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
+    return jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'], clockTolerance: 15 });
   } catch (_err) {
     return null;
+  }
+}
+
+export function verifyTokenWithDiagnostics(token: string): { decoded: any | null; error?: string; errorType?: string } {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'], clockTolerance: 15 });
+    return { decoded };
+  } catch (err: any) {
+    return { decoded: null, error: err.message, errorType: err.name };
   }
 }
 

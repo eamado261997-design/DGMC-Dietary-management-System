@@ -44,6 +44,7 @@ import { handleEmployeeRoutes } from "./routes/employees.js";
 import { handleTransactionRoutes } from "./routes/transactions.js";
 import { handleDepartmentRoutes } from "./routes/departments.js";
 import { handleSettingsRoutes } from "./routes/settings.js";
+import { authenticateRequest, getAuthDiagnostics } from "./middleware/authMiddleware.js";
 import { logger } from "./utils/logger.js";
 import { GoogleGenAI } from "@google/genai";
 import {
@@ -510,8 +511,6 @@ async function _handleApiRequest(
   headers: any,
   rawQueryParams: any = {}
 ): Promise<ApiResponse> {
-  let decoded: any = null;
-
   const clientIp = headers["x-forwarded-for"] || headers["x-real-ip"] || "127.0.0.1";
   const reqAuthHeader = headers["authorization"] || "";
   let rateLimitKey = `ip:${clientIp}`;
@@ -666,30 +665,9 @@ async function _handleApiRequest(
     }
   }
 
-  let authUser: Person | null = null;
-  const authHeader = headers["authorization"] || headers["Authorization"];
-
-  if (authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.substring(7);
-    decoded = verifyToken(token);
-    if (decoded) {
-      if (isMysqlConnected()) {
-        const rows = await query("SELECT * FROM people WHERE id = ? AND is_active = 1", [decoded.id]);
-        if (rows && rows.length > 0) {
-          const u = rows[0];
-          authUser = {
-            ...u,
-            is_active: u.is_active === 1 || u.is_active === true,
-            department_id: u.department_id !== null && u.department_id !== undefined ? Number(u.department_id) : undefined,
-            managed_department_id: u.managed_department_id !== null && u.managed_department_id !== undefined ? Number(u.managed_department_id) : undefined
-          };
-        }
-      } else {
-        const db = readDatabase();
-        authUser = db.people.find(p => p.id === decoded.id && p.is_active) || null;
-      }
-    }
-  }
+  // Authenticate incoming request via dedicated, contention-free authentication middleware
+  const authResult = await authenticateRequest(headers, path, method);
+  const authUser: Person | null = authResult.user;
 
   const db = readDatabase();
 
@@ -701,6 +679,18 @@ async function _handleApiRequest(
   // Evaluate role-based endpoint authorization guard before passing request to domain handlers
   const authGuardCheck = checkEndpointAuthorization(method, path, authUser);
   if (!authGuardCheck.authorized) {
+    const isUnauthMe = (path === "/api/auth/me" && method === "GET" && authResult.reason === "NO_AUTH_HEADER");
+    if (!isUnauthMe) {
+      logger.warn(`[AuthGuard] Access denied [${method} ${path}]: status ${authGuardCheck.statusCode}, reason: ${authResult.reason || 'unauthorized'}`, {
+        method,
+        path,
+        statusCode: authGuardCheck.statusCode,
+        reason: authResult.reason,
+        error: authGuardCheck.error,
+        userRole: authUser?.role || "unauthenticated"
+      });
+    }
+
     return jsonResponse(authGuardCheck.statusCode, {
       success: false,
       statusCode: authGuardCheck.statusCode,
@@ -708,7 +698,9 @@ async function _handleApiRequest(
       error: authGuardCheck.error,
       path,
       userRole: authUser?.role || "unauthenticated",
-      requiredRoles: authGuardCheck.requiredRoles
+      requiredRoles: authGuardCheck.requiredRoles,
+      reason: authResult.reason,
+      ...(authResult.errorDetails ? { details: authResult.errorDetails } : {})
     });
   }
 

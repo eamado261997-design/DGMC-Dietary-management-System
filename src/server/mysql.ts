@@ -136,9 +136,15 @@ export async function query<T = any>(sql: string, params: any = []): Promise<T[]
     const processedParams = processParamsForSql(sql, params);
     const [rows] = await dbPool.execute(sql, processedParams);
     return decryptAny(rows) as T[];
-  } catch (err) {
+  } catch (err: any) {
     totalQueryErrors++;
     lastErrorTimestamp = new Date().toISOString();
+    logger.error(`[MySQL Query Error]: ${err.message}`, {
+      sql: sql.length > 150 ? `${sql.substring(0, 150)}...` : sql,
+      code: err.code,
+      errno: err.errno,
+      sqlState: err.sqlState
+    });
     throw err;
   } finally {
     const queryDuration = Date.now() - startQuery;

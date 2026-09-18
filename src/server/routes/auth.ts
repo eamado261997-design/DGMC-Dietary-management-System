@@ -9,6 +9,7 @@ import { MIN_PASSWORD_LENGTH } from "../../constants/security.js";
 import { validatePasswordComplexity } from "../../utils/password.js";
 import { Person, LoginAttempt } from "../../types.js";
 import { startTimer, recordEmployeePerfMetric, getPerfHeaders } from "../utils/performanceTracker.js";
+import { invalidateUserAuthCache } from "../middleware/authMiddleware.js";
 
 export async function handleAuthRoutes(
   method: string,
@@ -324,6 +325,8 @@ export async function handleAuthRoutes(
         writeDatabase(db);
       }
     }
+
+    invalidateUserAuthCache(authUser.id);
 
     return jsonResponse(200, { success: true, message: "Password changed successfully" });
   }

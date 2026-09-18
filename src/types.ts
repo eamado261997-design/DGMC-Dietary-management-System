@@ -27,6 +27,7 @@ export interface Person {
   employee_no?: string;
   position?: string;
   department_id?: number | null;
+  department_name?: string;
   qr_code?: string;
   employee_status?: EmployeeStatus;
   hire_date?: string;

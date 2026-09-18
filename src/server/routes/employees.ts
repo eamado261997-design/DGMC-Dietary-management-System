@@ -6,6 +6,8 @@ import { DEFAULT_MIN_PASSWORD_LENGTH } from "../../utils/password.js";
 import { validatePasswordComplexity } from "../../utils/password.js";
 import { Person } from "../../types.js";
 import { startTimer, recordEmployeePerfMetric, getPerfHeaders } from "../utils/performanceTracker.js";
+import { logger } from "../utils/logger.js";
+import { invalidateUserAuthCache } from "../middleware/authMiddleware.js";
 import {
   handleEmployeeStatusTransition,
   getEmployeeLifecycleDocumentation,
@@ -227,6 +229,7 @@ export async function handleEmployeeRoutes(
         await logToAudit("ROLE_CHANGE", "people", targetId, p.role, role);
       }
       await logToAudit("EMPLOYEE_UPDATE", "people", targetId, oldPersonCopy, updatedPerson);
+      invalidateUserAuthCache(targetId);
       return jsonResponse(200, updatedPerson);
     } else {
       const db = readDatabase();
@@ -334,6 +337,7 @@ export async function handleEmployeeRoutes(
         await logToAudit("ROLE_CHANGE", "people", targetId, oldPersonCopy.role, role);
       }
       await logToAudit("EMPLOYEE_UPDATE", "people", targetId, oldPersonCopy, safeP);
+      invalidateUserAuthCache(targetId);
       return jsonResponse(200, safeP);
     }
   }
@@ -374,6 +378,7 @@ export async function handleEmployeeRoutes(
         const todayStr = new Date().toISOString().split('T')[0];
         await execute("DELETE FROM employee_schedules WHERE person_id = ? AND work_date >= ?", [targetId, todayStr]);
         await logToAudit("EMPLOYEE_DEACTIVATE", "people", targetId, null, "Account deactivated gracefully due to active transaction/meal receipts. Future schedules purged.");
+        invalidateUserAuthCache(targetId);
         return jsonResponse(200, {
           success: true,
           deactivated: true,
@@ -395,6 +400,7 @@ export async function handleEmployeeRoutes(
       } catch (_fkIgnore) {}
       await execute("DELETE FROM people WHERE id = ?", [targetId]);
       await logToAudit("EMPLOYEE_DELETE", "people", targetId, null, "Employee record deleted permanently from database.");
+      invalidateUserAuthCache(targetId);
       return jsonResponse(200, { success: true, deleted: true, message: "Employee profile deleted permanently." });
     } else {
       const db = readDatabase();
@@ -423,6 +429,7 @@ export async function handleEmployeeRoutes(
         db.employee_schedules = (db.employee_schedules || []).filter(s => !(s.person_id === targetId && s.work_date >= todayStr));
         writeDatabase(db);
         await logToAudit("EMPLOYEE_DEACTIVATE", "people", targetId, null, "Account deactivated gracefully due to active transaction/meal receipts. Future schedules purged.");
+        invalidateUserAuthCache(targetId);
         return jsonResponse(200, {
           success: true,
           deactivated: true,
@@ -454,6 +461,7 @@ export async function handleEmployeeRoutes(
       db.people.splice(index, 1);
       writeDatabase(db);
       await logToAudit("EMPLOYEE_DELETE", "people", targetId, null, "Employee record deleted permanently from database.");
+      invalidateUserAuthCache(targetId);
       return jsonResponse(200, { success: true, deleted: true, message: "Employee profile deleted permanently." });
     }
   }
@@ -666,39 +674,99 @@ export async function handleEmployeeRoutes(
 
   // Employee Profile & Session Info API
   if (path === "/api/employee/me" && method === "GET") {
-    if (!authUser) return jsonResponse(401, { error: "Authentication required" });
-    
-    let userRecord: any = null;
-    if (isMysqlConnected()) {
-      const rows = await query("SELECT * FROM people WHERE id = ?", [authUser.id]);
-      userRecord = rows[0] || null;
-    } else {
-      const db = readDatabase();
-      userRecord = (db.people || []).find((p: any) => p.id === authUser.id) || null;
-    }
-
-    if (!userRecord) {
-      return jsonResponse(404, { error: "Employee profile record not found" });
-    }
-
-    const decrypted = decryptPerson(userRecord);
-    const safeProfile: any = { ...decrypted };
-    delete safeProfile.password;
-
-    if (safeProfile.department_id) {
-      if (isMysqlConnected()) {
-        const dRows = await query("SELECT name FROM departments WHERE id = ?", [safeProfile.department_id]);
-        safeProfile.department_name = dRows[0]?.name || "N/A";
-      } else {
-        const db = readDatabase();
-        const dMatch = db.departments?.find((d: any) => Number(d.id) === Number(safeProfile.department_id));
-        safeProfile.department_name = dMatch ? dMatch.name : "N/A";
+    const meStartMs = Date.now();
+    try {
+      if (!authUser) {
+        logger.warn("[EmployeeRoutes] /api/employee/me rejected: No authenticated user session in request context", {
+          ip: headers["x-forwarded-for"] || headers["x-real-ip"] || "127.0.0.1",
+          hasAuthHeader: !!(headers["authorization"] || headers["Authorization"]),
+          method,
+          path
+        });
+        return jsonResponse(401, {
+          success: false,
+          code: "AUTHENTICATION_REQUIRED",
+          error: "Authentication required. Please provide a valid session token."
+        });
       }
-    } else {
-      safeProfile.department_name = "N/A";
-    }
 
-    return jsonResponse(200, safeProfile);
+      // Use the verified authUser directly to eliminate redundant round-trip database queries and pool contention
+      const safeProfile: any = { ...authUser };
+      delete safeProfile.password;
+
+      // Ensure PII fields are fully decrypted for the authenticated client profile
+      try {
+        if (safeProfile.first_name && (safeProfile.first_name.startsWith("enc:") || safeProfile.first_name.startsWith("enc_det:"))) {
+          safeProfile.first_name = decrypt(safeProfile.first_name);
+        }
+        if (safeProfile.last_name && (safeProfile.last_name.startsWith("enc:") || safeProfile.last_name.startsWith("enc_det:"))) {
+          safeProfile.last_name = decrypt(safeProfile.last_name);
+        }
+        if (safeProfile.email && (safeProfile.email.startsWith("enc:") || safeProfile.email.startsWith("enc_det:"))) {
+          safeProfile.email = decrypt(safeProfile.email);
+        }
+        if (safeProfile.phone && (safeProfile.phone.startsWith("enc:") || safeProfile.phone.startsWith("enc_det:"))) {
+          safeProfile.phone = decrypt(safeProfile.phone);
+        }
+        if (safeProfile.employee_no && (safeProfile.employee_no.startsWith("enc:") || safeProfile.employee_no.startsWith("enc_det:"))) {
+          safeProfile.employee_no = decrypt(safeProfile.employee_no);
+        }
+        if (safeProfile.qr_code && (safeProfile.qr_code.startsWith("enc:") || safeProfile.qr_code.startsWith("enc_det:"))) {
+          safeProfile.qr_code = decrypt(safeProfile.qr_code);
+        }
+      } catch (decryptErr: any) {
+        logger.error(`[EmployeeRoutes] Decryption exception in /api/employee/me for user ID ${safeProfile.id}: ${decryptErr.message}`, {
+          userId: safeProfile.id,
+          username: safeProfile.username,
+          error: decryptErr.message,
+          stack: decryptErr.stack
+        });
+      }
+
+      // Department name resolution:
+      // If already resolved by auth middleware, use it! Otherwise query with non-blocking fallback
+      if (!safeProfile.department_name || safeProfile.department_name === "N/A") {
+        if (safeProfile.department_id) {
+          try {
+            if (isMysqlConnected()) {
+              const dRows = await query("SELECT name FROM departments WHERE id = ?", [safeProfile.department_id]);
+              safeProfile.department_name = dRows[0]?.name || "N/A";
+            } else {
+              const db = readDatabase();
+              const dMatch = db.departments?.find((d: any) => Number(d.id) === Number(safeProfile.department_id));
+              safeProfile.department_name = dMatch ? dMatch.name : "N/A";
+            }
+          } catch (deptErr: any) {
+            logger.warn(`[EmployeeRoutes] /api/employee/me department resolution notice for dept ${safeProfile.department_id}: ${deptErr.message}`, {
+              userId: safeProfile.id,
+              departmentId: safeProfile.department_id,
+              error: deptErr.message
+            });
+            safeProfile.department_name = "N/A";
+          }
+        } else {
+          safeProfile.department_name = "N/A";
+        }
+      }
+
+      return jsonResponse(200, safeProfile);
+    } catch (meErr: any) {
+      logger.error(`[EmployeeRoutes] Exception in /api/employee/me [${authUser?.id || 'unauthenticated'}]: ${meErr.message}`, {
+        userId: authUser?.id,
+        username: authUser?.username,
+        role: authUser?.role,
+        durationMs: Date.now() - meStartMs,
+        error: meErr.message,
+        stack: meErr.stack
+      });
+
+      return jsonResponse(500, {
+        success: false,
+        code: "EMPLOYEE_ME_EXCEPTION",
+        error: "Failed to load employee profile due to an internal error. Please retry.",
+        details: meErr.message
+      });
+    }
   }
 
   // Employee Individual Dashboard APIs

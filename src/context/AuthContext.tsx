@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Validate stored session with automatic profile check
     const initSession = async () => {
       const storedToken = localStorage.getItem("dgmc_token");
-      if (storedToken) {
+      if (storedToken && storedToken !== "null" && storedToken !== "undefined" && storedToken.trim() !== "") {
         try {
           const baseUrl = getApiBaseUrl();
           const res = await fetch(`${baseUrl}/api/auth/me`, {
