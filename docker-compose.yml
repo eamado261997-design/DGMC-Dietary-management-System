@@ -41,7 +41,7 @@ services:
       MYSQL_DATABASE: dgmc_meals
       MYSQL_USER: dgmc_user
       MYSQL_PASSWORD: dgmc_password
-      MYSQL_INITDB_SKIP_TZINFO: "1"
+      MYSQL_INITDB_SKIP_TZINFO: 1
     ports:
       - "3306:3306"
       - "3311:3306"
