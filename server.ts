@@ -125,7 +125,7 @@ async function startServer() {
     next();
   });
 
-  // 3. Configure CORS Policy (OWASP compliant)
+  // 3. Configure CORS Policy (OWASP compliant with local hospital LAN support)
   const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',')
     : [
@@ -138,14 +138,21 @@ async function startServer() {
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, curl, or server-to-server)
       if (!origin) return callback(null, true);
-      const isAllowed = allowedOrigins.includes(origin) || 
-                        origin.endsWith('.run.app') || 
-                        origin.startsWith('http://localhost:') || 
-                        origin.startsWith('http://127.0.0.1:');
+      const isAllowed = 
+        allowedOrigins.includes(origin) || 
+        origin.endsWith('.run.app') || 
+        origin.startsWith('http://localhost:') || 
+        origin.startsWith('http://127.0.0.1:') ||
+        origin.startsWith('http://192.168.') ||
+        origin.startsWith('http://10.') ||
+        /^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./.test(origin) ||
+        origin.includes('192.168.');
+        
       if (isAllowed) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS policy'));
+        // Gracefully disallow without crashing the request with a 500 error
+        callback(null, false);
       }
     },
     credentials: true,
