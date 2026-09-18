@@ -381,7 +381,9 @@ async function startServer() {
   // Prioritize the local project dist over parent directories to avoid picking up stale builds
   const possibleDistPaths = [
     path.join(process.cwd(), 'dist'),
-    path.join(_currentDirname, 'dist')
+    _currentDirname,
+    path.join(_currentDirname, 'dist'),
+    path.join(_currentDirname, '..', 'dist')
   ];
   const distPath = possibleDistPaths.find(p => fs.existsSync(path.join(p, 'index.html'))) || path.join(process.cwd(), 'dist');
 
@@ -399,12 +401,12 @@ async function startServer() {
     
     // SPA fallback for development mode
     app.get('*', async (req, res, next) => {
-      if (req.path.startsWith('/api')) return next();
+      if (req.path.startsWith('/api') || req.path.startsWith('/assets/')) return next();
       try {
         const url = req.originalUrl;
         const template = fs.readFileSync(path.resolve(_currentDirname, 'index.html'), 'utf-8');
         const html = await viteServer.transformIndexHtml(url, template);
-        res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
+        res.status(200).set({ 'Content-Type': 'text/html', 'Cache-Control': 'no-cache, no-store, must-revalidate' }).end(html);
       } catch (e) {
         viteServer.ssrFixStacktrace(e as Error);
         next(e);
@@ -412,14 +414,42 @@ async function startServer() {
     });
   } else {
     logger.info(`Starting server in PRODUCTION mode with static file hosting from: ${distPath}`);
-    app.use(express.static(distPath));
+    
+    // Serve hashed assets with long cache
+    app.use('/assets', express.static(path.join(distPath, 'assets'), {
+      maxAge: '1y',
+      immutable: true,
+      fallthrough: true
+    }));
+
+    // Serve other root static files (manifest.json, favicon, etc.)
+    app.use(express.static(distPath, {
+      maxAge: '1h',
+      index: false,
+      fallthrough: true
+    }));
+
+    // Catch missing asset requests before SPA fallback with correct content-type
+    app.use('/assets', (req, res) => {
+      const isCss = req.path.endsWith('.css');
+      const isJs = req.path.endsWith('.js');
+      const contentType = isCss ? 'text/css' : (isJs ? 'application/javascript' : 'text/plain');
+      res.status(404).set('Content-Type', contentType).send('/* Asset not found */');
+    });
+
     app.get('*', (req, res, next) => {
-      // Don't intercept API routes with HTML fallback
-      if (req.path.startsWith('/api')) {
-        return next();
+      // Don't intercept API routes or asset files with HTML fallback
+      if (req.path.startsWith('/api') || req.path.startsWith('/assets/') || /\.(js|css|png|jpg|jpeg|gif|svg|ico|json|map|woff2?|eot|ttf)$/i.test(req.path)) {
+        const isCss = req.path.endsWith('.css');
+        const isJs = req.path.endsWith('.js');
+        const contentType = isCss ? 'text/css' : (isJs ? 'application/javascript' : 'text/plain');
+        return res.status(404).set('Content-Type', contentType).send('/* Resource not found */');
       }
       const indexPath = path.join(distPath, 'index.html');
       if (fs.existsSync(indexPath)) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
         res.sendFile(indexPath);
       } else {
         res.status(404).send('Application UI is building or index.html was not found.');
@@ -431,6 +461,14 @@ async function startServer() {
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     const errorId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
     logger.error(`[Secure-Error-Tracker] [ID: ${errorId}]`, { error: err.message, stack: err.stack, errorId });
+
+    // If an asset route failed, do not return JSON MIME type
+    if (req.path.startsWith('/assets/') || /\.(js|css|png|jpg|jpeg|gif|svg|ico|json|map|woff2?|eot|ttf)$/i.test(req.path)) {
+      const isCss = req.path.endsWith('.css');
+      const isJs = req.path.endsWith('.js');
+      const contentType = isCss ? 'text/css' : (isJs ? 'application/javascript' : 'text/plain');
+      return res.status(err.status || 500).set('Content-Type', contentType).send('/* Asset Error */');
+    }
 
     const isProdEnv = process.env.NODE_ENV === 'production';
     res.status(err.status || 500).json({
