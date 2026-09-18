@@ -118,14 +118,16 @@ async function startServer() {
           "'unsafe-inline'",
           "'unsafe-eval'",
           "https://*",
-          "http://localhost:*"
+          "http://*"
         ],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://*", "http://localhost:*"],
-        imgSrc: ["'self'", "data:", "blob:", "https://*"],
-        connectSrc: ["'self'", "wss:", "https://*", "http://*"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://*", "http://*"],
+        imgSrc: ["'self'", "data:", "blob:", "https://*", "http://*"],
+        connectSrc: ["'self'", "wss:", "ws:", "https://*", "http://*"],
         frameAncestors: ["'self'", "https://*", "http://*", "*"],
+        upgradeInsecureRequests: null,
       },
     } : false,
+    hsts: false, // Disables HSTS header so local hospital LAN / intranet IPs don't get forced to HTTPS
     frameguard: false, // Critical: Disables X-Frame-Options: SAMEORIGIN to allow AI Studio preview iframe embedding
     crossOriginEmbedderPolicy: false,
     crossOriginOpenerPolicy: false,
