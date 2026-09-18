@@ -4,13 +4,25 @@ dist/
 coverage/
 .DS_Store
 *.log
+logs/
 *.db
 *.db-shm
 *.db-wal
 *.db-journal
+
+# Environment files
 .env*
 !.env.example
 
-*.db-wal
-*.db-shm
-logs/*.log
+# IDE and local agent metadata
+.vscode/
+.antigravity/
+
+# Temporary test and migration scripts
+fix-*.cjs
+fix-*.js
+fix_*.js
+fix_*.mjs
+test-*.js
+patch_*.sh
+

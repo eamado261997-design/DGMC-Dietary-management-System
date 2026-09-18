@@ -112,6 +112,10 @@ export class DiagnosticsController {
         });
       }
 
+      if (typeof res.setHeader === "function") {
+        res.setHeader("Cache-Control", "public, max-age=10");
+      }
+
       res.json({
         totalRequests,
         avgLatencyMs: avgLatency,

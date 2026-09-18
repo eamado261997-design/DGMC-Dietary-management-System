@@ -128,6 +128,24 @@ export default defineConfig(() => {
     },
     build: {
       sourcemap: true,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('recharts') || id.includes('d3-')) {
+                return 'vendor-charts';
+              }
+              if (id.includes('lucide-react')) {
+                return 'vendor-icons';
+              }
+              if (id.includes('jszip') || id.includes('qrcode')) {
+                return 'vendor-utils';
+              }
+            }
+          }
+        }
+      },
+      chunkSizeWarningLimit: 600,
     },
     esbuild: {
       drop: ['console', 'debugger'],

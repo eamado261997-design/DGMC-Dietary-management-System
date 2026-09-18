@@ -122,6 +122,11 @@ export default function ManagerDashboard({ onViewChange }: { onViewChange: (v: s
     return schedules.find((s) => s.person_id === personId && s.work_date === dateIso);
   };
 
+  const todayIso = new Date().toISOString().split("T")[0];
+  const todaySchedules = schedules.filter((s) => s.work_date === todayIso);
+  const dayShifts = todaySchedules.filter((s) => s.shift_type === "day").length;
+  const nightShifts = todaySchedules.filter((s) => s.shift_type === "night").length;
+
   const months = [
     "January", "February", "March", "April", "May", "June", 
     "July", "August", "September", "October", "November", "December"
@@ -241,14 +246,116 @@ export default function ManagerDashboard({ onViewChange }: { onViewChange: (v: s
 
         </div>
 
-        {/* Consumption Chart Widget */}
-        <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs">
-          <h3 className="text-sm font-bold text-zinc-900 mb-4">Meal Consumption Progress</h3>
-          {loading ? (
-            <Skeleton className="h-[180px] w-full" />
-          ) : (
-            <MealConsumptionChart consumed={stats?.consumedToday || 0} scheduled={stats?.scheduledToday || 0} />
-          )}
+        {/* Data Visualization & Consumption Intelligence Suite */}
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-hidden">
+          {/* Consumption Chart Widget */}
+          <div className="w-full bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs overflow-hidden md:col-span-2 lg:col-span-1">
+            <h3 className="text-sm font-bold text-zinc-900 mb-4">Meal Consumption Progress</h3>
+            {loading ? (
+              <Skeleton className="h-[180px] w-full" />
+            ) : (
+              <MealConsumptionChart consumed={stats?.consumedToday || 0} scheduled={stats?.scheduledToday || 0} />
+            )}
+          </div>
+
+          {/* Shift & Duty Allocation Card */}
+          <div className="w-full bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs overflow-hidden flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
+                    <Sun className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-zinc-900">Shift Allocation Today</h3>
+                    <p className="text-[10px] text-zinc-500 font-medium">Duty distribution for active shift roster</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 font-bold">
+                  {todaySchedules.length} Rostered
+                </span>
+              </div>
+
+              <div className="space-y-4 pt-2">
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-bold text-zinc-700">
+                    <span className="flex items-center gap-1.5">
+                      <Sun className="w-3.5 h-3.5 text-amber-500" />
+                      Day Shift (06:00 - 18:00)
+                    </span>
+                    <span className="font-mono text-zinc-900">{dayShifts} staff</span>
+                  </div>
+                  <div className="w-full h-2.5 bg-zinc-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                      style={{ width: `${todaySchedules.length > 0 ? (dayShifts / todaySchedules.length) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-bold text-zinc-700">
+                    <span className="flex items-center gap-1.5">
+                      <Moon className="w-3.5 h-3.5 text-indigo-500" />
+                      Night Shift (18:00 - 06:00)
+                    </span>
+                    <span className="font-mono text-zinc-900">{nightShifts} staff</span>
+                  </div>
+                  <div className="w-full h-2.5 bg-zinc-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                      style={{ width: `${todaySchedules.length > 0 ? (nightShifts / todaySchedules.length) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-zinc-100 pt-4 mt-4 flex items-center justify-between text-xs text-zinc-500">
+              <span>Rostered vs department staff</span>
+              <span className="font-mono font-bold text-zinc-800">
+                {stats?.departmentStaffCount ? Math.round(((todaySchedules.length) / stats.departmentStaffCount) * 100) : 0}% on duty
+              </span>
+            </div>
+          </div>
+
+          {/* Allowance & Voucher Utilization Card */}
+          <div className="w-full bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs overflow-hidden flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <Utensils className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-zinc-900">Voucher Utilization</h3>
+                    <p className="text-[10px] text-zinc-500 font-medium">Daily entitlement claiming telemetry</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
+                  {stats?.scheduledToday && stats.scheduledToday > 0 ? Math.round(((stats.freeMealsClaimed || 0) / stats.scheduledToday) * 100) : 0}% Claimed
+                </span>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between p-3 bg-zinc-50 border border-zinc-150 rounded-xl">
+                  <span className="text-xs font-semibold text-zinc-600">Redeemed Vouchers</span>
+                  <span className="font-mono font-black text-sm text-emerald-700">{stats?.freeMealsClaimed || 0} meals</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-zinc-50 border border-zinc-150 rounded-xl">
+                  <span className="text-xs font-semibold text-zinc-600">Unclaimed Entitlements</span>
+                  <span className="font-mono font-black text-sm text-amber-600">
+                    {Math.max(0, (stats?.scheduledToday || 0) - (stats?.freeMealsClaimed || 0))} pending
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-zinc-100 pt-4 mt-4 flex items-center justify-between text-xs text-zinc-500">
+              <span>Daily scheduled quota</span>
+              <span className="font-mono font-bold text-zinc-800">{stats?.scheduledToday || 0} eligible</span>
+            </div>
+          </div>
         </div>
 
           {/* Read Only Employees 15-Day Roster Grid */}

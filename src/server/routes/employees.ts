@@ -664,6 +664,43 @@ export async function handleEmployeeRoutes(
     }
   }
 
+  // Employee Profile & Session Info API
+  if (path === "/api/employee/me" && method === "GET") {
+    if (!authUser) return jsonResponse(401, { error: "Authentication required" });
+    
+    let userRecord: any = null;
+    if (isMysqlConnected()) {
+      const rows = await query("SELECT * FROM people WHERE id = ?", [authUser.id]);
+      userRecord = rows[0] || null;
+    } else {
+      const db = readDatabase();
+      userRecord = (db.people || []).find((p: any) => p.id === authUser.id) || null;
+    }
+
+    if (!userRecord) {
+      return jsonResponse(404, { error: "Employee profile record not found" });
+    }
+
+    const decrypted = decryptPerson(userRecord);
+    const safeProfile: any = { ...decrypted };
+    delete safeProfile.password;
+
+    if (safeProfile.department_id) {
+      if (isMysqlConnected()) {
+        const dRows = await query("SELECT name FROM departments WHERE id = ?", [safeProfile.department_id]);
+        safeProfile.department_name = dRows[0]?.name || "N/A";
+      } else {
+        const db = readDatabase();
+        const dMatch = db.departments?.find((d: any) => Number(d.id) === Number(safeProfile.department_id));
+        safeProfile.department_name = dMatch ? dMatch.name : "N/A";
+      }
+    } else {
+      safeProfile.department_name = "N/A";
+    }
+
+    return jsonResponse(200, safeProfile);
+  }
+
   // Employee Individual Dashboard APIs
   if (path === "/api/employee/dashboard-data" && method === "GET") {
     if (!authUser) return jsonResponse(401, { error: "Authentication required" });

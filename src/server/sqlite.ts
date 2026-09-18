@@ -113,6 +113,19 @@ export async function initializeSqlite(defaultDb: DatabaseSchema): Promise<Datab
         timestamp TEXT NOT NULL,
         success INTEGER NOT NULL DEFAULT 0
       );
+
+      CREATE TABLE IF NOT EXISTS recentActivities (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        person_id INTEGER,
+        user_id INTEGER,
+        action TEXT NOT NULL,
+        entity_type TEXT,
+        entity_id TEXT,
+        old_value TEXT,
+        new_value TEXT,
+        ip_address TEXT,
+        created_at TEXT NOT NULL
+      );
     `);
 
     try {
@@ -126,9 +139,14 @@ export async function initializeSqlite(defaultDb: DatabaseSchema): Promise<Datab
       CREATE INDEX IF NOT EXISTS idx_people_dept ON people(department_id);
       CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(meal_date);
       CREATE INDEX IF NOT EXISTS idx_transactions_person ON transactions(person_id);
+      CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
+      CREATE INDEX IF NOT EXISTS idx_transactions_person_id ON transactions(person_id);
+      CREATE INDEX IF NOT EXISTS idx_recent_activities_created_at ON recentActivities(created_at);
+      CREATE INDEX IF NOT EXISTS idx_recent_activities_person_id ON recentActivities(person_id);
       CREATE INDEX IF NOT EXISTS idx_schedules_person_date ON employee_schedules(person_id, work_date);
       CREATE INDEX IF NOT EXISTS idx_free_meals_person_date ON free_meal_logs(person_id, meal_date);
       CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
       CREATE INDEX IF NOT EXISTS idx_login_attempts_user ON login_attempts(username);
     `);
 

@@ -312,6 +312,28 @@ async function startServer() {
     });
   });
 
+  // Public Telemetry & Branding Endpoint (Immediate response, 0ms overhead, cached)
+  app.get('/api/public-stats', async (req, res) => {
+    try {
+      const { getPublicStats } = await import('./src/server/routes/publicStats.js');
+      const stats = await getPublicStats();
+      res.setHeader('Cache-Control', 'public, max-age=15, stale-while-revalidate=60');
+      res.json(stats);
+    } catch (_err) {
+      res.status(200).json({
+        success: true,
+        totalStaff: 0,
+        mealsProcessed: 0,
+        companyName: "Divine Grace Medical Center",
+        companyTagline: "Compassionate Care, Exceptional Service",
+        companyLogoUrl: "",
+        currencySymbol: "₱",
+        mealPrice: 150.00,
+        itSupportPhone: "Medical arts Bldg. 5th floor/ICT dept. / 2568"
+      });
+    }
+  });
+
   // OpenAPI Specification & Swagger Docs
   app.get('/api/openapi.json', (req, res) => {
     res.json(getOpenApiSpec());

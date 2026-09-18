@@ -174,47 +174,93 @@ export async function execute(sql: string, params: any = []): Promise<any> {
 }
 
 /**
- * Initializes MySQL connection with retries, SSL support, and connection pool setup.
+ * Initializes MySQL connection with retries, SSL support, candidate endpoint discovery, and connection pool setup.
  */
 export async function initializeMysql(defaultDb: DatabaseSchema): Promise<DatabaseSchema | null> {
-  const host = process.env.MYSQL_HOST;
+  const configuredHost = process.env.MYSQL_HOST;
   const user = process.env.MYSQL_USER || "dgmc_user";
   const password = process.env.MYSQL_PASSWORD || "dgmc_password";
   const dbName = process.env.MYSQL_DATABASE || "dgmc_meals";
-  const portString = process.env.MYSQL_PORT || "3311";
-  const port = parseInt(portString, 10);
+  const portString = process.env.MYSQL_PORT || "3306";
+  const configuredPort = parseInt(portString, 10);
   const sslOptions = getSslOption();
 
-  if (!host || host === 'YOUR_MYSQL_HOST' || host === '' || host === 'dgmc' || host === 'EMPTY') {
+  if (!configuredHost || configuredHost === 'YOUR_MYSQL_HOST' || configuredHost === '' || configuredHost === 'dgmc' || configuredHost === 'EMPTY') {
     isMysqlActive = false;
     return null;
   }
 
+  // Build candidate endpoints (host + port)
+  // In containerized environments, loopback (127.0.0.1 or localhost) points to the app container itself.
+  // We prioritize the configured host, then automatically attempt Docker host bridge (host.docker.internal)
+  // and Docker network service aliases (dgmc_mysql, db, 172.17.0.1) if unreachable.
+  type EndpointCandidate = { host: string; port: number; label: string };
+  const candidates: EndpointCandidate[] = [
+    { host: configuredHost, port: configuredPort, label: `Configured MYSQL_HOST (${configuredHost}:${configuredPort})` }
+  ];
+
+  const isLoopback = configuredHost === "127.0.0.1" || configuredHost === "localhost";
+  if (isLoopback) {
+    candidates.push({ host: "host.docker.internal", port: configuredPort, label: `Docker Host Bridge (host.docker.internal:${configuredPort})` });
+    candidates.push({ host: "dgmc_mysql", port: 3306, label: "Docker Network Container (dgmc_mysql:3306)" });
+    candidates.push({ host: "db", port: 3306, label: "Docker Network Service (db:3306)" });
+    candidates.push({ host: "172.17.0.1", port: configuredPort, label: `Docker Default Gateway (172.17.0.1:${configuredPort})` });
+  } else if (configuredHost === "dgmc_mysql" || configuredHost === "db") {
+    candidates.push({ host: "host.docker.internal", port: 3306, label: "Docker Host Bridge (host.docker.internal:3306)" });
+    candidates.push({ host: "127.0.0.1", port: configuredPort, label: `Local Host Loopback (127.0.0.1:${configuredPort})` });
+  }
+
   try {
-    // 1. Establish connection to ensure database exists, wrapped in retry backoff
-    // Increased retries to 10 and delay to 2000ms to allow Docker MySQL 8.0 enough time to initialize
-    const adminConnection = await connectWithRetry(async () => {
-      return await mysql.createConnection({
-        host,
-        user,
-        password,
-        port,
-        ssl: sslOptions
-      });
-    }, 10, 2000);
+    let resolvedHost = configuredHost;
+    let resolvedPort = configuredPort;
+    let adminConnection: any = null;
+
+    // 1. Establish connection to ensure database exists, testing candidate endpoints
+    for (let c = 0; c < candidates.length; c++) {
+      const candidate = candidates[c];
+      try {
+        adminConnection = await connectWithRetry(async () => {
+          return await mysql.createConnection({
+            host: candidate.host,
+            user,
+            password,
+            port: candidate.port,
+            ssl: sslOptions,
+            connectTimeout: 4000
+          });
+        }, c === 0 ? 3 : 1, 1000);
+
+        resolvedHost = candidate.host;
+        resolvedPort = candidate.port;
+        if (candidate.host !== configuredHost || candidate.port !== configuredPort) {
+          logger.info(`[MySQL] Successfully connected using Docker network candidate: ${candidate.label}`);
+        }
+        break;
+      } catch (candErr: any) {
+        if (c < candidates.length - 1) {
+          logger.warn(`[MySQL] Candidate ${candidate.label} unreachable (${candErr.code || candErr.message}). Trying fallback endpoint...`);
+        } else {
+          throw candErr;
+        }
+      }
+    }
+
+    if (!adminConnection) {
+      throw new Error(`Could not connect to MySQL using any candidate endpoints: ${candidates.map(c => c.label).join(", ")}`);
+    }
 
     await adminConnection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
     await adminConnection.end();
 
-    logger.info('[MySQL] Creating connection pool', { host, port, database: dbName });
+    logger.info('[MySQL] Creating connection pool', { host: resolvedHost, port: resolvedPort, database: dbName });
 
     // 2. Build full application connection Pool
     dbPool = mysql.createPool({
-      host,
+      host: resolvedHost,
       user,
       password,
       database: dbName,
-      port,
+      port: resolvedPort,
       ssl: sslOptions,
       waitForConnections: true,
       connectionLimit: 12,
@@ -225,7 +271,7 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
     });
 
     isMysqlActive = true;
-    logger.info('[MySQL] Connection pool created and marked active', { host, port, database: dbName });
+    logger.info('[MySQL] Connection pool created and marked active', { host: resolvedHost, port: resolvedPort, database: dbName });
 
     // 3. Auto-Create target tables (DDL operations)
 
@@ -388,14 +434,37 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
+    // I. Recent activities table (for dedicated telemetry and audit views)
+    await dbPool.query(`
+      CREATE TABLE IF NOT EXISTS recentActivities (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        person_id INT NULL,
+        user_id INT NULL,
+        action VARCHAR(255) NOT NULL,
+        entity_type VARCHAR(100),
+        entity_id VARCHAR(100),
+        old_value TEXT,
+        new_value TEXT,
+        ip_address VARCHAR(45),
+        created_at VARCHAR(50) NOT NULL DEFAULT ''
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
     // Create database performance indexes for query optimization
     const indexesToCreate = [
       "CREATE INDEX idx_people_dept ON people(department_id)",
+      "CREATE INDEX idx_people_role_active ON people(role, is_active)",
       "CREATE INDEX idx_transactions_date ON transactions(meal_date)",
+      "CREATE INDEX idx_transactions_date_status ON transactions(meal_date, status)",
       "CREATE INDEX idx_transactions_person ON transactions(person_id)",
+      "CREATE INDEX idx_transactions_created_at ON transactions(created_at)",
+      "CREATE INDEX idx_transactions_person_id ON transactions(person_id)",
+      "CREATE INDEX idx_recent_activities_created_at ON recentActivities(created_at)",
+      "CREATE INDEX idx_recent_activities_person_id ON recentActivities(person_id)",
       "CREATE INDEX idx_schedules_person_date ON employee_schedules(person_id, work_date)",
       "CREATE INDEX idx_free_meals_person_date ON free_meal_logs(person_id, meal_date)",
       "CREATE INDEX idx_audit_logs_user ON audit_logs(user_id)",
+      "CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at)",
       "CREATE INDEX idx_login_attempts_user ON login_attempts(username)"
     ];
 

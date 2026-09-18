@@ -1,41 +1,43 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import { LoadingProvider } from "./context/LoadingContext.js";
 import { AuthProvider, useAuth } from "./context/AuthContext.js";
 import { ModalProvider } from "./context/ModalContext.js";
 import { ToastProvider } from "./context/ToastContext.js";
 import Layout from "./components/Layout.js";
 import Login from "./pages/Login.js";
-import ChangePassword from "./pages/ChangePassword.js";
 import PortalPreloader from "./components/PortalPreloader.js";
 import NetworkStatusBanner from "./components/NetworkStatusBanner.js";
 import SessionTimeoutHandler from "./components/SessionTimeoutHandler.js";
 
-// Admin Views
-import AdminDashboard from "./pages/admin/AdminDashboard.js";
-import ManageEmployees from "./pages/admin/ManageEmployees.js";
-import SystemUsers from "./pages/admin/SystemUsers.js";
-import ManageDepartments from "./pages/admin/ManageDepartments.js";
-import AdminReports from "./pages/admin/AdminReports.js";
-import SystemSettings from "./pages/admin/SystemSettings.js";
-import AuditTrail from "./pages/admin/AuditTrail.js";
-import DietaryDashboard from "./pages/admin/DietaryDashboard.js";
-import SystemConnectivity from "./pages/admin/SystemConnectivity.js";
+// Shared Dynamic View
+const ChangePassword = lazy(() => import("./pages/ChangePassword.js"));
 
-// Manager Views
-import ManagerDashboard from "./pages/manager/ManagerDashboard.js";
-import ManagerEmployees from "./pages/manager/ManagerEmployees.js";
-import ManagerSchedule from "./pages/manager/ManagerSchedule.js";
+// Dynamic Admin Views (code-split)
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.js"));
+const ManageEmployees = lazy(() => import("./pages/admin/ManageEmployees.js"));
+const SystemUsers = lazy(() => import("./pages/admin/SystemUsers.js"));
+const ManageDepartments = lazy(() => import("./pages/admin/ManageDepartments.js"));
+const AdminReports = lazy(() => import("./pages/admin/AdminReports.js"));
+const SystemSettings = lazy(() => import("./pages/admin/SystemSettings.js"));
+const AuditTrail = lazy(() => import("./pages/admin/AuditTrail.js"));
+const DietaryDashboard = lazy(() => import("./pages/admin/DietaryDashboard.js"));
+const SystemConnectivity = lazy(() => import("./pages/admin/SystemConnectivity.js"));
 
-// Cashier Views
-import CashierDashboard from "./pages/cashier/CashierDashboard.js";
-import CashierScan from "./pages/cashier/CashierScan.js";
-import CashierTransactions from "./pages/cashier/CashierTransactions.js";
+// Dynamic Manager Views (code-split)
+const ManagerDashboard = lazy(() => import("./pages/manager/ManagerDashboard.js"));
+const ManagerEmployees = lazy(() => import("./pages/manager/ManagerEmployees.js"));
+const ManagerSchedule = lazy(() => import("./pages/manager/ManagerSchedule.js"));
 
-// Employee Views
-import EmployeeDashboard from "./pages/employee/EmployeeDashboard.js";
-import EmployeeQR from "./pages/employee/EmployeeQR.js";
-import EmployeeMeals from "./pages/employee/EmployeeMeals.js";
-import EmployeeSchedule from "./pages/employee/EmployeeSchedule.js";
+// Dynamic Cashier Views (code-split)
+const CashierDashboard = lazy(() => import("./pages/cashier/CashierDashboard.js"));
+const CashierScan = lazy(() => import("./pages/cashier/CashierScan.js"));
+const CashierTransactions = lazy(() => import("./pages/cashier/CashierTransactions.js"));
+
+// Dynamic Employee Views (code-split)
+const EmployeeDashboard = lazy(() => import("./pages/employee/EmployeeDashboard.js"));
+const EmployeeQR = lazy(() => import("./pages/employee/EmployeeQR.js"));
+const EmployeeMeals = lazy(() => import("./pages/employee/EmployeeMeals.js"));
+const EmployeeSchedule = lazy(() => import("./pages/employee/EmployeeSchedule.js"));
 
 // Main Root Hub
 function CoreHubApp() {
@@ -178,7 +180,9 @@ function CoreHubApp() {
 
   return (
     <Layout activeView={activeView} onViewChange={setActiveView}>
-      {renderCurrentView()}
+      <Suspense fallback={<PortalPreloader />}>
+        {renderCurrentView()}
+      </Suspense>
       {isRefreshing && (
         <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="bg-white border border-zinc-200 shadow-xl rounded-2xl px-4 py-3 flex items-center gap-3">

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext.js";
 import { Users, HelpCircle, Activity, Eye, EyeOff, Loader2, User, Lock, Building2, CheckCircle2, ShieldAlert, Sparkles, HeartPulse } from "lucide-react";
 import DGMCLogo from "../components/DGMCLogo.js";
-import { getApiBaseUrl } from "../utils/apiConfig.js";
+import { getApiBaseUrl, fetchDeduplicated } from "../utils/apiConfig.js";
 import { motion } from "motion/react";
 
 export default function Login() {
@@ -12,54 +12,25 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [publicStats, setPublicStats] = useState<{ totalStaff: number; mealsProcessed: number } | null>(null);
   const [shakeKey, setShakeKey] = useState(0);
   const errorRef = useRef<HTMLDivElement>(null);
 
-  const [itSupportContact, setItSupportContact] = useState("Medical arts Bldg. 5th floor/ICT dept. / 2568");
-  const [dynamicCompanyName, setDynamicCompanyName] = useState("Divine Grace Medical Center");
-
+  const itSupportContact = branding?.itSupportPhone || "Medical arts Bldg. 5th floor/ICT dept. / 2568";
+  const dynamicCompanyName = branding?.companyName || "Divine Grace Medical Center";
 
   useEffect(() => {
-    // Refresh branding from context as well as retrieving public telemetry
-    if (typeof refreshBranding === "function") {
-      refreshBranding().catch(() => {});
-    }
-    
-    const baseUrl = getApiBaseUrl();
-
-    // Retrieve safe general telemetry for hospital login presentation
-    fetch(`${baseUrl}/api/public-stats`)
-      .then((res) => {
-        if (res.ok) return res.json();
-        throw new Error();
+    // Retrieve safe general telemetry for hospital login presentation via deduplicated fetch
+    fetchDeduplicated<{ totalStaff: number; mealsProcessed: number }>("/api/public-stats")
+      .then((data) => {
+        if (data) setPublicStats(data);
       })
-      .then((data) => setPublicStats(data))
       .catch(() => {
         // Fallback placeholder stats if offline or unseeded
         setPublicStats({ totalStaff: 0, mealsProcessed: 0 });
       });
-
-    // Fetch helpdesk contact and company branding dynamically from settings endpoint
-    fetch(`${baseUrl}/api/settings`)
-      .then((res) => {
-        if (res.ok) return res.json();
-        throw new Error();
-      })
-      .then((data) => {
-        if (Array.isArray(data)) {
-          const itSupport = data.find((item: any) => item.setting_key === "it_support_phone");
-          if (itSupport && itSupport.setting_value) {
-            setItSupportContact(itSupport.setting_value);
-          }
-          const companyObj = data.find((item: any) => item.setting_key === "company_name");
-          if (companyObj && companyObj.setting_value) {
-            setDynamicCompanyName(companyObj.setting_value);
-          }
-        }
-      })
-      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -72,10 +43,12 @@ export default function Login() {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
       setError("Please fill in both personnel credential fields.");
+      setErrorCode("VALIDATION_ERROR");
       setShakeKey((prev) => prev + 1);
       return;
     }
     setError(null);
+    setErrorCode(null);
     setSubmitting(true);
 
     const result = await login(username.trim(), password);
@@ -83,6 +56,7 @@ export default function Login() {
 
     if (!result.success) {
       setError(result.error || "Invalid user credentials. Please try again.");
+      setErrorCode(result.code || "INVALID_CREDENTIALS");
       setShakeKey((prev) => prev + 1);
     }
   };
@@ -197,10 +171,21 @@ export default function Login() {
                   ref={errorRef} 
                   tabIndex={0} 
                   aria-live="polite" 
-                  className="mb-5 p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs flex items-center gap-3 font-semibold outline-none focus:ring-2 focus:ring-rose-500 shadow-2xs"
+                  className={`mb-5 p-4 rounded-2xl text-xs flex items-start gap-3 font-semibold outline-none shadow-2xs ${
+                    errorCode === 'ACCOUNT_DEACTIVATED'
+                      ? 'bg-amber-50 border border-amber-300 text-amber-900 focus:ring-2 focus:ring-amber-500'
+                      : 'bg-rose-50 border border-rose-200 text-rose-800 focus:ring-2 focus:ring-rose-500'
+                  }`}
                 >
-                  <ShieldAlert className="w-5 h-5 shrink-0 text-rose-600" />
-                  <span>{error}</span>
+                  <ShieldAlert className={`w-5 h-5 shrink-0 mt-0.5 ${errorCode === 'ACCOUNT_DEACTIVATED' ? 'text-amber-600' : 'text-rose-600'}`} />
+                  <div className="flex flex-col gap-1">
+                    <span className="font-bold">{error}</span>
+                    {errorCode === 'ACCOUNT_DEACTIVATED' && (
+                      <span className="text-[11px] font-normal text-amber-800">
+                        Helpdesk Hotline: <strong className="font-mono font-bold">{itSupportContact}</strong>
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
 

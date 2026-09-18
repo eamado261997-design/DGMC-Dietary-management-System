@@ -330,13 +330,13 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
         </button>
       </div>
 
-          <div className="space-y-8">
+          <div className="w-full space-y-8">
             {/* Quick Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+            <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
               
               <PaymentOverviewWidget paidAmountToday={stats?.paidAmountToday || 0} />
               
-              <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
+              <div className="w-full bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600 shrink-0">
                   <Users className="w-5 h-5" />
                 </div>
@@ -345,13 +345,13 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
                   {loading ? (
                     <Skeleton className="h-7 w-16 mt-1" />
                   ) : (
-                    <span className="text-2xl font-black text-zinc-900 leading-tight block">{stats?.totalPeople}</span>
+                    <span className="text-2xl font-black text-zinc-900 leading-tight block">{stats?.totalPeople ?? 0}</span>
                   )}
                   <span className="text-[10px] text-zinc-550 block mt-0.5">Staff &amp; accounts</span>
                 </div>
               </div>
 
-              <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
+              <div className="w-full bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 shrink-0">
                   <Building className="w-5 h-5" />
                 </div>
@@ -360,13 +360,13 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
                   {loading ? (
                     <Skeleton className="h-7 w-16 mt-1" />
                   ) : (
-                    <span className="text-2xl font-black text-zinc-900 leading-tight block">{stats?.totalDepartments}</span>
+                    <span className="text-2xl font-black text-zinc-900 leading-tight block">{stats?.totalDepartments ?? 0}</span>
                   )}
                   <span className="text-[10px] text-zinc-550 block mt-0.5">Assigned divisions</span>
                 </div>
               </div>
 
-              <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
+              <div className="w-full bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
                   <Activity className="w-5 h-5" />
                 </div>
@@ -375,13 +375,13 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
                   {loading ? (
                     <Skeleton className="h-7 w-16 mt-1" />
                   ) : (
-                    <span className="text-2xl font-black text-zinc-900 leading-tight block">{stats?.freeMealsToday}</span>
+                    <span className="text-2xl font-black text-zinc-900 leading-tight block">{stats?.freeMealsToday ?? 0}</span>
                   )}
                   <span className="text-[10px] text-zinc-550 block mt-0.5">Vouchers redeemed</span>
                 </div>
               </div>
 
-              <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
+              <div className="w-full bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
                   <Coins className="w-5 h-5" />
                 </div>
@@ -390,26 +390,28 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
                   {loading ? (
                     <Skeleton className="h-7 w-24 mt-1" />
                   ) : (
-                    <span className="text-2xl font-black text-zinc-900 leading-tight block">₱{stats?.paidAmountToday?.toFixed(2)}</span>
+                    <span className="text-2xl font-black text-zinc-900 leading-tight block">₱{(stats?.paidAmountToday ?? 0).toFixed(2)}</span>
                   )}
-                  <span className="text-[10px] text-zinc-550 block mt-0.5">{loading ? "" : `${stats?.cashMealsTodayCount} paid transactions`}</span>
+                  <span className="text-[10px] text-zinc-550 block mt-0.5">{loading ? "" : `${stats?.cashMealsTodayCount ?? 0} paid transactions`}</span>
                 </div>
               </div>
 
             </div>
 
             {/* Transaction Summary & Pricing Charts Component */}
-            <TransactionSummaryWidget
-              totalVolume={(stats?.freeMealsToday || 0) + (stats?.cashMealsTodayCount || 0)}
-              totalRevenue={stats?.paidAmountToday || 0}
-              avgMealPrice={stats?.cashMealsTodayCount && stats.cashMealsTodayCount > 0 ? (stats.paidAmountToday / stats.cashMealsTodayCount) : 0}
-              chartData={hourlyVolumePricing}
-            />
+            <div className="w-full overflow-hidden">
+              <TransactionSummaryWidget
+                totalVolume={(stats?.freeMealsToday || 0) + (stats?.cashMealsTodayCount || 0)}
+                totalRevenue={stats?.paidAmountToday || 0}
+                avgMealPrice={stats?.cashMealsTodayCount && stats.cashMealsTodayCount > 0 ? (stats.paidAmountToday / stats.cashMealsTodayCount) : 0}
+                chartData={hourlyVolumePricing}
+              />
+            </div>
 
             {/* Operational Watch & Daily Indicators Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Active Employees Card */}
-              <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs flex flex-col justify-between relative overflow-hidden">
+              <div className="w-full bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs flex flex-col justify-between relative overflow-hidden">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block mb-1">Active Employees</span>
@@ -439,7 +441,7 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
               </div>
 
               {/* Pending Meal Requests Card */}
-              <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs flex flex-col justify-between relative overflow-hidden">
+              <div className="w-full bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs flex flex-col justify-between relative overflow-hidden">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block mb-1">Pending Meal Entitlements</span>
@@ -471,7 +473,7 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
               </div>
 
               {/* Recent Transactions Card */}
-              <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs flex flex-col justify-between relative overflow-hidden">
+              <div className="w-full bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs flex flex-col justify-between relative overflow-hidden md:col-span-2 lg:col-span-1">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block mb-1">Recent Transactions</span>
@@ -497,11 +499,11 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
               </div>
             </div>
 
-            {/* Operational Intelligence & Chart Suite */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Operational Intelligence & Data Visualization Suite */}
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-hidden">
               
               {/* Peak Cafeteria Hours Chart */}
-              <div className="bg-white rounded-3xl border border-zinc-200 p-6 md:p-8">
+              <div className="w-full bg-white rounded-3xl border border-zinc-200 p-6 md:p-8 flex flex-col justify-between overflow-hidden">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600 shrink-0">
                     <Clock className="w-5 h-5" />
@@ -579,7 +581,7 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
               </div>
 
               {/* Department Meal Redeemed Volume & Type Chart */}
-              <div className="bg-white rounded-3xl border border-zinc-200 p-6 md:p-8">
+              <div className="w-full bg-white rounded-3xl border border-zinc-200 p-6 md:p-8 flex flex-col justify-between overflow-hidden">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
                     <Utensils className="w-5 h-5" />
@@ -643,46 +645,116 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
                 </div>
               </div>
 
-            </div>
+              {/* Real-time Check-in Analytics Section */}
+              <div className="w-full bg-white rounded-3xl border border-zinc-200 p-6 md:p-8 flex flex-col justify-between overflow-hidden md:col-span-2 lg:col-span-1">
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 shrink-0">
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-zinc-900 tracking-tight">Active Session Check-ins</h3>
+                      <p className="text-[10px] text-zinc-500 font-medium">Employee meal check-ins categorized by service periods</p>
+                    </div>
+                  </div>
 
-            {/* Real-time Check-in Analytics Section */}
-            <div className="bg-white rounded-3xl border border-zinc-200 p-6 md:p-8">
-              <div>
+                  <div className="relative h-64 w-full overflow-hidden mt-4">
+                    {loading ? (
+                      <div className="w-full h-full flex flex-col justify-between p-2 space-y-4">
+                        <div className="flex items-end justify-between flex-1 gap-6">
+                          {[...Array(4)].map((_, i) => (
+                            <Skeleton 
+                              key={i} 
+                              className="flex-1 bg-sky-100/60 rounded-t-lg"
+                              style={{ height: `${25 + (i % 4) * 15}%` }} 
+                            />
+                          ))}
+                        </div>
+                        <div className="flex justify-between px-4">
+                          <Skeleton className="h-2 w-12" />
+                          <Skeleton className="h-2 w-12" />
+                          <Skeleton className="h-2 w-12" />
+                          <Skeleton className="h-2 w-12" />
+                        </div>
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={sessionChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
+                          <XAxis 
+                            dataKey="session" 
+                            stroke="#71717a" 
+                            fontSize={9} 
+                            tickLine={false} 
+                            axisLine={false}
+                          />
+                          <YAxis 
+                            stroke="#71717a" 
+                            fontSize={9} 
+                            tickLine={false} 
+                            axisLine={false} 
+                            allowDecimals={false}
+                          />
+                          <Tooltip content={<SessionTooltip />} />
+                          <Bar 
+                            dataKey="Meal Check-ins" 
+                            fill="#0284c7" 
+                            radius={[4, 4, 0, 0]} 
+                            maxBarSize={45}
+                          >
+                            {sessionChartData.map((_entry: SessionDataItem, index: number) => {
+                              const colors = ["#0284c7", "#0f766e", "#f59e0b", "#6366f1"];
+                              return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                            })}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Daily Meal Consumption Trends by Department Bar Chart - Spans full width on lg screens */}
+              <div className="w-full bg-white rounded-3xl border border-zinc-200 p-6 md:p-8 overflow-hidden md:col-span-2 lg:col-span-3">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 shrink-0">
-                    <Clock className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600 shrink-0">
+                    <TrendingUp className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-extrabold text-zinc-900 tracking-tight">Active Session Check-ins</h3>
-                    <p className="text-[10px] text-zinc-500 font-medium">Employee meal check-ins categorized by service periods</p>
+                    <h3 className="text-sm font-extrabold text-zinc-900 tracking-tight">Daily Meal Consumption Trends by Department</h3>
+                    <p className="text-[10px] text-zinc-500 font-medium">Daily chronological breakdown of employee meal vouchers and cash purchases by active hospital division</p>
                   </div>
                 </div>
 
-                <div className="relative h-64 w-full overflow-hidden mt-4">
+                <div className="relative h-72 min-h-[288px] w-full overflow-hidden mt-4">
                   {loading ? (
                     <div className="w-full h-full flex flex-col justify-between p-2 space-y-4">
-                      <div className="flex items-end justify-between flex-1 gap-6">
-                        {[...Array(4)].map((_, i) => (
-                          <Skeleton 
-                            key={i} 
-                            className="flex-1 bg-sky-100/60 rounded-t-lg"
-                            style={{ height: `${25 + (i % 4) * 15}%` }} 
-                          />
+                      <div className="flex items-end justify-between flex-1 gap-2">
+                        {[...Array(15)].map((_, i) => (
+                          <div key={i} className="flex-1 flex flex-col justify-end h-full">
+                            <Skeleton className="w-full bg-zinc-150/80 rounded-t-md" style={{ height: `${15 + (i % 5) * 12}%` }} />
+                          </div>
                         ))}
                       </div>
-                      <div className="flex justify-between px-4">
-                        <Skeleton className="h-2 w-12" />
-                        <Skeleton className="h-2 w-12" />
-                        <Skeleton className="h-2 w-12" />
-                        <Skeleton className="h-2 w-12" />
+                      <div className="flex justify-between">
+                        <Skeleton className="h-2 w-10" />
+                        <Skeleton className="h-2 w-10" />
+                        <Skeleton className="h-2 w-10" />
                       </div>
                     </div>
+                  ) : trendChartData.length === 0 ? (
+                    <EmptyState
+                      icon={TrendingUp}
+                      title="No Historical Trend Data"
+                      description="No daily chronological records found across active divisions."
+                      variant="dashed"
+                    />
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={sessionChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                      <BarChart data={trendChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
                         <XAxis 
-                          dataKey="session" 
+                          dataKey="dateLabel" 
                           stroke="#71717a" 
                           fontSize={9} 
                           tickLine={false} 
@@ -695,98 +767,28 @@ export default function AdminDashboard({ onViewChange }: { onViewChange: (v: str
                           axisLine={false} 
                           allowDecimals={false}
                         />
-                        <Tooltip content={<SessionTooltip />} />
-                        <Bar 
-                          dataKey="Meal Check-ins" 
-                          fill="#0284c7" 
-                          radius={[4, 4, 0, 0]} 
-                          maxBarSize={45}
-                        >
-                          {sessionChartData.map((_entry: SessionDataItem, index: number) => {
-                            const colors = ["#0284c7", "#0f766e", "#f59e0b", "#6366f1"];
-                            return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
-                          })}
-                        </Bar>
+                        <Tooltip content={<DailyTrendTooltip />} />
+                        <Legend iconType="circle" wrapperStyle={{ fontSize: '9px', paddingTop: '8px' }} />
+                        {activeDeptsList.map((dept, index) => (
+                          <Bar 
+                            key={dept} 
+                            dataKey={dept} 
+                            name={dept} 
+                            fill={TREND_COLORS[index % TREND_COLORS.length]} 
+                            stackId="dailyTrend" 
+                          />
+                        ))}
                       </BarChart>
                     </ResponsiveContainer>
                   )}
                 </div>
               </div>
+
             </div>
 
-            {/* Daily Meal Consumption Trends by Department Bar Chart */}
-            <div className="bg-white rounded-3xl border border-zinc-200 p-6 md:p-8">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600 shrink-0">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-extrabold text-zinc-900 tracking-tight">Daily Meal Consumption Trends by Department</h3>
-                  <p className="text-[10px] text-zinc-500 font-medium">Daily chronological breakdown of employee meal vouchers and cash purchases by active hospital division</p>
-                </div>
-              </div>
-
-              <div className="relative h-72 min-h-[288px] w-full overflow-hidden mt-4">
-                {loading ? (
-                  <div className="w-full h-full flex flex-col justify-between p-2 space-y-4">
-                    <div className="flex items-end justify-between flex-1 gap-2">
-                      {[...Array(15)].map((_, i) => (
-                        <div key={i} className="flex-1 flex flex-col justify-end h-full">
-                          <Skeleton className="w-full bg-zinc-150/80 rounded-t-md" style={{ height: `${15 + (i % 5) * 12}%` }} />
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex justify-between">
-                      <Skeleton className="h-2 w-10" />
-                      <Skeleton className="h-2 w-10" />
-                      <Skeleton className="h-2 w-10" />
-                    </div>
-                  </div>
-                ) : trendChartData.length === 0 ? (
-                  <EmptyState
-                    icon={TrendingUp}
-                    title="No Historical Trend Data"
-                    description="No daily chronological records found across active divisions."
-                    variant="dashed"
-                  />
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={trendChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
-                      <XAxis 
-                        dataKey="dateLabel" 
-                        stroke="#71717a" 
-                        fontSize={9} 
-                        tickLine={false} 
-                        axisLine={false}
-                      />
-                      <YAxis 
-                        stroke="#71717a" 
-                        fontSize={9} 
-                        tickLine={false} 
-                        axisLine={false} 
-                        allowDecimals={false}
-                      />
-                      <Tooltip content={<DailyTrendTooltip />} />
-                      <Legend iconType="circle" wrapperStyle={{ fontSize: '9px', paddingTop: '8px' }} />
-                      {activeDeptsList.map((dept, index) => (
-                        <Bar 
-                          key={dept} 
-                          dataKey={dept} 
-                          name={dept} 
-                          fill={TREND_COLORS[index % TREND_COLORS.length]} 
-                          stackId="dailyTrend" 
-                        />
-                      ))}
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Recent Live Activity Feed (Transactions) */}
-              <div className="bg-white rounded-3xl border border-zinc-200 p-6 md:p-8">
+              <div className="w-full bg-white rounded-3xl border border-zinc-200 p-6 md:p-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-700 shrink-0">

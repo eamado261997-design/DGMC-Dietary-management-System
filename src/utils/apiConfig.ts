@@ -30,3 +30,56 @@ export function getApiBaseUrl(): string {
   }
   return '';
 }
+
+// In-flight Promise deduplication and memory cache to eliminate redundant network chaining
+const inFlightRequests = new Map<string, Promise<any>>();
+const shortCache = new Map<string, { data: any; exp: number }>();
+
+/**
+ * Deduplicated fetch for idempotent public data (public stats, system branding)
+ */
+export async function fetchDeduplicated<T = any>(endpoint: string, ttlMs: number = 15000): Promise<T> {
+  const baseUrl = getApiBaseUrl();
+  const fullUrl = `${baseUrl}${endpoint}`;
+
+  // Check short in-memory cache
+  const cached = shortCache.get(fullUrl);
+  if (cached && cached.exp > Date.now()) {
+    return cached.data;
+  }
+
+  // Return existing in-flight promise if one is already pending
+  if (inFlightRequests.has(fullUrl)) {
+    return inFlightRequests.get(fullUrl)!;
+  }
+
+  // Consume early window pre-fetch if available from index.html <head>
+  if (typeof window !== 'undefined') {
+    if (endpoint === '/api/public-stats' && (window as any).__INITIAL_PUBLIC_STATS__) {
+      const earlyPromise = (window as any).__INITIAL_PUBLIC_STATS__;
+      (window as any).__INITIAL_PUBLIC_STATS__ = null;
+      inFlightRequests.set(fullUrl, earlyPromise);
+      return earlyPromise.then((data: any) => {
+        if (data) shortCache.set(fullUrl, { data, exp: Date.now() + ttlMs });
+        return data;
+      }).finally(() => {
+        inFlightRequests.delete(fullUrl);
+      });
+    }
+  }
+
+  const fetchPromise = fetch(fullUrl)
+    .then(async (res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      shortCache.set(fullUrl, { data, exp: Date.now() + ttlMs });
+      return data;
+    })
+    .finally(() => {
+      inFlightRequests.delete(fullUrl);
+    });
+
+  inFlightRequests.set(fullUrl, fetchPromise);
+  return fetchPromise;
+}
+

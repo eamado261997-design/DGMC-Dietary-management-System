@@ -30,19 +30,47 @@ export async function handleAuthRoutes(
     let user: Person | null = null;
     let dbPassword = "";
 
+    let isDeactivated = false;
+
     if (isMysqlConnected()) {
-      const rows = await query("SELECT * FROM people WHERE LOWER(username) = ? AND is_active = 1", [username.trim().toLowerCase()]);
+      const rows = await query("SELECT * FROM people WHERE LOWER(username) = ?", [username.trim().toLowerCase()]);
       if (rows.length > 0) {
-        user = rows[0];
-        dbPassword = user.password;
+        if (!rows[0].is_active || rows[0].is_active === 0) {
+          isDeactivated = true;
+        } else {
+          user = rows[0];
+          dbPassword = user.password;
+        }
       }
     } else {
       const db = readDatabase();
-      const candidate = (db.people || []).find(p => p.username.toLowerCase() === username.trim().toLowerCase() && p.is_active);
+      const candidate = (db.people || []).find(p => p.username.toLowerCase() === username.trim().toLowerCase());
       if (candidate) {
-        user = candidate;
-        dbPassword = candidate.password;
+        if (!candidate.is_active) {
+          isDeactivated = true;
+        } else {
+          user = candidate;
+          dbPassword = candidate.password;
+        }
       }
+    }
+
+    if (isDeactivated) {
+      if (isMysqlConnected()) {
+        await execute("INSERT INTO login_attempts (id, username, ip_address, success, timestamp) VALUES (NULL, ?, ?, 0, ?)", [
+          username, headers["x-forwarded-for"] || "127.0.0.1", nowStr
+        ]);
+      } else {
+        const db = readDatabase();
+        if (!db.login_attempts) db.login_attempts = [];
+        const nextId = db.login_attempts.length > 0 ? Math.max(...db.login_attempts.map((l: LoginAttempt) => l.id)) + 1 : 1;
+        db.login_attempts.push({ id: nextId, username, ip_address: headers["x-forwarded-for"] || "127.0.0.1", success: false, timestamp: nowStr });
+        writeDatabase(db);
+      }
+      return jsonResponse(401, {
+        error: "This personnel account is currently deactivated. Please contact your IT or Dietary Administrator.",
+        code: "ACCOUNT_DEACTIVATED"
+      });
     }
 
     if (!user || !verifyPassword(password, dbPassword)) {
@@ -114,7 +142,7 @@ export async function handleAuthRoutes(
         db.login_attempts.push({ id: nextId, username, ip_address: headers["x-forwarded-for"] || "127.0.0.1", success: false, timestamp: nowStr });
         writeDatabase(db);
       }
-      return jsonResponse(401, { error: "Invalid username or password, or account is deactivated." });
+      return jsonResponse(401, { error: "Invalid username or password.", code: "INVALID_CREDENTIALS" });
     }
 
     if (isMysqlConnected()) {

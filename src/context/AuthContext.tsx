@@ -4,7 +4,7 @@ import { useToast } from "./ToastContext.js";
 import { useLoading } from "./LoadingContext.js";
 import { getCookie } from "../utils/cookie.js";
 import { parseJwt } from "../utils/jwt.js";
-import { getApiBaseUrl } from "../utils/apiConfig.js";
+import { getApiBaseUrl, fetchDeduplicated } from "../utils/apiConfig.js";
 
 export interface SystemBranding {
   companyName: string;
@@ -19,7 +19,7 @@ interface AuthContextType {
   token: string | null;
   user: Person | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (username: string, password: string) => Promise<{ success: boolean; error?: string; code?: string }>;
   logout: () => void;
   apiFetch: (path: string, options?: RequestInit) => Promise<any>;
   branding: SystemBranding;
@@ -64,10 +64,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshBranding = async () => {
     try {
-      const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/public-stats`);
-      if (res.ok) {
-        const data = await res.json();
+      const data = await fetchDeduplicated('/api/public-stats');
+      if (data) {
         setBranding({
           companyName: data.companyName || "Divine Grace Medical Center",
           companyTagline: data.companyTagline || "Compassionate Care, Exceptional Service",
@@ -131,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const data = await res.json();
       if (!res.ok) {
-        return { success: false, error: data.error || "An unexpected sign-in error occurred." };
+        return { success: false, error: data.error || "An unexpected sign-in error occurred.", code: data.code };
       }
 
       localStorage.setItem("dgmc_token", data.token);
@@ -430,6 +428,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (!res.ok || (data && data.error)) {
+        if (res.status === 401 && authState.token && !path.includes("/auth/login")) {
+          logout();
+          addToast("Your session has expired or is invalid. Please sign in again.", "error");
+        }
         const errorMessage = (data && data.error) 
           ? (res.status === 403 ? `Access Forbidden: ${data.error}` : data.error)
           : (data && data.message ? data.message : `Request failed with status ${res.status}`);

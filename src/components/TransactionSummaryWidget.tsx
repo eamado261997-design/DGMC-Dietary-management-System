@@ -352,13 +352,13 @@ export default function TransactionSummaryWidget({
   const hasActiveScans = displayVolume > 0;
 
   return (
-    <div className={`border rounded-3xl p-6 shadow-xs space-y-6 transition-colors duration-200 ${
+    <div className={`w-full border rounded-3xl p-6 shadow-xs space-y-6 transition-colors duration-200 overflow-hidden ${
       isDark ? "bg-zinc-900 border-zinc-800 text-white" : "bg-white border-zinc-200 text-zinc-900"
     }`}>
       {/* Header section with live sync indicators */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors shrink-0 ${
             isDark ? "bg-teal-950/60 border-teal-800/60 text-sky-400" : "bg-teal-50 border-teal-150 text-teal-800"
           }`}>
             <BarChart3 className="w-5 h-5" />
@@ -396,9 +396,9 @@ export default function TransactionSummaryWidget({
         </div>
       </div>
 
-      {/* Metric Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className={`p-4 rounded-2xl border transition-colors ${
+      {/* Metric Cards Row - Responsive Grid Layout */}
+      <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-hidden">
+        <div className={`w-full p-4 rounded-2xl border transition-colors overflow-hidden ${
           isDark ? "bg-zinc-950/70 border-zinc-800" : "bg-zinc-50 border-zinc-200/80"
         }`}>
           <span className="text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-widest block">
@@ -429,7 +429,7 @@ export default function TransactionSummaryWidget({
           </p>
         </div>
 
-        <div className={`p-4 rounded-2xl border transition-colors ${
+        <div className={`w-full p-4 rounded-2xl border transition-colors overflow-hidden ${
           isDark ? "bg-zinc-950/70 border-zinc-800" : "bg-zinc-50 border-zinc-200/80"
         }`}>
           <span className="text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-widest block">
@@ -450,7 +450,7 @@ export default function TransactionSummaryWidget({
           <p className="text-[10px] text-zinc-500 mt-1">Manual price overrides &amp; cash</p>
         </div>
 
-        <div className={`p-4 rounded-2xl border transition-colors ${
+        <div className={`w-full p-4 rounded-2xl border transition-colors overflow-hidden md:col-span-2 lg:col-span-1 ${
           isDark ? "bg-zinc-950/70 border-zinc-800" : "bg-zinc-50 border-zinc-200/80"
         }`}>
           <span className="text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-widest block">
@@ -481,10 +481,10 @@ export default function TransactionSummaryWidget({
       </div>
 
       {/* Hourly Volume & Pricing Trend Section */}
-      <div className={`space-y-4 pt-2 border-t transition-colors ${
+      <div className={`w-full space-y-4 pt-2 border-t transition-colors ${
         isDark ? "border-zinc-800" : "border-zinc-100"
       }`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
               <Clock className={`w-4 h-4 ${isDark ? "text-sky-400" : "text-teal-600"}`} />
@@ -583,10 +583,10 @@ export default function TransactionSummaryWidget({
         </div>
 
         {/* Date Range Picker Bar directly above the chart */}
-        <div className={`border rounded-2xl p-3.5 space-y-3 transition-colors ${
+        <div className={`w-full border rounded-2xl p-3.5 space-y-3 transition-colors ${
           isDark ? "bg-zinc-950/80 border-zinc-800" : "bg-zinc-50/90 border-zinc-200"
         }`}>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+          <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-2.5">
             {/* Quick Presets */}
             <div className="flex items-center flex-wrap gap-1.5">
               <div className={`flex items-center gap-1.5 text-xs font-bold mr-1 ${
@@ -707,15 +707,14 @@ export default function TransactionSummaryWidget({
           </form>
         </div>
 
-        {/* Responsive Recharts Container maintaining 16:9 aspect ratio and DGMC theme */}
+        {/* Responsive Recharts Container */}
         <div
           id="dgmc-recharts-aspect-container"
-          className={`w-full aspect-video min-h-[280px] max-h-[520px] relative rounded-2xl p-2 sm:p-4 transition-all duration-200 border flex flex-col justify-center ${
+          className={`w-full h-72 sm:h-80 md:h-96 lg:h-[380px] min-h-[260px] relative rounded-2xl p-2 sm:p-4 transition-all duration-200 border overflow-hidden flex flex-col justify-center ${
             isDark
               ? "bg-zinc-950/80 border-zinc-800 shadow-inner"
               : "bg-gradient-to-b from-slate-50/70 to-white border-zinc-200/90 shadow-2xs"
           }`}
-          style={{ aspectRatio: "16 / 9" }}
         >
           {totalRangeVolume === 0 && !loading && (
             <div className={`absolute inset-2 flex flex-col items-center justify-center rounded-xl z-10 p-6 text-center backdrop-blur-xs ${
@@ -729,95 +728,99 @@ export default function TransactionSummaryWidget({
             </div>
           )}
 
-          <ResponsiveContainer width="100%" height="100%" aspect={16 / 9} className="dgmc-responsive-container">
-            <LineChart
-              data={effectiveChartData}
-              margin={{ top: 12, right: activeMetricView === "volume" ? 15 : 20, left: -15, bottom: 4 }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                vertical={false}
-                stroke={currentTheme.grid}
-              />
+          <div className="w-full h-full min-w-0 min-h-0 flex-1 relative overflow-hidden">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} className="dgmc-responsive-container">
+              <LineChart
+                data={effectiveChartData}
+                margin={{ top: 16, right: activeMetricView === "volume" ? 16 : 28, left: 0, bottom: 6 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke={currentTheme.grid}
+                />
 
-              <XAxis
-                dataKey="time"
-                stroke={currentTheme.axisText}
-                fontSize={10}
-                tickLine={false}
-                axisLine={{ stroke: currentTheme.axisLine }}
-                interval={2}
-              />
+                <XAxis
+                  dataKey="time"
+                  stroke={currentTheme.axisText}
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={{ stroke: currentTheme.axisLine }}
+                  minTickGap={20}
+                />
 
-              <YAxis
-                yAxisId="volume"
-                stroke={currentTheme.volume.stroke}
-                fontSize={10}
-                tickLine={false}
-                axisLine={false}
-                allowDecimals={false}
-                tickFormatter={(v) => `${v}`}
-              />
-
-              {activeMetricView !== "volume" && (
                 <YAxis
-                  yAxisId="price"
-                  orientation="right"
-                  stroke={currentTheme.price.stroke}
+                  yAxisId="volume"
+                  stroke={currentTheme.volume.stroke}
                   fontSize={10}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => `${currencySymbol}${v}`}
+                  allowDecimals={false}
+                  width={28}
+                  tickFormatter={(v) => `${v}`}
                 />
-              )}
 
-              <Tooltip
-                content={<DGMCTransactionTooltip currencySymbol={currencySymbol} isDark={isDark} />}
-              />
-
-              <Legend
-                wrapperStyle={{
-                  fontSize: "11px",
-                  paddingTop: "6px",
-                  color: currentTheme.axisText
-                }}
-                formatter={(value) => (
-                  <span className={`font-semibold ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>
-                    {value}
-                  </span>
+                {activeMetricView !== "volume" && (
+                  <YAxis
+                    yAxisId="price"
+                    orientation="right"
+                    stroke={currentTheme.price.stroke}
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    width={38}
+                    tickFormatter={(v) => `${currencySymbol}${v}`}
+                  />
                 )}
-                iconType="circle"
-                iconSize={8}
-              />
 
-              {(activeMetricView === "all" || activeMetricView === "volume") && (
-                <Line
-                  yAxisId="volume"
-                  type="monotone"
-                  dataKey="volume"
-                  name="Transaction Volume"
-                  stroke={currentTheme.volume.stroke}
-                  strokeWidth={2.5}
-                  dot={{ r: 2.5, fill: currentTheme.volume.fill, strokeWidth: 1, stroke: isDark ? "#09090b" : "#ffffff" }}
-                  activeDot={{ r: 6, fill: currentTheme.volume.activeFill, stroke: "#ffffff", strokeWidth: 2 }}
+                <Tooltip
+                  content={<DGMCTransactionTooltip currencySymbol={currencySymbol} isDark={isDark} />}
                 />
-              )}
 
-              {(activeMetricView === "all" || activeMetricView === "price") && (
-                <Line
-                  yAxisId="price"
-                  type="monotone"
-                  dataKey="avgPrice"
-                  name="Average Price"
-                  stroke={currentTheme.price.stroke}
-                  strokeWidth={2}
-                  strokeDasharray="4 4"
-                  dot={{ r: 2.5, fill: currentTheme.price.fill, strokeWidth: 1, stroke: isDark ? "#09090b" : "#ffffff" }}
-                  activeDot={{ r: 5, fill: currentTheme.price.activeFill, stroke: "#ffffff", strokeWidth: 2 }}
+                <Legend
+                  wrapperStyle={{
+                    fontSize: "11px",
+                    paddingTop: "6px",
+                    color: currentTheme.axisText
+                  }}
+                  formatter={(value) => (
+                    <span className={`font-semibold ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>
+                      {value}
+                    </span>
+                  )}
+                  iconType="circle"
+                  iconSize={8}
                 />
-              )}
-            </LineChart>
-          </ResponsiveContainer>
+
+                {(activeMetricView === "all" || activeMetricView === "volume") && (
+                  <Line
+                    yAxisId="volume"
+                    type="monotone"
+                    dataKey="volume"
+                    name="Transaction Volume"
+                    stroke={currentTheme.volume.stroke}
+                    strokeWidth={2.5}
+                    dot={{ r: 2.5, fill: currentTheme.volume.fill, strokeWidth: 1, stroke: isDark ? "#09090b" : "#ffffff" }}
+                    activeDot={{ r: 6, fill: currentTheme.volume.activeFill, stroke: "#ffffff", strokeWidth: 2 }}
+                  />
+                )}
+
+                {(activeMetricView === "all" || activeMetricView === "price") && (
+                  <Line
+                    yAxisId="price"
+                    type="monotone"
+                    dataKey="avgPrice"
+                    name="Average Price"
+                    stroke={currentTheme.price.stroke}
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                    dot={{ r: 2.5, fill: currentTheme.price.fill, strokeWidth: 1, stroke: isDark ? "#09090b" : "#ffffff" }}
+                    activeDot={{ r: 5, fill: currentTheme.price.activeFill, stroke: "#ffffff", strokeWidth: 2 }}
+                  />
+                )}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         {/* Footer info bar */}

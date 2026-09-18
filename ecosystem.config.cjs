@@ -1,4 +1,14 @@
 const path = require('path');
+const fs = require('fs');
+
+const logsDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logsDir)) {
+  try {
+    fs.mkdirSync(logsDir, { recursive: true });
+  } catch (e) {
+    // Ignore directory creation error if already exists
+  }
+}
 
 module.exports = {
   apps: [
@@ -21,8 +31,8 @@ module.exports = {
         REDIS_HOST: process.env.REDIS_HOST || "127.0.0.1",
         REDIS_PORT: process.env.REDIS_PORT || "6379"
       },
-      error_file: path.join(__dirname, "logs", "err.log"),
-      out_file: path.join(__dirname, "logs", "out.log"),
+      error_file: path.join(logsDir, "err.log"),
+      out_file: path.join(logsDir, "out.log"),
       log_date_format: "YYYY-MM-DD HH:mm:ss Z",
       merge_logs: true,
       watch: false,

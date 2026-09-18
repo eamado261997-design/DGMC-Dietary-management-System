@@ -795,6 +795,14 @@ async function _handleApiRequest(
   // -------------------------------------------------------------
   // HEALTH & SYSTEM DIAGNOSTICS ENDPOINTS
   // -------------------------------------------------------------
+  if (path === "/api/public-stats" && method === "GET") {
+    const { getPublicStats } = await import("./routes/publicStats.js");
+    const stats = await getPublicStats();
+    return jsonResponse(200, stats, {
+      "Cache-Control": "public, max-age=15, stale-while-revalidate=60"
+    });
+  }
+
   if (path === "/api/health" && method === "GET") {
     let mysqlStatus = "disconnected";
     let dbType = "json_file";
@@ -835,10 +843,13 @@ async function _handleApiRequest(
     const mockReq = {} as any;
     const mockRes = {
       json: (data: any) => { result = data; },
-      status: (code: number) => ({ json: (data: any) => { result = { error: data, status: code }; } })
+      status: (code: number) => ({ json: (data: any) => { result = { error: data, status: code }; } }),
+      setHeader: (_name: string, _val: string) => {}
     } as any;
     await diagnosticsController.getPerformanceBenchmarks(mockReq, mockRes);
-    return jsonResponse(200, result);
+    return jsonResponse(200, result, {
+      "Cache-Control": "public, max-age=10"
+    });
   }
 
   if (path === "/api/admin/security-matrix-verify" && method === "GET") {

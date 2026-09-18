@@ -3,14 +3,19 @@ FROM node:22-bookworm-slim AS build
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+# Install native compilation tools for node-gyp (better-sqlite3)
+RUN apt-get update && apt-get install -y python3 make g++ python-is-python3 && rm -rf /var/lib/apt/lists/*
+
+# Prevent external headless browser downloads and enforce legacy peer dependency resolution
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+ENV npm_config_legacy_peer_deps=true
 
 COPY package.json package-lock.json* ./
-RUN npm install --no-audit
+RUN npm install --legacy-peer-deps --no-audit
 
 COPY . .
 RUN npm run build
-RUN npm prune --omit=dev --no-audit
+RUN npm prune --omit=dev --legacy-peer-deps --no-audit
 
 FROM node:22-bookworm-slim AS production
 

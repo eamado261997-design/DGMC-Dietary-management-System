@@ -7,6 +7,13 @@ import { Person } from "../../types.js";
 import { getEmployeePerfSummary } from "../utils/performanceTracker.js";
 import { decrypt, decryptAny } from "../encryption.js";
 
+// Short-lived in-memory cache for admin dashboard statistics
+let cachedAdminStats: { data: any; exp: number } | null = null;
+
+export function invalidateAdminStatsCache() {
+  cachedAdminStats = null;
+}
+
 export async function handleAdminRoutes(
   method: string,
   path: string,
@@ -131,6 +138,13 @@ export async function handleAdminRoutes(
     if (!authUser) return jsonResponse(401, { error: "Authentication required" });
     if (!requireRole(["admin", "dietary_admin"])) return jsonResponse(403, { error: "Admin privilege required" });
 
+    const now = Date.now();
+    if (cachedAdminStats && cachedAdminStats.exp > now) {
+      return jsonResponse(200, cachedAdminStats.data, {
+        "Cache-Control": "private, max-age=5, stale-while-revalidate=5"
+      });
+    }
+
     const todayStr = getTodayDateStr();
 
     let totalPeople = 0;
@@ -145,51 +159,58 @@ export async function handleAdminRoutes(
     let recentActivities: any[] = [];
 
     if (isMysqlConnected()) {
-      const pCount = await query("SELECT COUNT(*) as cnt FROM people");
-      totalPeople = pCount[0]?.cnt || 0;
+      const [countsResult, todayTransAgg, recTransRaw, auditRows, pendingRows] = await Promise.all([
+        query(`
+          SELECT 
+            COUNT(*) AS totalPeople,
+            SUM(CASE WHEN role = 'employee' THEN 1 ELSE 0 END) AS totalEmployees,
+            SUM(CASE WHEN role = 'employee' AND is_active = 1 THEN 1 ELSE 0 END) AS activeEmployees,
+            (SELECT COUNT(*) FROM departments) AS totalDepartments
+          FROM people
+        `),
+        query(`
+          SELECT 
+            SUM(CASE WHEN is_free = 1 THEN 1 ELSE 0 END) AS freeMealsToday,
+            SUM(CASE WHEN is_free = 0 OR is_free IS NULL THEN 1 ELSE 0 END) AS cashMealsTodayCount,
+            SUM(CASE WHEN is_free = 0 OR is_free IS NULL THEN meal_amount ELSE 0 END) AS paidAmountToday
+          FROM transactions
+          WHERE meal_date = ? AND status = 'completed'
+        `, [todayStr]),
+        query(`
+          SELECT t.*, 
+                 p.first_name AS p_first_name, p.last_name AS p_last_name,
+                 p.employee_no,
+                 d.name AS department_name
+          FROM transactions t
+          LEFT JOIN people p ON t.person_id = p.id
+          LEFT JOIN departments d ON p.department_id = d.id
+          ORDER BY t.id DESC
+          LIMIT 10
+        `),
+        query("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 10"),
+        query(`
+          SELECT COUNT(DISTINCT p.id) as cnt
+          FROM people p
+          JOIN employee_schedules s ON p.id = s.person_id
+          WHERE p.role = 'employee' AND p.is_active = 1 AND s.work_date = ?
+          AND p.id NOT IN (
+            SELECT person_id FROM transactions WHERE meal_date = ? AND status = 'completed'
+          )
+        `, [todayStr, todayStr])
+      ]);
 
-      const empCount = await query("SELECT COUNT(*) as cnt FROM people WHERE role = 'employee'");
-      totalEmployees = empCount[0]?.cnt || 0;
+      const counts = countsResult[0] || {};
+      totalPeople = Number(counts.totalPeople || 0);
+      totalEmployees = Number(counts.totalEmployees || 0);
+      activeEmployees = Number(counts.activeEmployees || 0);
+      totalDepartments = Number(counts.totalDepartments || 0);
 
-      const aCount = await query("SELECT COUNT(*) as cnt FROM people WHERE role = 'employee' AND is_active = 1");
-      activeEmployees = aCount[0]?.cnt || 0;
+      const transAgg = todayTransAgg[0] || {};
+      freeMealsToday = Number(transAgg.freeMealsToday || 0);
+      cashMealsTodayCount = Number(transAgg.cashMealsTodayCount || 0);
+      paidAmountToday = Number(transAgg.paidAmountToday || 0);
 
-      const dCount = await query("SELECT COUNT(*) as cnt FROM departments");
-      totalDepartments = dCount[0]?.cnt || 0;
-
-      const todayTrans = await query(`
-        SELECT t.*, 
-               p.first_name AS p_first_name, p.last_name AS p_last_name,
-               p.employee_no,
-               d.name AS department_name
-        FROM transactions t
-        LEFT JOIN people p ON t.person_id = p.id
-        LEFT JOIN departments d ON p.department_id = d.id
-        WHERE t.meal_date = ? AND t.status = 'completed'
-        ORDER BY t.id DESC
-      `, [todayStr]);
-
-      todayTrans.forEach((t: any) => {
-        if (t.is_free === 1 || t.is_free === true) {
-          freeMealsToday++;
-        } else {
-          cashMealsTodayCount++;
-          paidAmountToday += Number(t.meal_amount || 0);
-        }
-      });
-
-      const recTransRaw = await query(`
-        SELECT t.*, 
-               p.first_name AS p_first_name, p.last_name AS p_last_name,
-               p.employee_no,
-               d.name AS department_name
-        FROM transactions t
-        LEFT JOIN people p ON t.person_id = p.id
-        LEFT JOIN departments d ON p.department_id = d.id
-        ORDER BY t.id DESC
-        LIMIT 10
-      `);
-      recentTransactions = recTransRaw.map((t: any) => {
+      recentTransactions = (recTransRaw || []).map((t: any) => {
         const pFirst = decrypt(t.p_first_name);
         const pLast = decrypt(t.p_last_name);
         const empNo = decrypt(t.employee_no) || t.employee_no;
@@ -200,19 +221,8 @@ export async function handleAdminRoutes(
         };
       });
 
-      const auditRows = await query("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 10");
-      recentActivities = auditRows;
-
-      const pendingRows = await query(`
-        SELECT COUNT(DISTINCT p.id) as cnt
-        FROM people p
-        JOIN employee_schedules s ON p.id = s.person_id
-        WHERE p.role = 'employee' AND p.is_active = 1 AND s.work_date = ?
-        AND p.id NOT IN (
-          SELECT person_id FROM transactions WHERE meal_date = ? AND status = 'completed'
-        )
-      `, [todayStr, todayStr]);
-      pendingMealRequests = pendingRows[0]?.cnt || 0;
+      recentActivities = auditRows || [];
+      pendingMealRequests = Number(pendingRows[0]?.cnt || 0);
 
     } else {
       const db = readDatabase();
@@ -252,7 +262,7 @@ export async function handleAdminRoutes(
       }).length;
     }
 
-    return jsonResponse(200, {
+    const payload = {
       totalPeople,
       totalDepartments,
       freeMealsToday,
@@ -263,6 +273,16 @@ export async function handleAdminRoutes(
       pendingMealRequests,
       recentTransactions,
       recentActivities
+    };
+
+    // Cache for 5 seconds to eliminate burst load
+    cachedAdminStats = {
+      data: payload,
+      exp: Date.now() + 5000
+    };
+
+    return jsonResponse(200, payload, {
+      "Cache-Control": "private, max-age=5, stale-while-revalidate=5"
     });
   }
 

@@ -10,6 +10,19 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#18181b" />
     <link rel="apple-touch-icon" href="/assets/pwa_icon.jpg" />
+    <!-- Preload critical API routes in document head to eliminate LCP delay -->
+    <link rel="preload" href="/api/auth/me" as="fetch" crossorigin />
+    <link rel="preload" href="/api/public-stats" as="fetch" crossorigin />
+    <!-- Early data dispatch to eliminate serial JS execution chaining -->
+    <script>
+      (function() {
+        try {
+          window.__INITIAL_PUBLIC_STATS__ = fetch('/api/public-stats')
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .catch(function() { return null; });
+        } catch(e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

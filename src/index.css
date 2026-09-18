@@ -470,6 +470,22 @@ html.high-contrast-dark .recharts-tooltip-cursor {
 .dgmc-responsive-container {
   width: 100% !important;
   max-width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+}
+
+.dgmc-responsive-container .recharts-wrapper {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+.dgmc-responsive-container .recharts-surface {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
 }
 
 
