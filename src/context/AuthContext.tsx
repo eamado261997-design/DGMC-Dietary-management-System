@@ -183,9 +183,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [autoRetryInterval, setAutoRetryInterval] = useState(() => parseInt(localStorage.getItem("auto_retry_interval") || "60000"));
   const [isAutoRetrying, setIsAutoRetrying] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const isRefreshingRef = React.useRef(false);
+  const lastRefreshTimeRef = React.useRef(0);
 
   const refreshToken = React.useCallback(async () => {
-    if (!authState.token || isRefreshing) return;
+    if (!authState.token || isRefreshingRef.current) return;
+    const now = Date.now();
+    if (now - lastRefreshTimeRef.current < 30000) return; // rate limit: 1 request per 30 seconds
+    lastRefreshTimeRef.current = now;
+    
+    isRefreshingRef.current = true;
     setIsRefreshing(true);
     try {
       const baseUrl = getApiBaseUrl();
@@ -210,9 +217,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (_err) {
       // Ignore silent refresh error
     } finally {
+      isRefreshingRef.current = false;
       setIsRefreshing(false);
     }
-  }, [authState.token, isRefreshing]);
+  }, [authState.token]);
 
   useEffect(() => {
     if (!authState.token) return;

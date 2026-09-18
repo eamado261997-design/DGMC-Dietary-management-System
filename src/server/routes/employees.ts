@@ -320,7 +320,8 @@ export async function handleEmployeeRoutes(
 
       // If force delete or no meal history:
       // Cascading deletion of all child and related references in proper foreign key order
-      await execute("DELETE FROM employee_schedules WHERE person_id = ? OR created_by = ?", [targetId, targetId]);
+      await execute("UPDATE employee_schedules SET created_by = NULL WHERE created_by = ?", [targetId]);
+      await execute("DELETE FROM employee_schedules WHERE person_id = ?", [targetId]);
       await execute("DELETE FROM free_meal_logs WHERE person_id = ?", [targetId]);
       if (isForce) {
         await execute("DELETE FROM transactions WHERE person_id = ? OR cashier_person_id = ?", [targetId, targetId]);
@@ -367,7 +368,12 @@ export async function handleEmployeeRoutes(
       }
 
       // Cascading deletion of all child and related references in proper foreign key order
-      db.employee_schedules = (db.employee_schedules || []).filter(s => s.person_id !== targetId && s.created_by !== targetId);
+      if (db.employee_schedules) {
+        db.employee_schedules.forEach(s => {
+          if (s.created_by === targetId) s.created_by = undefined;
+        });
+      }
+      db.employee_schedules = (db.employee_schedules || []).filter(s => s.person_id !== targetId);
       db.free_meal_log = (db.free_meal_log || []).filter(f => f.person_id !== targetId);
       if (isForce) {
         db.transactions = (db.transactions || []).filter(t => t.person_id !== targetId && t.cashier_person_id !== targetId);
