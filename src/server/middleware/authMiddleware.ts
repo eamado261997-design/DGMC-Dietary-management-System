@@ -207,6 +207,8 @@ export async function authenticateRequest(
   metrics.totalAuthRequests++;
 
   const authHeader = headers["authorization"] || headers["Authorization"];
+  console.log(`[AuthMiddleware] Incoming request [${method} ${requestPath}] - Auth Header presence: ${!!authHeader}, Content snippet: ${authHeader ? (typeof authHeader === 'string' ? authHeader.substring(0, 15) + '...' : 'non-string') : 'none'}`);
+  
   if (!authHeader || typeof authHeader !== "string") {
     return { authenticated: false, user: null, reason: "NO_AUTH_HEADER" };
   }
