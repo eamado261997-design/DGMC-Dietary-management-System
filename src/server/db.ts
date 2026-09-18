@@ -259,6 +259,18 @@ export function readDatabase(): DatabaseSchema {
       cachedDbState.system_settings = defaultSeed.system_settings;
       touched = true;
     }
+    if (!cachedDbState.free_meal_log) {
+      cachedDbState.free_meal_log = [];
+      touched = true;
+    }
+    if (!cachedDbState.transactions) {
+      cachedDbState.transactions = [];
+      touched = true;
+    }
+    if (!cachedDbState.employee_schedules) {
+      cachedDbState.employee_schedules = [];
+      touched = true;
+    }
     if (!cachedDbState.audit_logs) {
       cachedDbState.audit_logs = [];
       touched = true;
@@ -266,6 +278,31 @@ export function readDatabase(): DatabaseSchema {
     if (!cachedDbState.login_attempts) {
       cachedDbState.login_attempts = [];
       touched = true;
+    }
+
+    // Ensure all records have mandatory created_at / updated_at
+    for (const d of cachedDbState.departments || []) {
+      if (!d.created_at) { d.created_at = nowStr; touched = true; }
+    }
+    for (const p of cachedDbState.people || []) {
+      if (!p.created_at) { p.created_at = nowStr; touched = true; }
+      if (!p.updated_at) { p.updated_at = nowStr; touched = true; }
+    }
+    for (const s of cachedDbState.employee_schedules || []) {
+      if (!s.created_at) { s.created_at = nowStr; touched = true; }
+    }
+    for (const t of cachedDbState.transactions || []) {
+      if (!t.created_at) { t.created_at = nowStr; touched = true; }
+    }
+    for (const f of cachedDbState.free_meal_log || []) {
+      if (!f.created_at) { f.created_at = nowStr; touched = true; }
+      if (!f.claimed_at) { f.claimed_at = f.created_at; touched = true; }
+    }
+    for (const l of cachedDbState.audit_logs || []) {
+      if (!l.created_at) { l.created_at = nowStr; touched = true; }
+    }
+    for (const la of cachedDbState.login_attempts || []) {
+      if (!la.timestamp) { la.timestamp = nowStr; touched = true; }
     }
     if (touched) {
       try {

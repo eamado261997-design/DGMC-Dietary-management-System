@@ -260,7 +260,7 @@ export async function syncStateToSqlite(data: DatabaseSchema): Promise<void> {
         VALUES (?, ?, ?)
       `);
       for (const d of data.departments) {
-        insertStmt.run(d.id, d.name, d.created_at);
+        insertStmt.run(d.id, d.name, d.created_at || new Date().toISOString());
       }
     }
 
@@ -287,8 +287,8 @@ export async function syncStateToSqlite(data: DatabaseSchema): Promise<void> {
           encryptedP.phone || null,
           encryptedP.is_active ? 1 : 0,
           encryptedP.last_login || null,
-          encryptedP.created_at,
-          encryptedP.updated_at,
+          encryptedP.created_at || new Date().toISOString(),
+          encryptedP.updated_at || new Date().toISOString(),
           encryptedP.employee_no || null,
           encryptedP.position || null,
           encryptedP.department_id !== undefined ? encryptedP.department_id : null,
@@ -307,7 +307,14 @@ export async function syncStateToSqlite(data: DatabaseSchema): Promise<void> {
         VALUES (?, ?, ?, ?, ?, ?)
       `);
       for (const s of data.employee_schedules) {
-        insertStmt.run(s.id, s.person_id, s.work_date, s.shift_type, s.created_by !== undefined ? s.created_by : null, s.created_at);
+        insertStmt.run(
+          s.id,
+          s.person_id,
+          s.work_date,
+          s.shift_type,
+          s.created_by !== undefined ? s.created_by : null,
+          s.created_at || new Date().toISOString()
+        );
       }
     }
 
@@ -321,14 +328,14 @@ export async function syncStateToSqlite(data: DatabaseSchema): Promise<void> {
         insertStmt.run(
           t.id,
           t.person_id,
-          t.cashier_person_id,
-          t.meal_date,
-          t.meal_time,
+          t.cashier_person_id || 1,
+          t.meal_date || new Date().toISOString().split("T")[0],
+          t.meal_time || new Date().toTimeString().split(" ")[0],
           t.is_free ? 1 : 0,
-          t.meal_amount,
-          t.status,
+          t.meal_amount ?? 0,
+          t.status || "completed",
           t.meal_type || (t.is_free ? "free" : "paid"),
-          t.created_at
+          t.created_at || new Date().toISOString()
         );
       }
     }
@@ -340,7 +347,12 @@ export async function syncStateToSqlite(data: DatabaseSchema): Promise<void> {
         VALUES (?, ?, ?, ?)
       `);
       for (const f of data.free_meal_log) {
-        insertStmt.run(f.id, f.person_id, f.meal_date, f.created_at);
+        insertStmt.run(
+          f.id,
+          f.person_id,
+          f.meal_date,
+          f.created_at || new Date().toISOString()
+        );
       }
     }
 
@@ -351,7 +363,13 @@ export async function syncStateToSqlite(data: DatabaseSchema): Promise<void> {
         VALUES (?, ?, ?, ?, ?)
       `);
       for (const s of data.system_settings) {
-        insertStmt.run(s.id, s.setting_key, s.setting_value, s.updated_at, s.updated_by !== undefined ? s.updated_by : null);
+        insertStmt.run(
+          s.id,
+          s.setting_key,
+          s.setting_value !== undefined && s.setting_value !== null ? s.setting_value : "",
+          s.updated_at || new Date().toISOString(),
+          s.updated_by !== undefined ? s.updated_by : null
+        );
       }
     }
 
@@ -371,7 +389,7 @@ export async function syncStateToSqlite(data: DatabaseSchema): Promise<void> {
           l.old_value || null,
           l.new_value || null,
           l.ip_address || null,
-          l.created_at
+          l.created_at || new Date().toISOString()
         );
       }
     }
@@ -383,7 +401,13 @@ export async function syncStateToSqlite(data: DatabaseSchema): Promise<void> {
         VALUES (?, ?, ?, ?, ?)
       `);
       for (const la of data.login_attempts) {
-        insertStmt.run(la.id, la.username, la.ip_address || null, la.timestamp, la.success ? 1 : 0);
+        insertStmt.run(
+          la.id,
+          la.username,
+          la.ip_address || null,
+          la.timestamp || new Date().toISOString(),
+          la.success ? 1 : 0
+        );
       }
     }
 

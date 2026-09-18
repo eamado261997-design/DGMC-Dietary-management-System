@@ -368,21 +368,23 @@ export async function handleTransactionRoutes(
       }
       const amount = freeBool ? 0 : numAmount;
 
+      const nowIso = new Date().toISOString();
+
       if (isMysqlConnected()) {
         const tRows = await query("SELECT MAX(id) as maxId FROM transactions");
         const nextId = (tRows[0]?.maxId || 0) + 1;
         await execute(
           `INSERT INTO transactions (id, person_id, meal_date, meal_time, is_free, meal_amount, status, meal_type, cashier_person_id, created_at)
            VALUES (?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?)`,
-          [nextId, person.id, todayStr, timeStr, freeBool ? 1 : 0, amount, freeBool ? "free" : "paid", authUser.id, new Date().toISOString()]
+          [nextId, person.id, todayStr, timeStr, freeBool ? 1 : 0, amount, freeBool ? "free" : "paid", authUser.id, nowIso]
         );
 
         if (freeBool) {
           const fRows = await query("SELECT MAX(id) as maxId FROM free_meal_logs");
           const nextFId = (fRows[0]?.maxId || 0) + 1;
           await execute(
-            `INSERT INTO free_meal_logs (id, person_id, meal_date, claimed_at) VALUES (?, ?, ?, ?)`,
-            [nextFId, person.id, todayStr, new Date().toISOString()]
+            `INSERT INTO free_meal_logs (id, person_id, meal_date, created_at, claimed_at) VALUES (?, ?, ?, ?, ?)`,
+            [nextFId, person.id, todayStr, nowIso, nowIso]
           );
         }
 
@@ -396,7 +398,8 @@ export async function handleTransactionRoutes(
           is_free: freeBool,
           meal_amount: amount,
           status: "completed",
-          meal_type: freeBool ? "free" : "paid"
+          meal_type: freeBool ? "free" : "paid",
+          created_at: nowIso
         };
         await logToAudit(freeBool ? "MEAL_SCAN_FREE" : "MEAL_SCAN_PAID", "transactions", nextId, null, txRecord);
         return jsonResponse(200, { success: true, transaction: txRecord });
@@ -414,14 +417,20 @@ export async function handleTransactionRoutes(
           meal_amount: amount,
           status: "completed",
           meal_type: freeBool ? "free" : "paid",
-          created_at: new Date().toISOString()
+          created_at: nowIso
         };
         if (!db.transactions) db.transactions = [];
         db.transactions.push(tx);
         if (freeBool) {
           if (!db.free_meal_log) db.free_meal_log = [];
           const nextFId = db.free_meal_log.length > 0 ? Math.max(...db.free_meal_log.map(f => f.id)) + 1 : 1;
-          db.free_meal_log.push({ id: nextFId, person_id: person.id, meal_date: todayStr, created_at: new Date().toISOString() });
+          db.free_meal_log.push({
+            id: nextFId,
+            person_id: person.id,
+            meal_date: todayStr,
+            created_at: nowIso,
+            claimed_at: nowIso
+          });
         }
         writeDatabase(db);
         await logToAudit(freeBool ? "MEAL_SCAN_FREE" : "MEAL_SCAN_PAID", "transactions", nextId, null, tx);

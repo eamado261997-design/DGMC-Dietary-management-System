@@ -103,40 +103,25 @@ async function startServer() {
   });
 
   // 1. Response compression (Very Safe)
-  app.use(compression());
+  app.use(compression() as any);
 
   const isProd = process.env.NODE_ENV === 'production';
 
-  // 2. Configure Helmet Security Headers (OWASP compliant, AI Studio iframe preview compatible)
-  // Dev approach: Skip CSP in development entirely to allow Vite HMR WebSockets without friction, enforce strictly in production.
+  // 2. Configure Helmet Security Headers (OWASP compliant, AI Studio iframe & local LAN compatible)
   app.use(helmet({
-    contentSecurityPolicy: isProd ? {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "'unsafe-eval'",
-          "https://*",
-          "http://*"
-        ],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://*", "http://*"],
-        imgSrc: ["'self'", "data:", "blob:", "https://*", "http://*"],
-        connectSrc: ["'self'", "wss:", "ws:", "https://*", "http://*"],
-        frameAncestors: ["'self'", "https://*", "http://*", "*"],
-        upgradeInsecureRequests: null,
-      },
-    } : false,
-    hsts: false, // Disables HSTS header so local hospital LAN / intranet IPs don't get forced to HTTPS
-    frameguard: false, // Critical: Disables X-Frame-Options: SAMEORIGIN to allow AI Studio preview iframe embedding
+    contentSecurityPolicy: false, // Keep false to prevent browser automatic upgrade-insecure-requests on local HTTP LAN IPs
+    originAgentCluster: false,    // Avoid Origin-Agent-Cluster header mismatches across resources
+    hsts: false,                  // Disables HSTS header so local hospital LAN / intranet IPs don't get forced to HTTPS
+    frameguard: false,            // Critical: Disables X-Frame-Options to allow AI Studio preview iframe embedding
     crossOriginEmbedderPolicy: false,
     crossOriginOpenerPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" }
   }));
 
-  // Ensure X-Frame-Options is never emitted so AI Studio preview can embed the app
+  // Ensure X-Frame-Options and Origin-Agent-Cluster are never emitted to maintain uniform iframe and LAN access
   app.use((req, res, next) => {
     res.removeHeader('X-Frame-Options');
+    res.removeHeader('Origin-Agent-Cluster');
     next();
   });
 
@@ -202,18 +187,6 @@ async function startServer() {
   app.use('/api/', limiter);
 
   app.use(express.json({ limit: '10mb' }));
-
-  // Force HTTPS in production (exclude localhost and internal private network IPs)
-  app.use((req, res, next) => {
-    if (process.env.NODE_ENV === 'production') {
-      const isLocalHost = req.hostname === 'localhost' || req.hostname === '127.0.0.1' || req.hostname.startsWith('192.168.') || req.hostname.startsWith('10.');
-      // Check for x-forwarded-proto (standard for reverse proxies/load balancers)
-      if (!isLocalHost && req.headers['x-forwarded-proto'] !== 'https' && req.secure === false) {
-        return res.redirect(301, `https://${req.hostname}${req.url}`);
-      }
-    }
-    next();
-  });
 
   // Health check endpoint with granular system diagnostics
   // Prometheus Metrics Export (Restricted to internal network)

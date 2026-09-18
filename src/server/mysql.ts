@@ -315,7 +315,7 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
         id INT AUTO_INCREMENT PRIMARY KEY,
         person_id INT NOT NULL,
         meal_date VARCHAR(10) NOT NULL,
-        created_at VARCHAR(50) NOT NULL,
+        created_at VARCHAR(50) NOT NULL DEFAULT '',
         claimed_at VARCHAR(50)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
@@ -324,6 +324,24 @@ export async function initializeMysql(defaultDb: DatabaseSchema): Promise<Databa
       await dbPool.query("ALTER TABLE free_meal_logs ADD COLUMN claimed_at VARCHAR(50)");
     } catch (e) {
       // Column already exists
+    }
+
+    try {
+      await dbPool.query("ALTER TABLE free_meal_logs MODIFY COLUMN created_at VARCHAR(50) NOT NULL DEFAULT ''");
+    } catch (e) {
+      // Safe ignore
+    }
+
+    try {
+      await dbPool.query("ALTER TABLE transactions MODIFY COLUMN created_at VARCHAR(50) NOT NULL DEFAULT ''");
+    } catch (e) {
+      // Safe ignore
+    }
+
+    try {
+      await dbPool.query("ALTER TABLE audit_logs MODIFY COLUMN created_at VARCHAR(50) NOT NULL DEFAULT ''");
+    } catch (e) {
+      // Safe ignore
     }
 
     // F. System settings table
@@ -501,13 +519,30 @@ async function seedMySQL(pool: any, defaultDb: DatabaseSchema): Promise<void> {
 
   // D. Seed Transactions
   if (defaultDb.transactions.length > 0) {
-    const txRows = defaultDb.transactions.map(t => [t.id, t.person_id, t.cashier_person_id, t.meal_date, t.meal_time, t.is_free ? 1 : 0, t.meal_amount, t.status, t.meal_type || (t.is_free ? "free" : "paid"), t.created_at]);
+    const txRows = defaultDb.transactions.map(t => [
+      t.id,
+      t.person_id,
+      t.cashier_person_id,
+      t.meal_date,
+      t.meal_time,
+      t.is_free ? 1 : 0,
+      t.meal_amount,
+      t.status,
+      t.meal_type || (t.is_free ? "free" : "paid"),
+      t.created_at || new Date().toISOString()
+    ]);
     await batchReplace(pool, "transactions", ["id", "person_id", "cashier_person_id", "meal_date", "meal_time", "is_free", "meal_amount", "status", "meal_type", "created_at"], txRows);
   }
 
   // E. Seed Free Meal Logs
   if (defaultDb.free_meal_log.length > 0) {
-    const logRows = defaultDb.free_meal_log.map(f => [f.id, f.person_id, f.meal_date, f.created_at, f.claimed_at || null]);
+    const logRows = defaultDb.free_meal_log.map(f => [
+      f.id,
+      f.person_id,
+      f.meal_date,
+      f.created_at || new Date().toISOString(),
+      f.claimed_at || f.created_at || new Date().toISOString()
+    ]);
     await batchReplace(pool, "free_meal_logs", ["id", "person_id", "meal_date", "created_at", "claimed_at"], logRows);
   }
 
@@ -625,7 +660,7 @@ export async function syncStateToMySQL(pool: any, data: DatabaseSchema): Promise
 
     // 1. Synchronize Departments
     if (data.departments.length > 0) {
-      const rows = data.departments.map(d => [d.id, d.name, d.created_at]);
+      const rows = data.departments.map(d => [d.id, d.name, d.created_at || new Date().toISOString()]);
       await batchUpsert(conn, "departments", ["id", "name", "created_at"], rows, "name=VALUES(name)");
     }
 
@@ -634,7 +669,7 @@ export async function syncStateToMySQL(pool: any, data: DatabaseSchema): Promise
       const rows = data.people.map(p => [
         p.id, p.username, p.password || "", p.role, p.first_name, p.last_name,
         p.email || null, p.phone || null, p.is_active ? 1 : 0, p.last_login || null,
-        p.created_at, p.updated_at, p.employee_no || null, p.position || null,
+        p.created_at || new Date().toISOString(), p.updated_at || new Date().toISOString(), p.employee_no || null, p.position || null,
         p.department_id || null, p.qr_code || null, p.employee_status || "active",
         p.hire_date || null, p.managed_department_id || null
       ]);
@@ -673,42 +708,59 @@ export async function syncStateToMySQL(pool: any, data: DatabaseSchema): Promise
 
     // 3. Synchronize Schedules
     if (data.employee_schedules.length > 0) {
-      const rows = data.employee_schedules.map(s => [s.id, s.person_id, s.work_date, s.shift_type, s.created_by || null, s.created_at]);
+      const rows = data.employee_schedules.map(s => [s.id, s.person_id, s.work_date, s.shift_type, s.created_by || null, s.created_at || new Date().toISOString()]);
       const updateCols = "person_id=VALUES(person_id), work_date=VALUES(work_date), shift_type=VALUES(shift_type), created_by=VALUES(created_by), created_at=VALUES(created_at)";
       await batchUpsert(conn, "employee_schedules", ["id", "person_id", "work_date", "shift_type", "created_by", "created_at"], rows, updateCols);
     }
 
     // 4. Synchronize Transactions
     if (data.transactions.length > 0) {
-      const rows = data.transactions.map(t => [t.id, t.person_id, t.cashier_person_id, t.meal_date, t.meal_time, t.is_free ? 1 : 0, t.meal_amount, t.status, t.meal_type || (t.is_free ? "free" : "paid"), t.created_at]);
+      const rows = data.transactions.map(t => [
+        t.id,
+        t.person_id,
+        t.cashier_person_id || 1,
+        t.meal_date || new Date().toISOString().split("T")[0],
+        t.meal_time || new Date().toTimeString().split(" ")[0],
+        t.is_free ? 1 : 0,
+        t.meal_amount ?? 0,
+        t.status || "completed",
+        t.meal_type || (t.is_free ? "free" : "paid"),
+        t.created_at || new Date().toISOString()
+      ]);
       const updateCols = "person_id=VALUES(person_id), cashier_person_id=VALUES(cashier_person_id), meal_date=VALUES(meal_date), meal_time=VALUES(meal_time), is_free=VALUES(is_free), meal_amount=VALUES(meal_amount), status=VALUES(status), meal_type=VALUES(meal_type), created_at=VALUES(created_at)";
       await batchUpsert(conn, "transactions", ["id", "person_id", "cashier_person_id", "meal_date", "meal_time", "is_free", "meal_amount", "status", "meal_type", "created_at"], rows, updateCols);
     }
 
     // 5. Synchronize Free Meal Logs
     if (data.free_meal_log.length > 0) {
-      const rows = data.free_meal_log.map(f => [f.id, f.person_id, f.meal_date, f.created_at, f.claimed_at || null]);
+      const rows = data.free_meal_log.map(f => [
+        f.id,
+        f.person_id,
+        f.meal_date,
+        f.created_at || new Date().toISOString(),
+        f.claimed_at || f.created_at || new Date().toISOString()
+      ]);
       const updateCols = "person_id=VALUES(person_id), meal_date=VALUES(meal_date), created_at=VALUES(created_at), claimed_at=VALUES(claimed_at)";
       await batchUpsert(conn, "free_meal_logs", ["id", "person_id", "meal_date", "created_at", "claimed_at"], rows, updateCols);
     }
 
     // 6. Synchronize System Settings
     if (data.system_settings && data.system_settings.length > 0) {
-      const rows = data.system_settings.map(s => [s.id, s.setting_key, s.setting_value, s.updated_at, s.updated_by || null]);
+      const rows = data.system_settings.map(s => [s.id, s.setting_key, s.setting_value !== undefined && s.setting_value !== null ? s.setting_value : "", s.updated_at || new Date().toISOString(), s.updated_by || null]);
       const updateCols = "setting_key=VALUES(setting_key), setting_value=VALUES(setting_value), updated_at=VALUES(updated_at), updated_by=VALUES(updated_by)";
       await batchUpsert(conn, "system_settings", ["id", "setting_key", "setting_value", "updated_at", "updated_by"], rows, updateCols);
     }
 
     // 7. Synchronize Audit Logs
     if (data.audit_logs && data.audit_logs.length > 0) {
-      const rows = data.audit_logs.map(l => [l.id, l.user_id || null, l.action, l.entity_type || null, l.entity_id || null, l.old_value || null, l.new_value || null, l.ip_address || null, l.created_at]);
+      const rows = data.audit_logs.map(l => [l.id, l.user_id || null, l.action, l.entity_type || null, l.entity_id || null, l.old_value || null, l.new_value || null, l.ip_address || null, l.created_at || new Date().toISOString()]);
       const updateCols = "user_id=VALUES(user_id), action=VALUES(action), entity_type=VALUES(entity_type), entity_id=VALUES(entity_id), old_value=VALUES(old_value), new_value=VALUES(new_value), ip_address=VALUES(ip_address), created_at=VALUES(created_at)";
       await batchUpsert(conn, "audit_logs", ["id", "user_id", "action", "entity_type", "entity_id", "old_value", "new_value", "ip_address", "created_at"], rows, updateCols);
     }
 
     // 8. Synchronize Login Attempts
     if (data.login_attempts && data.login_attempts.length > 0) {
-      const rows = data.login_attempts.map(la => [la.id, la.username, la.ip_address || null, la.timestamp, la.success ? 1 : 0]);
+      const rows = data.login_attempts.map(la => [la.id, la.username, la.ip_address || null, la.timestamp || new Date().toISOString(), la.success ? 1 : 0]);
       const updateCols = "username=VALUES(username), ip_address=VALUES(ip_address), timestamp=VALUES(timestamp), success=VALUES(success)";
       await batchUpsert(conn, "login_attempts", ["id", "username", "ip_address", "timestamp", "success"], rows, updateCols);
     }
