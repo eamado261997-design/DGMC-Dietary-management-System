@@ -9,6 +9,7 @@ import { decrypt, decryptAny } from "../encryption.js";
 
 // Short-lived in-memory cache for admin dashboard statistics
 let cachedAdminStats: { data: any; exp: number } | null = null;
+let cachedPm2Status: { status: string; exp: number } | null = null;
 
 export function invalidateAdminStatsCache() {
   cachedAdminStats = null;
@@ -303,23 +304,30 @@ export async function handleAdminRoutes(
     // 4. Telemetry Status
     const telemetryStatus = "active";
 
-    // 5. PM2 Status Detection
+    // 5. PM2 Status Detection (fast path + in-memory cache to maintain sub-50ms TTFB)
     let pm2Status = "standalone";
     if (process.env.pm_id !== undefined || process.env.PM2_HOME !== undefined || process.env.exec_mode !== undefined) {
       const instanceId = process.env.pm_id ?? "0";
       pm2Status = `online (Worker #${instanceId})`;
+    } else if (cachedPm2Status && cachedPm2Status.exp > Date.now()) {
+      pm2Status = cachedPm2Status.status;
     } else {
       try {
         const { execSync } = await import('child_process');
-        const output = execSync('npx pm2 jlist', { encoding: 'utf-8', timeout: 2000 });
-        const processes = JSON.parse(output);
-        if (Array.isArray(processes) && processes.length > 0) {
-          const online = processes.filter((p: any) => p.pm2_env?.status === 'online');
-          pm2Status = online.length > 0 ? `online (${online.length} workers)` : 'stopped';
+        const pm2Bin = './node_modules/.bin/pm2';
+        const fs = await import('fs');
+        if (fs.existsSync(pm2Bin)) {
+          const output = execSync(`${pm2Bin} jlist`, { encoding: 'utf-8', timeout: 500, stdio: ['ignore', 'pipe', 'ignore'] });
+          const processes = JSON.parse(output);
+          if (Array.isArray(processes) && processes.length > 0) {
+            const online = processes.filter((p: any) => p.pm2_env?.status === 'online');
+            pm2Status = online.length > 0 ? `online (${online.length} workers)` : 'stopped';
+          }
         }
       } catch (e) {
         pm2Status = "standalone";
       }
+      cachedPm2Status = { status: pm2Status, exp: Date.now() + 30000 };
     }
 
     return jsonResponse(200, {

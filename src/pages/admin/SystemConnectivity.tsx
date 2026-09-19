@@ -22,10 +22,18 @@ export default function SystemConnectivity() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch("/api/admin/system-connectivity");
+      // 5-second timeout guard to prevent dashboard hang during degraded network connectivity
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      const data = await apiFetch("/api/admin/system-connectivity", { signal: controller.signal });
+      clearTimeout(timer);
       setStatus(data);
-    } catch (err) {
-      setError("Failed to fetch system connectivity status.");
+    } catch (err: any) {
+      if (err?.name === "AbortError") {
+        setError("Connectivity check timed out after 5 seconds.");
+      } else {
+        setError("Failed to fetch system connectivity status.");
+      }
     } finally {
       setLoading(false);
     }

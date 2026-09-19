@@ -1,36 +1,40 @@
 # Git & Version Control
 .git
 .gitignore
+.github
 
-# Dependencies
+# Dependencies & Package Managers
 node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.pnpm-store
 
-# Build Outputs & Artifacts
+# Build Outputs & Local Artifacts
 dist
 build
 .cache
 
-# Environment Variables & Secrets
+# Environment & Secrets (Must be supplied at runtime/VM)
 .env
 .env.local
 .env.*.local
 
-# Databases & Local Logs
+# Databases & Runtime Data
 *.db
 *.db-*
+*.sqlite
+*.sqlite3
 logs
 *.log
 
-# IDEs & Editor Files
+# IDEs & Editor Configuration
 .vscode
 .idea
 *.swp
 *.swo
 
-# OS Specific Files
+# OS Cache & Temp Files
 .DS_Store
 Thumbs.db

@@ -16,7 +16,10 @@ const isInvalid = (v?: string | null) =>
   v === "undefined" ||
   v === "null" ||
   v === '""' ||
-  v === "''";
+  v === "''" ||
+  v.includes(" ") ||
+  v.startsWith("red ") ||
+  v.startsWith("rediwan");
 
 export function getRedisConfig(): { targetUrl: string | null; targetHost: string | null; targetPort: number; options: RedisOptions } | null {
   const rawUrl = process.env.REDIS_URL ? process.env.REDIS_URL.trim() : "";

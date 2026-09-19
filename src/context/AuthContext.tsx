@@ -48,9 +48,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { addToast } = useToast();
   const { startLoading, stopLoading } = useLoading();
-  const [authState, setAuthState] = useState<AuthState>({
-    token: localStorage.getItem("dgmc_token"),
-    user: null,
+  const [authState, setAuthState] = useState<AuthState>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("dgmc_token") || sessionStorage.getItem("dgmc_token");
+      if (stored && stored !== "null" && stored !== "undefined" && stored.trim() !== "") {
+        const decoded = parseJwt(stored);
+        if (decoded && decoded.exp && (decoded.exp * 1000 > Date.now())) {
+          return { token: stored, user: null };
+        } else {
+          localStorage.removeItem("dgmc_token");
+          sessionStorage.removeItem("dgmc_token");
+        }
+      }
+    }
+    return { token: null, user: null };
   });
   const [loading, setLoading] = useState(true);
   const [branding, setBranding] = useState<SystemBranding>({
@@ -84,11 +95,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshBranding();
     // Validate stored session with automatic profile check
     const initSession = async () => {
-      const storedToken = localStorage.getItem("dgmc_token");
+      const storedToken = localStorage.getItem("dgmc_token") || sessionStorage.getItem("dgmc_token");
       if (storedToken && storedToken !== "null" && storedToken !== "undefined" && storedToken.trim() !== "") {
         const decoded = parseJwt(storedToken);
         if (decoded && decoded.exp && (decoded.exp * 1000 < Date.now())) {
           localStorage.removeItem("dgmc_token");
+          sessionStorage.removeItem("dgmc_token");
           setAuthState({ token: null, user: null });
           setLoading(false);
           return;
@@ -97,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const baseUrl = getApiBaseUrl();
           const res = await fetch(`${baseUrl}/api/auth/me`, {
+            credentials: "include",
             headers: {
               Authorization: `Bearer ${storedToken}`,
             },
@@ -129,6 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const baseUrl = getApiBaseUrl();
       const res = await fetch(`${baseUrl}/api/auth/login`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -140,7 +154,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: data.error || "An unexpected sign-in error occurred.", code: data.code };
       }
 
-      localStorage.setItem("dgmc_token", data.token);
+      if (data.token) {
+        try {
+          localStorage.setItem("dgmc_token", data.token);
+          sessionStorage.setItem("dgmc_token", data.token);
+        } catch {
+          // Ignore private browsing storage quota exceptions
+        }
+      }
       setAuthState({
         token: data.token,
         user: data.user,
@@ -155,6 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem("dgmc_token");
+    sessionStorage.removeItem("dgmc_token");
     setAuthState({
       token: null,
       user: null,
@@ -202,11 +224,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsRefreshing(true);
     try {
       const baseUrl = getApiBaseUrl();
+      const xsrfToken = getCookie("XSRF-TOKEN");
       const res = await fetch(`${baseUrl}/api/auth/refresh`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Authorization": `Bearer ${authState.token}`,
-          "X-XSRF-TOKEN": getCookie("XSRF-TOKEN")
+          ...(xsrfToken ? { "X-XSRF-TOKEN": xsrfToken } : {})
         },
       });
       if (res.ok) {
@@ -229,7 +253,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [authState.token]);
 
   useEffect(() => {
-    if (!authState.token) return;
+    if (!authState.token || !authState.user) return;
 
     const decoded = parseJwt(authState.token);
     if (!decoded || !decoded.exp) return;
@@ -238,17 +262,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const now = Date.now();
     const timeToExpiry = expiryTime - now;
     
-    // Refresh 10 minutes before expiry (or immediately if already within 10 mins)
-    // Most tokens last 1 hour. 10 mins is a safe window.
+    // If token already expired, clean up session
+    if (timeToExpiry <= 0) {
+      logout();
+      return;
+    }
+    
+    // Refresh 10 minutes before expiry (or 1 minute after start if less than 10 mins remain)
     const refreshThreshold = 10 * 60 * 1000;
-    const delay = Math.max(0, timeToExpiry - refreshThreshold);
+    const delay = timeToExpiry > refreshThreshold ? timeToExpiry - refreshThreshold : Math.max(10000, timeToExpiry / 2);
 
     const timeout = setTimeout(() => {
       refreshToken();
     }, delay);
 
     return () => clearTimeout(timeout);
-  }, [authState.token, refreshToken]);
+  }, [authState.token, authState.user, refreshToken]);
 
   useEffect(() => {
     localStorage.setItem("pending_scans", JSON.stringify(queue));
@@ -424,6 +453,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const requestUrl = path.startsWith('http') ? path : `${baseUrl}${path}`;
 
       const res = await fetch(requestUrl, {
+        credentials: "include",
         ...options,
         headers,
       });

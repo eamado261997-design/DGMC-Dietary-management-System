@@ -169,6 +169,11 @@ async function startServer() {
 
   // 4. Request Timeout Safety
   app.use((req, res, next) => {
+    // Clear legacy/erroneous Cache-Control cookie if browser sent it
+    if (req.headers.cookie && req.headers.cookie.includes('Cache-Control=')) {
+      res.clearCookie('Cache-Control', { path: '/' });
+    }
+
     req.setTimeout(30000, () => {
       if (!res.headersSent) {
         res.status(408).json({ error: 'Request timeout after 30 seconds' });
@@ -201,6 +206,17 @@ async function startServer() {
   app.use('/api/', limiter);
 
   app.use(express.json({ limit: '10mb' }));
+
+  // Favicon handler to serve hospital brand icon and avoid 404 errors
+  app.get(['/favicon.ico', '/favicon.png'], (req, res) => {
+    const faviconPath = path.resolve(process.cwd(), 'public/assets/dgmc_logo.png');
+    if (fs.existsSync(faviconPath)) {
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.sendFile(faviconPath);
+    }
+    res.status(204).end();
+  });
 
   // Health check endpoint with granular system diagnostics
   // Prometheus Metrics Export (Restricted to internal network)
@@ -388,15 +404,33 @@ async function startServer() {
       }
 
       // Apply any cookies requested by the API handler (e.g. XSRF-TOKEN)
-      if (result.cookies) {
+      if (result.cookies && typeof result.cookies === 'object') {
         for (const [name, config] of Object.entries(result.cookies)) {
-          res.cookie(name, config.value, config.options);
+          // Guard against header objects mistakenly assigned to cookies
+          if (name.toLowerCase() === 'cache-control' || name.toLowerCase() === 'content-type') {
+            continue;
+          }
+          if (config && typeof config === 'object' && config.value !== undefined && config.value !== 'undefined') {
+            res.cookie(name, config.value, config.options);
+          }
         }
       }
 
-      // Prevent caching of all dynamic API responses
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-      res.status(result.status).json(result.body);
+      // Clear legacy/erroneous Cache-Control cookie if browser sent it
+      if (req.headers.cookie && req.headers.cookie.includes('Cache-Control=')) {
+        res.clearCookie('Cache-Control', { path: '/' });
+      }
+
+      // Prevent caching of all dynamic API responses unless explicitly provided
+      if (!result.headers || !result.headers['Cache-Control']) {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      }
+
+      if (typeof result.body === 'string' && result.headers?.['Content-Type']?.includes('text/html')) {
+        res.status(result.status).send(result.body);
+      } else {
+        res.status(result.status).json(result.body);
+      }
     } catch (err: any) {
       const appErr = mapDatabaseError(err);
       const errMsg = appErr.message;
@@ -413,18 +447,8 @@ async function startServer() {
     }
   });
 
-  // Robust path discovery for compiled dist files
-  // Prioritize the local project dist over parent directories to avoid picking up stale builds
-  const possibleDistPaths = [
-    path.join(process.cwd(), 'dist'),
-    _currentDirname,
-    path.join(_currentDirname, 'dist'),
-    path.join(_currentDirname, '..', 'dist')
-  ];
-  const distPath = possibleDistPaths.find(p => fs.existsSync(path.join(p, 'index.html'))) || path.join(process.cwd(), 'dist');
-
   let viteServer: any;
-  if (!isProd && !fs.existsSync(path.join(distPath, 'index.html'))) {
+  if (!isProd) {
     logger.info('Starting server in DEVELOPMENT mode with Vite integration...');
     const { createServer: createViteServer } = await import('vite');
     viteServer = await createViteServer({
@@ -437,18 +461,28 @@ async function startServer() {
     
     // SPA fallback for development mode
     app.get('*', async (req, res, next) => {
-      if (req.path.startsWith('/api') || req.path.startsWith('/assets/')) return next();
+      if (req.path.startsWith('/api')) return next();
       try {
         const url = req.originalUrl;
-        const template = fs.readFileSync(path.resolve(_currentDirname, 'index.html'), 'utf-8');
+        const template = fs.readFileSync(path.resolve(process.cwd(), 'index.html'), 'utf-8');
         const html = await viteServer.transformIndexHtml(url, template);
         res.status(200).set({ 'Content-Type': 'text/html', 'Cache-Control': 'no-cache, no-store, must-revalidate' }).end(html);
       } catch (e) {
-        viteServer.ssrFixStacktrace(e as Error);
+        if (viteServer) {
+          viteServer.ssrFixStacktrace(e as Error);
+        }
         next(e);
       }
     });
   } else {
+    // Robust path discovery for compiled dist files in production
+    const possibleDistPaths = [
+      path.join(process.cwd(), 'dist'),
+      path.join(_currentDirname, 'dist'),
+      path.join(_currentDirname, '..', 'dist')
+    ];
+    const distPath = possibleDistPaths.find(p => fs.existsSync(path.join(p, 'index.html'))) || path.join(process.cwd(), 'dist');
+
     logger.info(`Starting server in PRODUCTION mode with static file hosting from: ${distPath}`);
     
     // Serve hashed assets with long cache

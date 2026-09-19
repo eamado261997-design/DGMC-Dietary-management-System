@@ -230,13 +230,41 @@ export const seedBenchmarks = () => {
 };
 seedBenchmarks();
 
-// Helper for formatted responses definitions (moved early for security block returns)
-export const jsonResponse = (status: number, data: any, cookies?: any, headers?: Record<string, string>): ApiResponse => ({
-  status,
-  body: data,
-  cookies,
-  headers
-});
+// Helper for formatted responses definitions (supports (status, data, cookies, headers) OR (status, data, headers))
+export const jsonResponse = (
+  status: number,
+  data: any,
+  cookiesOrHeaders?: any,
+  headers?: Record<string, string>
+): ApiResponse => {
+  let responseCookies: Record<string, { value: string; options?: any }> | undefined = undefined;
+  let responseHeaders: Record<string, string> | undefined = headers;
+
+  if (cookiesOrHeaders) {
+    // Detect if cookiesOrHeaders is actually headers (e.g. contains Cache-Control or has plain string values without value/options structure)
+    const keys = Object.keys(cookiesOrHeaders);
+    const isHeadersObject = keys.some(k => 
+      k.toLowerCase() === 'cache-control' || 
+      k.toLowerCase() === 'content-type' || 
+      k.startsWith('x-') ||
+      k.startsWith('server-timing') ||
+      typeof cookiesOrHeaders[k] === 'string'
+    );
+
+    if (isHeadersObject && !keys.some(k => cookiesOrHeaders[k]?.value !== undefined)) {
+      responseHeaders = { ...(responseHeaders || {}), ...cookiesOrHeaders };
+    } else {
+      responseCookies = cookiesOrHeaders;
+    }
+  }
+
+  return {
+    status,
+    body: data,
+    cookies: responseCookies,
+    headers: responseHeaders
+  };
+};
 
 export const parseCookies = (cookieHeader: string | undefined): Record<string, string> => {
   const cookies: Record<string, string> = {};

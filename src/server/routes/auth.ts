@@ -190,12 +190,15 @@ export async function handleAuthRoutes(
       safeUser.department_name = "N/A";
     }
 
+    const isHttps = headers?.["x-forwarded-proto"] === "https" || headers?.["x-forwarded-ssl"] === "on";
+    const isSecureCookie = process.env.NODE_ENV === "production" && isHttps;
+
     return jsonResponse(200, {
       success: true,
       token,
       user: safeUser
     }, {
-      "XSRF-TOKEN": { value: xsrfToken, options: { httpOnly: false, secure: true, sameSite: "strict", path: "/" } }
+      "XSRF-TOKEN": { value: xsrfToken, options: { httpOnly: false, secure: isSecureCookie, sameSite: "lax", path: "/" } }
     });
   }
 
@@ -203,6 +206,7 @@ export async function handleAuthRoutes(
   if (path === "/api/auth/refresh" && method === "POST") {
     if (!authUser) return jsonResponse(401, { error: "Authentication session expired. Please sign in." });
     const newToken = generateToken({ id: authUser.id, username: authUser.username, role: authUser.role });
+    const xsrfToken = generateXsrfToken();
     const safeUser: any = { ...authUser };
     delete safeUser.password;
     if (safeUser.department_id) {
@@ -217,7 +221,12 @@ export async function handleAuthRoutes(
     } else {
       safeUser.department_name = "N/A";
     }
-    return jsonResponse(200, { success: true, token: newToken, user: safeUser });
+    const isHttps = headers?.["x-forwarded-proto"] === "https" || headers?.["x-forwarded-ssl"] === "on";
+    const isSecureCookie = process.env.NODE_ENV === "production" && isHttps;
+
+    return jsonResponse(200, { success: true, token: newToken, user: safeUser }, {
+      "XSRF-TOKEN": { value: xsrfToken, options: { httpOnly: false, secure: isSecureCookie, sameSite: "lax", path: "/" } }
+    });
   }
 
   // GET /api/auth/me

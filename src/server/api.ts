@@ -785,6 +785,40 @@ async function _handleApiRequest(
   if (settingsRes) return settingsRes;
 
   // -------------------------------------------------------------
+  // API DOCUMENTATION & DISCOVERY ENDPOINTS
+  // -------------------------------------------------------------
+  if (path === "/api/docs" && method === "GET") {
+    const { generateApiDocs, generateApiDocsHtml } = await import("./services/docsService.js");
+    const acceptHeader = String(headers["accept"] || "");
+    const format = queryParams?.format || (acceptHeader.includes("text/html") && !acceptHeader.includes("application/json") ? "html" : "json");
+    
+    if (format === "html") {
+      const html = generateApiDocsHtml();
+      return {
+        status: 200,
+        body: html,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "public, max-age=60"
+        }
+      };
+    }
+
+    const docs = generateApiDocs();
+    return jsonResponse(200, docs, {
+      "Cache-Control": "public, max-age=60"
+    });
+  }
+
+  if (path === "/api/openapi.json" && method === "GET") {
+    const { getOpenApiSpec } = await import("./services/openapiService.js");
+    const spec = getOpenApiSpec();
+    return jsonResponse(200, spec, {
+      "Cache-Control": "public, max-age=60"
+    });
+  }
+
+  // -------------------------------------------------------------
   // HEALTH & SYSTEM DIAGNOSTICS ENDPOINTS
   // -------------------------------------------------------------
   if (path === "/api/public-stats" && method === "GET") {
